@@ -12,24 +12,17 @@ public class LngLatBounds {
     public LngLatBounds(LngLat sw, LngLat ne) {
     }
     
-    @JsProperty
     public native LngLat getSouthWest();
     
-    @JsProperty
     public native LngLat getNorthEast();
     
-    @JsProperty
     public native LngLat getCenter();
     
-    @JsProperty
     public native LngLat getWest();
     
-    @JsProperty
     public native LngLat getSouth();
     
-    @JsProperty
     public native LngLat getEast();
     
-    @JsProperty
     public native LngLat getNorth();
 }
