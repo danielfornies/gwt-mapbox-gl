@@ -1,7 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.mapoptions;
 
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
-import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions.BaseMapSources;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions.TomTomMapSources;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -18,7 +18,7 @@ public class MapboxStyle {
     }
     
     @JsOverlay
-    public static MapboxStyle buid(String name, BaseMapSources sources, MapLayer[] layers) {
+    public static MapboxStyle buid(String name, TomTomMapSources sources, MapLayer[] layers) {
         MapboxStyle style = new MapboxStyle();
         style.setVersion(MAPBOX_STYLE_VERSION);
         style.setName(name);
@@ -36,7 +36,7 @@ public class MapboxStyle {
     
     // TODO: create generic type for these:
     @JsProperty
-    private native void setSources(BaseMapSources sources);
+    private native void setSources(TomTomMapSources sources);
     
     @JsProperty
     private native void setLayers(MapLayer[] layers);

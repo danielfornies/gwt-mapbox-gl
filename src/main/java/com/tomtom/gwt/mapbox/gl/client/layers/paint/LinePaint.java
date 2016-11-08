@@ -1,6 +1,5 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 
-import com.google.gwt.core.client.JsArray;
 import com.google.gwt.core.client.JsArrayInteger;
 import com.google.gwt.core.client.JsArrayMixed;
 import com.tomtom.gwt.mapbox.gl.client.layers.paint.AbstractPaint.Anchor;

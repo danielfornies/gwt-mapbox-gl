@@ -26,6 +26,8 @@ public class FlyToOptions {
         return new FlyToOptions();
     }
     
+    // TODO: consider keeping FlyToOptions to its own options and creating overlay methods in MapboxMap accepting all these objects together
+    // e.g. flyTo(LngLat coordinates, FlyToOptions flyToOptions, CameraOptions cameraOptions, AnimationOptions animationOptions)
     @JsOverlay
     public static FlyToOptions build(CameraOptions cameraOptions, AnimationOptions animationOptions, 
             Double curve, Integer minZoom, Double speed, Double screenSpeed, FlyToEasing easing) {

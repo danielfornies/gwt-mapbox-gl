@@ -16,10 +16,12 @@ public class MapOptions {
     
     // TODO: avoid specific source names in here. Perhaps define in the caller/client and use a generic type for it
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static class BaseMapSources {
+    public static class TomTomMapSources {
 
-        public AbstractTiledMapSource baseMapSource;
-        public AbstractTiledMapSource trafficMapSource;
+        public AbstractTiledMapSource baseMapTileSource;
+        public AbstractTiledMapSource trafficIncidentsTileSource;
+        public AbstractTiledMapSource trafficFlowTileSource;
+        public AbstractTiledMapSource baseMapLabelsTileSource;
     }
     
     private MapOptions() {

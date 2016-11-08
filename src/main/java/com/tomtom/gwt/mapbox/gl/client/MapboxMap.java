@@ -5,26 +5,58 @@ import com.tomtom.gwt.mapbox.gl.client.mapoptions.FitBoundsOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FlyToOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapsources.AbstractMapSource;
+import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 
 /**
  * https://www.mapbox.com/mapbox-gl-js/api/#Map
  */
 @JsType(isNative = true, name = "Map")
-public class MapboxMap {
+public class MapboxMap extends AbstractEvented {
 
     public MapboxMap(MapOptions options) {
     }
 
-    public native MapboxMap panTo(LngLat lngLat);
+    public native MapboxMap addSource(String id, AbstractMapSource source);
     
-    public native MapboxMap flyTo(FlyToOptions options);
+    @JsOverlay
+    public final MapboxMap addLayer(MapLayer layer) {
+        return MapboxMap.this.addLayer(layer, (String)null);
+    }
+    
+    @JsOverlay
+    public final MapboxMap addLayer(MapLayer layer, MapLayer before) {
+        String beforeId = before != null ? before.getId() : null;
+        return MapboxMap.this.addLayer(layer, beforeId);
+    }
+    
+    public native MapboxMap addLayer(MapLayer layer, String before);
+    
+    @JsOverlay
+    public final MapboxMap removeMapLayer(MapLayer layer) {
+        if (layer != null) {
+            removeLayer(layer.getId());
+        }
+        return this;
+    }
+    
+    public native MapboxMap removeLayer(String id);
+    
+    public native double getZoom();
+    
+    public native MapboxMap setZoom(int zoom);
+    
+    public native LngLat getCenter();
+    
+    public native void setCenter(LngLat center);
+    
+    public native LngLatBounds getBounds();
     
     public native MapboxMap fitBounds(LngLatBounds bounds, FitBoundsOptions options);
     
-    public native MapboxMap addSource(String id, AbstractMapSource source);
+    public native MapboxMap panTo(LngLat lngLat);
     
-    public native MapboxMap addLayer(MapLayer layer);
+    public native MapboxMap flyTo(FlyToOptions options);
     
     
     

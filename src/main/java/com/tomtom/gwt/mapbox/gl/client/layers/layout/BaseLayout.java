@@ -1,11 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.layout;
 
 import com.google.gwt.core.client.JavaScriptObject;
-import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
-import jsinterop.annotations.JsOverlay;
-import jsinterop.annotations.JsPackage;
-import jsinterop.annotations.JsProperty;
-import jsinterop.annotations.JsType;
 
 /**
  *
