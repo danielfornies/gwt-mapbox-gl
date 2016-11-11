@@ -1,6 +1,5 @@
 package com.tomtom.gwt.mapbox.gl.client.mapoptions;
 
-import com.tomtom.gwt.mapbox.gl.client.mapsources.AbstractTiledMapSource;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -13,16 +12,6 @@ import jsinterop.annotations.JsType;
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class MapOptions {
-    
-    // TODO: avoid specific source names in here. Perhaps define in the caller/client and use a generic type for it
-    @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static class TomTomMapSources {
-
-        public AbstractTiledMapSource baseMapTileSource;
-        public AbstractTiledMapSource trafficIncidentsTileSource;
-        public AbstractTiledMapSource trafficFlowTileSource;
-        public AbstractTiledMapSource baseMapLabelsTileSource;
-    }
     
     private MapOptions() {
     }

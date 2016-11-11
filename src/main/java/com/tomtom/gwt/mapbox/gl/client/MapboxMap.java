@@ -14,6 +14,11 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = "Map")
 public class MapboxMap extends AbstractEvented {
 
+//    @JsProperty
+//    public static void setAccessToken(String accessToken) {
+//        // TODO
+//    }
+//    
     public MapboxMap(MapOptions options) {
     }
 
@@ -33,9 +38,9 @@ public class MapboxMap extends AbstractEvented {
     public native MapboxMap addLayer(MapLayer layer, String before);
     
     @JsOverlay
-    public final MapboxMap removeMapLayer(MapLayer layer) {
+    public final MapboxMap removeLayer(MapLayer layer) {
         if (layer != null) {
-            removeLayer(layer.getId());
+            MapboxMap.this.removeLayer(layer.getId());
         }
         return this;
     }

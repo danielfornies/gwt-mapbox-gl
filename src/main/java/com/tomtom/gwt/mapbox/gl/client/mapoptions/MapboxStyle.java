@@ -1,7 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.mapoptions;
 
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
-import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions.TomTomMapSources;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -18,13 +17,14 @@ public class MapboxStyle {
     }
     
     @JsOverlay
-    public static MapboxStyle buid(String name, TomTomMapSources sources, MapLayer[] layers) {
+    public static MapboxStyle build(String name, Object sources, MapLayer[] layers, String sprite, String glyphs) {
         MapboxStyle style = new MapboxStyle();
         style.setVersion(MAPBOX_STYLE_VERSION);
         style.setName(name);
         style.setSources(sources);
         style.setLayers(layers);
-        
+        style.setSprite(sprite);
+        style.setGlyphs(glyphs);
         return style;
     }
     
@@ -36,8 +36,14 @@ public class MapboxStyle {
     
     // TODO: create generic type for these:
     @JsProperty
-    private native void setSources(TomTomMapSources sources);
+    private native void setSources(Object sources);
     
     @JsProperty
     private native void setLayers(MapLayer[] layers);
+    
+    @JsProperty
+    private native void setSprite(String sprite);
+    
+    @JsProperty
+    private native void setGlyphs(String glyphs);
 }

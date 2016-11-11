@@ -21,7 +21,7 @@ public class GeoJsonMapSource<T> extends AbstractMapSource {
     }
     
     @JsOverlay
-    public static GeoJsonMapSource<AbstractGeoJson> buildWithInlineGeoJson(AbstractGeoJson inlineGeoJson) {
+    public static <T extends AbstractGeoJson> GeoJsonMapSource<T> buildWithInlineGeoJson(T inlineGeoJson) {
         return build(inlineGeoJson);
     }
     
@@ -39,7 +39,9 @@ public class GeoJsonMapSource<T> extends AbstractMapSource {
     private static <T> GeoJsonMapSource<T> build(T data) {
         GeoJsonMapSource mapSource = new GeoJsonMapSource();
         mapSource.setType("geojson");
-        mapSource.setData(data);
+        if (data != null) {
+            mapSource.setData(data);
+        }
         return mapSource;
     }
     
@@ -50,7 +52,7 @@ public class GeoJsonMapSource<T> extends AbstractMapSource {
     public native T getData();
     
     @JsProperty
-    private native void setData(T geoJsonData);
+    public native void setData(T geoJsonData);
     
     @JsProperty
     public native int getMaxzoom();
