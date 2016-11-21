@@ -5,6 +5,7 @@ import com.tomtom.gwt.mapbox.gl.client.mapoptions.FitBoundsOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FlyToOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapsources.AbstractMapSource;
+import java.util.Collection;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 
@@ -21,56 +22,75 @@ public class MapboxMap extends AbstractEvented {
 //    
     public MapboxMap(MapOptions options) {
     }
-
+    
+    public native <T extends AbstractMapSource> T getSource(String id);
+    
     public native MapboxMap addSource(String id, AbstractMapSource source);
+
+    public native MapboxMap removeSource(String id);
     
     @JsOverlay
-    public final MapboxMap addLayer(MapLayer layer) {
-        return MapboxMap.this.addLayer(layer, (String)null);
+    public final MapboxMap addLayers(Collection<MapLayer> layers, MapLayer before) {
+        layers.forEach((layer) -> {
+            addLayer(layer, before);
+        });
+        return this;
     }
-    
+
+    @JsOverlay
+    public final MapboxMap addLayer(MapLayer layer) {
+        return addLayer(layer, (String) null);
+    }
+
     @JsOverlay
     public final MapboxMap addLayer(MapLayer layer, MapLayer before) {
         String beforeId = before != null ? before.getId() : null;
-        return MapboxMap.this.addLayer(layer, beforeId);
+        return addLayer(layer, beforeId);
     }
-    
+
     public native MapboxMap addLayer(MapLayer layer, String before);
-    
+
+    @JsOverlay
+    public final MapboxMap removeLayers(Collection<MapLayer> layers) {
+        layers.forEach((layer) -> {
+            removeLayer(layer);
+        });
+        return this;
+    }
+
     @JsOverlay
     public final MapboxMap removeLayer(MapLayer layer) {
         if (layer != null) {
-            MapboxMap.this.removeLayer(layer.getId());
+            try {
+                removeLayer(layer.getId());
+            } catch (Throwable t) {
+                // does nothing
+            }
         }
         return this;
     }
-    
+
     public native MapboxMap removeLayer(String id);
-    
+
     public native double getZoom();
-    
+
     public native MapboxMap setZoom(int zoom);
-    
+
     public native LngLat getCenter();
-    
+
     public native void setCenter(LngLat center);
-    
+
     public native LngLatBounds getBounds();
-    
+
     public native MapboxMap fitBounds(LngLatBounds bounds, FitBoundsOptions options);
-    
+
     public native MapboxMap panTo(LngLat lngLat);
-    
+
     public native MapboxMap flyTo(FlyToOptions options);
-    
-    
-    
+
     // TODO: all map methods
     //public native MapboxMap flyTo()
 }
-
-
-
 
 //        var tomtomMap = {
 //        "version": 8,

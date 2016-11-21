@@ -52,5 +52,10 @@ public class CirclePaint extends AbstractPaint {
         JSUtils.setDouble(this, "circle-opacity", opacity);
     }
     
+    @JsOverlay
+    private void setCircleTranslate(int offsetPixelsX, int offsetPixelsY) {
+        JSUtils.setObject(this, "circle-translate", new int[]{offsetPixelsX, offsetPixelsY});
+    }
+    
     // TODO: remaining properties
 }

@@ -23,8 +23,12 @@ public class MapboxStyle {
         style.setName(name);
         style.setSources(sources);
         style.setLayers(layers);
-        style.setSprite(sprite);
-        style.setGlyphs(glyphs);
+        if (sprite != null) {
+            style.setSprite(sprite);
+        }
+        if (glyphs != null) {
+            style.setGlyphs(glyphs);
+        }
         return style;
     }
     
@@ -34,9 +38,12 @@ public class MapboxStyle {
     @JsProperty
     private native void setName(String value);
     
-    // TODO: create generic type for these:
+    // TODO: create generic type for these or a way to get them named with constants or smth:
     @JsProperty
     private native void setSources(Object sources);
+    
+    @JsProperty
+    public native Object getSources();
     
     @JsProperty
     private native void setLayers(MapLayer[] layers);
