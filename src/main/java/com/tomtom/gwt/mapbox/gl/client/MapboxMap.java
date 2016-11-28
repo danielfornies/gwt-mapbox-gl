@@ -5,6 +5,7 @@ import com.tomtom.gwt.mapbox.gl.client.mapoptions.FitBoundsOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FlyToOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapsources.AbstractMapSource;
+import com.tomtom.gwt.mapbox.gl.client.overlay.AbstractOverlay;
 import java.util.Collection;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
@@ -73,6 +74,11 @@ public class MapboxMap extends AbstractEvented {
     public native MapboxMap removeLayer(String id);
 
     public native double getZoom();
+    
+    @JsOverlay
+    public final int getZoomInt() {
+        return (int)(Math.round(getZoom()));
+    }
 
     public native MapboxMap setZoom(int zoom);
 
@@ -87,6 +93,20 @@ public class MapboxMap extends AbstractEvented {
     public native MapboxMap panTo(LngLat lngLat);
 
     public native MapboxMap flyTo(FlyToOptions options);
+    
+    @JsOverlay
+    public final <T extends AbstractOverlay> void addOverlays(Collection<T> overlays) {
+        overlays.forEach((overlay) -> {
+            overlay.addTo(this);
+        });
+    }
+    
+    @JsOverlay
+    public final <T extends AbstractOverlay> void removeOverlays(Collection<T> overlays) {
+        overlays.forEach((overlay) -> {
+            overlay.remove();
+        });
+    }
 
     // TODO: all map methods
     //public native MapboxMap flyTo()

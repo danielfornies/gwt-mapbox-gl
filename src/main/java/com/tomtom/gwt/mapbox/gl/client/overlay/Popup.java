@@ -63,12 +63,11 @@ public class Popup extends AbstractOverlay {
     public Popup(PopupOptions options) {
     }
     
-    @JsProperty
+    public native boolean isOpen();
+    
     public native Popup setText(String text);
     
-    @JsProperty
     public native Popup setHtml(String html);
     
-    @JsProperty
     public native Popup setDOMContent(Node htmlNode);
 }

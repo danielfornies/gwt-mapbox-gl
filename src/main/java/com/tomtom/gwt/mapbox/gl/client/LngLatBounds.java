@@ -1,5 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
+import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 
 /**
@@ -64,4 +65,14 @@ public class LngLatBounds {
      * @return 
      */
     public native LngLat getNorth();
+    
+    @JsOverlay
+    public final boolean contains(LngLat coordinates) {
+        LngLat sw = getSouthWest();
+        LngLat ne = getNorthEast();
+        return sw.getLng() <= coordinates.getLng() 
+                && sw.getLat() <= coordinates.getLat()
+                && ne.getLng() >= coordinates.getLng()
+                && ne.getLat() >= coordinates.getLat();
+    }
 }
