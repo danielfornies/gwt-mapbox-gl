@@ -10,7 +10,7 @@ import jsinterop.annotations.JsType;
  * 
  * @param <W>
  */
-//@JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
+@JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public interface HasWidget<W> {
     
     W getWidget();
