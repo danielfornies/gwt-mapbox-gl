@@ -26,7 +26,7 @@ public class MapboxMap extends AbstractEvented {
     
     public native <T extends AbstractMapSource> T getSource(String id);
     
-    public native MapboxMap addSource(String id, AbstractMapSource source);
+    public native <T extends AbstractMapSource> MapboxMap addSource(String id, T source);
 
     public native MapboxMap removeSource(String id);
     
