@@ -19,8 +19,7 @@ public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
     
     @JsOverlay
     public static <L extends BaseLayout, P extends AbstractPaint> MapLayer<L, P> build(
-            String id, LayerType type, String source, String sourceLayer,
-            L layout, P paint) {
+            String id, LayerType type, String source, String sourceLayer, L layout, P paint) {
         MapLayer mapLayer = new MapLayer();
         mapLayer.setId(id);
         mapLayer.setType(type.name());

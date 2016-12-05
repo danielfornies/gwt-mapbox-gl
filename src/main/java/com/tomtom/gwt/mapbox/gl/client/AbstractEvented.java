@@ -5,18 +5,24 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
+ * Convenience native adapter of Evented interface, for java inheritance purposes.
  * @see https://www.mapbox.com/mapbox-gl-js/api/#Evented
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public abstract class AbstractEvented {
+public abstract class AbstractEvented implements Evented {
     
+    @Override
     public native AbstractEvented on(String type, MapboxEventListener listener);
     
+    @Override
     public native AbstractEvented off(String type, MapboxEventListener listener);
     
+    @Override
     public native AbstractEvented once(String type, MapboxEventListener listener);
     
+    @Override
     public native AbstractEvented fire(String type, Object data);
     
+    @Override
     public native boolean listens(String type);
 }

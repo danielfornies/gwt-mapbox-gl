@@ -1,12 +1,13 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
+import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 
 /**
  * @see https://www.mapbox.com/mapbox-gl-js/api/#LngLatBounds
  */
-@JsType(isNative = true)
+@JsType(isNative = true, namespace = MAPBOX_GL_NAMESPACE)
 public class LngLatBounds {
     
     public LngLatBounds(LngLat sw, LngLat ne) {

@@ -16,6 +16,10 @@ public class JSUtils {
         targetObject[fieldName] = fieldValue;
     }-*/;
     
+    public static native Object getObject(Object targetObject, String fieldName) /*-{
+        return targetObject[fieldName];
+    }-*/;
+    
     public static native void setInt(Object targetObject, String fieldName, int fieldValue) /*-{
         targetObject[fieldName] = fieldValue;
     }-*/;
@@ -26,5 +30,9 @@ public class JSUtils {
     
     public static native void setStopsTestShit(Object targetObject) /*-{
         targetObject["line-width"] = {"stops" : [[1, 3], [5, 4], [10, 7], [18,9]]};
+    }-*/;
+    
+    public static native void log(Object object) /*-{
+        $wnd.console.log(object);
     }-*/;
 }

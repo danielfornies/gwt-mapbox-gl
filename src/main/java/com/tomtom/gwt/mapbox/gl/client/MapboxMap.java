@@ -4,16 +4,18 @@ import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FitBoundsOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FlyToOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions;
-import com.tomtom.gwt.mapbox.gl.client.mapsources.AbstractMapSource;
+import com.tomtom.gwt.mapbox.gl.client.mapsources.input.AbstractSourceInput;
 import com.tomtom.gwt.mapbox.gl.client.overlay.AbstractOverlay;
+import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import java.util.Collection;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
+import com.tomtom.gwt.mapbox.gl.client.mapsources.MapSource;
 
 /**
  * https://www.mapbox.com/mapbox-gl-js/api/#Map
  */
-@JsType(isNative = true, name = "Map")
+@JsType(isNative = true, name = "Map", namespace = MAPBOX_GL_NAMESPACE)
 public class MapboxMap extends AbstractEvented {
 
 //    @JsProperty
@@ -24,9 +26,9 @@ public class MapboxMap extends AbstractEvented {
     public MapboxMap(MapOptions options) {
     }
     
-    public native <T extends AbstractMapSource> T getSource(String id);
+    public native <T extends MapSource> T getSource(String id);
     
-    public native <T extends AbstractMapSource> MapboxMap addSource(String id, T source);
+    public native MapboxMap addSource(String id, AbstractSourceInput source);
 
     public native MapboxMap removeSource(String id);
     
@@ -45,8 +47,7 @@ public class MapboxMap extends AbstractEvented {
 
     @JsOverlay
     public final MapboxMap addLayer(MapLayer layer, MapLayer before) {
-        String beforeId = before != null ? before.getId() : null;
-        return addLayer(layer, beforeId);
+        return addLayer(layer, before != null ? before.getId() : null);
     }
 
     public native MapboxMap addLayer(MapLayer layer, String before);

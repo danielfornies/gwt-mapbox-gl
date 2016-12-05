@@ -3,6 +3,7 @@ package com.tomtom.gwt.mapbox.gl.client.overlay;
 import com.google.gwt.dom.client.Node;
 import com.tomtom.gwt.mapbox.gl.client.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
+import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
@@ -11,7 +12,7 @@ import jsinterop.annotations.JsType;
 /**
  * @see https://www.mapbox.com/mapbox-gl-js/api/#Popup
  */
-@JsType(isNative = true)
+@JsType(isNative = true, namespace = MAPBOX_GL_NAMESPACE)
 public class Popup extends AbstractOverlay {
     
     public static enum PopupAnchor {
