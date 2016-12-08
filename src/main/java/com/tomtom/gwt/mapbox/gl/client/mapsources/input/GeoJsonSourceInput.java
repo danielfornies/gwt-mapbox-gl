@@ -14,7 +14,7 @@ import jsinterop.annotations.JsType;
  * @param <T>
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public class GeoJsonSourceInput<T> extends AbstractSourceInput {
+public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
     
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder<T> {
@@ -35,6 +35,7 @@ public class GeoJsonSourceInput<T> extends AbstractSourceInput {
         @JsOverlay
         public <T extends AbstractGeoJson> GeoJsonSourceInput<T> build() {
             GeoJsonSourceInput sourceInput = new GeoJsonSourceInput();
+            sourceInput.setType("geojson");
             JSUtils.copyAllFields(this, sourceInput);
             return sourceInput;
         }
