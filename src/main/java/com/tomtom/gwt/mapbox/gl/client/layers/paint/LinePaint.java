@@ -35,6 +35,11 @@ public class LinePaint extends AbstractPaint {
         private native Integer[][] getStops();
     }
     
+    
+    
+    
+    // TODO: use builder pattern
+    
     // TODO
     @JsOverlay
     public static LinePaint build(double opacity, String color, Integer[][] widthsPerZoomLevel, Integer lineGapWidth) {
