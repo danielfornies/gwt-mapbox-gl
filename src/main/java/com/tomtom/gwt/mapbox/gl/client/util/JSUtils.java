@@ -28,6 +28,10 @@ public class JSUtils {
         targetObject[fieldName] = fieldValue;
     }-*/;
     
+    public static native void setBoolean(Object targetObject, String fieldName, boolean fieldValue) /*-{
+        targetObject[fieldName] = fieldValue;
+    }-*/;
+    
     public static native void setStopsTestShit(Object targetObject) /*-{
         targetObject["line-width"] = {"stops" : [[1, 3], [5, 4], [10, 7], [18,9]]};
     }-*/;
