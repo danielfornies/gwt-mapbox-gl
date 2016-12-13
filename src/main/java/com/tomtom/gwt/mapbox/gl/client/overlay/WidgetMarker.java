@@ -2,17 +2,17 @@ package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.user.client.ui.Widget;
-import static com.tomtom.gwt.mapbox.gl.client.overlay.Marker.API_CLASS_NAME;
 import com.tomtom.gwt.mapbox.gl.client.overlay.util.OffsetCalculator;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
+import static com.tomtom.gwt.mapbox.gl.client.overlay.Marker.MARKER_CLASS_NAME;
 
 /**
  *
  * @param <W>
  */
-@JsType(isNative = true, name = API_CLASS_NAME, namespace = MAPBOX_GL_NAMESPACE)
+@JsType(isNative = true, name = MARKER_CLASS_NAME, namespace = MAPBOX_GL_NAMESPACE)
 public class WidgetMarker<W extends Widget> extends Marker implements HasWidget<W> {
     
     private W widget;

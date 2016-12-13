@@ -1,6 +1,10 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
+import com.google.gwt.dom.client.CanvasElement;
+import com.google.gwt.dom.client.Element;
+import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.ControlAlignment;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FitBoundsOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FlyToOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions;
@@ -23,9 +27,18 @@ public class MapboxMap extends AbstractEvented {
 //    public static void setAccessToken(String accessToken) {
 //        // TODO
 //    }
-//    
+
     public MapboxMap(MapOptions options) {
     }
+    
+    @JsOverlay
+    public final MapboxMap addControl(IControl control, ControlAlignment position) {
+        return addControl(control, position.getApiValue());
+    }
+    
+    public native MapboxMap addControl(IControl control, String position);
+    
+    public native MapboxMap removeControl(IControl control);
 
     public native MapboxMap addClass(String klass, StyleOptions options);
 
@@ -117,7 +130,16 @@ public class MapboxMap extends AbstractEvented {
             overlay.remove();
         });
     }
+    
+    public native Point project(LngLat lngLat);
 
+    public native LngLat unproject(Point pixelCoordinates);
+    
+    public native Element getContainer();
+    
+    public native Element getCanvasContainer();
+    
+    public native CanvasElement getCanvas();
+    
     // TODO: all map methods
-    //public native MapboxMap flyTo()
 }
