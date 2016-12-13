@@ -23,11 +23,6 @@ import com.tomtom.gwt.mapbox.gl.client.mapsources.MapSource;
 @JsType(isNative = true, name = "Map", namespace = MAPBOX_GL_NAMESPACE)
 public class MapboxMap extends AbstractEvented {
 
-//    @JsProperty
-//    public static void setAccessToken(String accessToken) {
-//        // TODO
-//    }
-
     public MapboxMap(MapOptions options) {
     }
     

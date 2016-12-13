@@ -4,7 +4,14 @@ package com.tomtom.gwt.mapbox.gl.client.util;
  *
  * 
  */
-public class JSUtils {
+public final class JSUtils {
+    
+    private JSUtils() {
+    }
+    
+    public static native void setAccessToken(String value) /*-{
+        $wnd.mapboxgl.accessToken = value;
+    }-*/;
     
     public static native void copyAllFields(Object sourceObject, Object targetObject) /*-{
         for (var field in sourceObject) {
