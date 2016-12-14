@@ -11,13 +11,13 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public interface Evented {
     
-    Evented on(String type, MapboxEventListener listener);
+    <T extends Evented> T on(String type, MapboxEventListener listener);
     
-    Evented off(String type, MapboxEventListener listener);
+    <T extends Evented> T  off(String type, MapboxEventListener listener);
     
-    Evented once(String type, MapboxEventListener listener);
+    <T extends Evented> T  once(String type, MapboxEventListener listener);
     
-    Evented fire(String type, Object data);
+    <T extends Evented> T  fire(String type, Object data);
     
     boolean listens(String type);
 }

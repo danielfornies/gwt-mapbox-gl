@@ -1,6 +1,8 @@
 package com.tomtom.gwt.mapbox.gl.client.mapsources.input;
 
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
+import com.tomtom.gwt.geojson.client.Feature;
+import com.tomtom.gwt.geojson.client.FeatureCollection;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -27,6 +29,11 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         @JsOverlay
         public static <T extends AbstractGeoJson> Builder<T> newWithInlineGeoJson(T inlineGeoJson) {
             return new Builder().withData(inlineGeoJson);
+        }
+        
+        @JsOverlay
+        public static <T extends AbstractGeoJson> Builder<T> newEmpty() {
+            return new Builder().withData(FeatureCollection.build(new Feature[]{}));
         }
         
         private Builder() {
@@ -67,6 +74,9 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         @JsProperty
         public native void setClusterMaxZoom(int value);
     }
+    
+    @JsOverlay
+    public final static GeoJsonSourceInput DEFAULT_EMPTY = Builder.newEmpty().build();
     
     private GeoJsonSourceInput() {
     }

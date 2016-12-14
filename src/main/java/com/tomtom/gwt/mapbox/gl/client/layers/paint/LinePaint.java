@@ -1,136 +1,91 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 
 import com.tomtom.gwt.mapbox.gl.client.layers.paint.AbstractPaint.Anchor;
+import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
-import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- * https://www.mapbox.com/mapbox-gl-style-spec/#paint_line
- * https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
+ * https://www.mapbox.com/mapbox-gl-style-spec/#paint_line https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class LinePaint extends AbstractPaint {
 
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    static class LineWidthProperties {
-        
+    public static final class Builder {
+
         @JsOverlay
-        public static LineWidthProperties build(Integer[][] stops) {
-            LineWidthProperties properties = new LineWidthProperties();
-            properties.setStops(stops);
-            return properties;
+        public static Builder newBuilder() {
+            return new Builder();
         }
-        
-        private LineWidthProperties() {
+
+        private Builder() {
         }
-        
-        @JsProperty
-        private native void setStops(Integer[][] stops);
-        
-        @JsProperty
-        private native Integer[][] getStops();
-    }
-    
-    
-    
-    
-    // TODO: use builder pattern
-    
-    // TODO
-    @JsOverlay
-    public static LinePaint build(double opacity, String color, Integer[][] widthsPerZoomLevel, Integer lineGapWidth) {
-        LinePaint linePaint = new LinePaint();
-        linePaint.setLineOpacity(opacity);
-        linePaint.setLineColor(color);
-        //linePaint.setLineWidths(LineWidthProperties.build(widthsPerZoomLevel));
-        if (widthsPerZoomLevel != null) {
-            JSUtils.setStopsTestShit(linePaint);
+
+        @JsOverlay
+        public void setLineOpacity(double value) {
+            JSUtils.setObject(this, "line-opacity", value);
         }
-        if (lineGapWidth != null) {
-            linePaint.setLineGapWidth(lineGapWidth);
+
+        @JsOverlay
+        public void setLineColor(String value) {
+            JSUtils.setObject(this, "line-color", value);
         }
-        return linePaint;
-    }
-    
-    @JsOverlay
-    public static LinePaint build(double opacity, String color, Integer[][] widthsPerZoomLevel, double[] dashArrayWidthLengths) {
-        LinePaint linePaint = new LinePaint();
-        linePaint.setLineOpacity(opacity);
-        linePaint.setLineColor(color);
-        //linePaint.setLineWidths(LineWidthProperties.build(widthsPerZoomLevel));
-        if (widthsPerZoomLevel != null) {
-            JSUtils.setStopsTestShit(linePaint);
+
+        @JsOverlay
+        public void setLineTranslate(double[][] rightDownPixelsOffset) {
+            JSUtils.setObject(this, "line-translate", rightDownPixelsOffset);
         }
-        if (dashArrayWidthLengths != null) {
-            linePaint.setLineDashArray(dashArrayWidthLengths);
+
+        @JsOverlay
+        public void setLineTranslateAnchor(Anchor anchor) {
+            setLineTranslateAnchor(anchor.name());
         }
-        return linePaint;
+
+        @JsOverlay
+        public void setLineTranslateAnchor(String anchorName) {
+            JSUtils.setObject(this, "line-translate-anchor", anchorName);
+        }
+
+        @JsOverlay
+        public void setLineWidth(int widthPixels) {
+            JSUtils.setInt(this, "line-width", widthPixels);
+        }
+
+        @JsOverlay
+        public void setLineWidthFunction(StyleFunction widthFunction) {
+            JSUtils.setObject(this, "line-width", widthFunction);
+        }
+
+        @JsOverlay
+        public void setLineGapWidth(int innerGapWidthPixels) {
+            JSUtils.setInt(this, "line-gap-width", innerGapWidthPixels);
+        }
+
+        @JsOverlay
+        public void setLineOffset(int pixelsOffset) {
+            JSUtils.setObject(this, "line-offset", pixelsOffset);
+        }
+
+        @JsOverlay
+        public void setLineBlur(int blurPixels) {
+            JSUtils.setObject(this, "line-blur", blurPixels);
+        }
+
+        @JsOverlay
+        public void setLineDashArray(double[] lineWidthLengths) {
+            JSUtils.setObject(this, "line-dasharray", lineWidthLengths);
+        }
+
+        @JsOverlay
+        public void setLinePattern(String linePatternImage) {
+            JSUtils.setObject(this, "line-pattern", linePatternImage);
+        }
     }
 
-    protected LinePaint() {
-    }
-
-    @JsOverlay
-    private void setLineOpacity(double value) {
-        JSUtils.setObject(this, "line-opacity", value);
-    }
-
-    @JsOverlay
-    private void setLineColor(String value) {
-        JSUtils.setObject(this, "line-color", value);
-    }
-
-    @JsOverlay
-    private void setLineTranslate(double[][] rightDownPixelsOffset) {
-        JSUtils.setObject(this, "line-translate", rightDownPixelsOffset);
-    }
-    
-    @JsOverlay
-    private void setLineTranslateAnchor(Anchor anchor) {
-        setLineTranslateAnchor(anchor.name());
-    }
-
-    @JsOverlay
-    private void setLineTranslateAnchor(String anchorName) {
-        JSUtils.setObject(this, "line-translate-anchor", anchorName);
-    }
-
-    @JsOverlay
-    private void setLineWidth(int widthPixels) {
-        JSUtils.setObject(this, "line-width", widthPixels);
-    }
-    
-    @JsOverlay
-    private void setLineWidths(LineWidthProperties stops) {
-        JSUtils.setObject(this, "line-width", stops);
-    }
-    
-    @JsOverlay
-    private void setLineGapWidth(int innerGapWidthPixels) {
-        JSUtils.setInt(this, "line-gap-width", innerGapWidthPixels);
-    }
-
-    @JsOverlay
-    private void setLineOffset(int pixelsOffset)  {
-        JSUtils.setObject(this, "line-offset", pixelsOffset);
-    }
-
-    @JsOverlay
-    private void setLineBlur(int blurPixels)  {
-        JSUtils.setObject(this, "line-blur", blurPixels);
-    }
-
-    @JsOverlay
-    private void setLineDashArray(double[] lineWidthLengths)  {
-        JSUtils.setObject(this, "line-dasharray", lineWidthLengths);
-    }
-
-    @JsOverlay
-    private void setLinePattern(String linePatternImage)  {
-        JSUtils.setObject(this, "line-pattern", linePatternImage);
+    private LinePaint() {
     }
 }

@@ -26,7 +26,7 @@ public class SymbolPaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public final SymbolPaint build() {
+        public SymbolPaint build() {
             SymbolPaint paint = new SymbolPaint();
             JSUtils.copyAllFields(this, paint);
             return paint;

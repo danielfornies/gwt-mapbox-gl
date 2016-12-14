@@ -23,7 +23,7 @@ public final class JSUtils {
         targetObject[fieldName] = fieldValue;
     }-*/;
     
-    public static native Object getObject(Object targetObject, String fieldName) /*-{
+    public static native <T> T getObject(Object targetObject, String fieldName) /*-{
         return targetObject[fieldName];
     }-*/;
     
