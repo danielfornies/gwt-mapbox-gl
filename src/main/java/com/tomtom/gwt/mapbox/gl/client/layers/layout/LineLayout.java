@@ -11,7 +11,7 @@ import jsinterop.annotations.JsType;
  * https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public class LineLayout extends BaseLayout {
+public class LineLayout extends AbstractLayout {
 
     public static enum LineCap {
         butt,
@@ -26,7 +26,7 @@ public class LineLayout extends BaseLayout {
     }
 
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static final class Builder {
+    public static final class Builder extends AbstractLayoutBuilder {
 
         @JsOverlay
         public static final Builder newBuilder() {
@@ -44,23 +44,37 @@ public class LineLayout extends BaseLayout {
         }
         
         @JsOverlay
-        public void setLineCap(String value) {
+        public Builder withLineCap(LineCap value) {
+            return withLineCap(value.name());
+        }
+        
+        @JsOverlay
+        private Builder withLineCap(String value) {
             JSUtils.setObject(this, "line-cap", value);
+            return this;
+        }
+        
+        @JsOverlay
+        public Builder withLineJoin(LineJoin value) {
+            return withLineJoin(value.name());
         }
 
         @JsOverlay
-        public void setLineJoin(String value) {
+        private Builder withLineJoin(String value) {
             JSUtils.setObject(this, "line-join", value);
+            return this;
         }
 
         @JsOverlay
-        public void setLineMiterLimit(Double value) {
+        public Builder withLineMiterLimit(Double value) {
             JSUtils.setObject(this, "line-miter-limit", value);
+            return this;
         }
 
         @JsOverlay
-        public void setLineJoinLimit(Double value) {
+        public Builder withLineJoinLimit(Double value) {
             JSUtils.setObject(this, "line-join-limit", value);
+            return this;
         }
     }
 

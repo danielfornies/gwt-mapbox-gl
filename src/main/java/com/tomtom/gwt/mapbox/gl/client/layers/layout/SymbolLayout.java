@@ -11,7 +11,7 @@ import jsinterop.annotations.JsType;
  * https://www.mapbox.com/mapbox-gl-style-spec/#layout_symbol
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public class SymbolLayout extends BaseLayout {
+public class SymbolLayout extends AbstractLayout {
 
     public static enum SymbolPlacement {
         point,
@@ -32,7 +32,7 @@ public class SymbolLayout extends BaseLayout {
     }
 
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static final class Builder {
+    public static final class Builder extends AbstractLayoutBuilder {
 
         @JsOverlay
         public static Builder newBuilder() {

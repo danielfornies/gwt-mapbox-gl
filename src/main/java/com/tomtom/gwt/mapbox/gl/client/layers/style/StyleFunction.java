@@ -32,6 +32,7 @@ public class StyleFunction {
             return function;
         }
         
+        // TODO: offer more typed stops depending on function type etc
         @JsProperty
         public native void setStops(Object[][] stops);
 

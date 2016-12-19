@@ -5,7 +5,6 @@ import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
-import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
@@ -32,31 +31,54 @@ public class SymbolPaint extends AbstractPaint {
             return paint;
         }
         
-        @JsProperty
-        public native void setIconOpacity(int value);
-
-        @JsProperty
-        public native void setIconColor(String value);
-
-        @JsProperty
-        public native void setIconHaloColor(String value);
-
-        @JsProperty
-        public native void setIconHaloWidth(int widthPixels);
-
-        @JsProperty
-        public native void setIconHaloBlur(int blurPixels);
-
-        @JsProperty
-        public native void setIconTranslate(int[] rightDownPixelsOffset);
-
         @JsOverlay
-        public void setIconTranslateAnchor(Anchor value) {
-            setIconTranslateAnchor(value.name());
+        public Builder withIconOpacity(int value) {
+            JSUtils.setInt(this, "icon-opacity", value);
+            return this;
         }
 
-        @JsProperty
-        private native void setIconTranslateAnchor(String anchorName);
+        @JsOverlay
+        public Builder withIconColor(String value) {
+            JSUtils.setObject(this, "icon-color", value);
+            return this;
+        }
+
+        @JsOverlay
+        public Builder withIconHaloColor(String value) {
+            JSUtils.setObject(this, "icon-halo-color", value);
+            return this;
+        }
+
+        @JsOverlay
+        public Builder withIconHaloWidth(int widthPixels) {
+            JSUtils.setInt(this, "icon-halo-width", widthPixels);
+            return this;
+        }
+
+        @JsOverlay
+        public Builder withIconHaloBlur(int blurPixels) {
+            JSUtils.setInt(this, "icon-halo-blur", blurPixels);
+            return this;
+        }
+
+        @JsOverlay
+        public Builder withIconTranslate(int[] rightDownPixelsOffset) {
+            JSUtils.setObject(this, "icon-translate", rightDownPixelsOffset);
+            return this;
+        }
+
+        @JsOverlay
+        public Builder withIconTranslateAnchor(Anchor value) {
+            return withIconTranslateAnchor(value.name());
+        }
+
+        @JsOverlay
+        private Builder withIconTranslateAnchor(String anchorName) {
+            JSUtils.setObject(this, "icon-translate-anchor", anchorName);
+            return this;
+        }
+        
+        // TODO: text properties
     }
 
     private SymbolPaint() {

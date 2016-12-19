@@ -16,6 +16,7 @@ import java.util.Collection;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 import com.tomtom.gwt.mapbox.gl.client.mapsources.MapSource;
+import jsinterop.annotations.JsProperty;
 
 /**
  * https://www.mapbox.com/mapbox-gl-js/api/#Map
@@ -135,6 +136,12 @@ public class MapboxMap extends AbstractEvented {
     public native Element getCanvasContainer();
     
     public native CanvasElement getCanvas();
+    
+    @JsProperty
+    public native void setRepaint(boolean repaint);
+    
+    @JsProperty
+    public native boolean getRepaint();
     
     // TODO: all map methods
 }
