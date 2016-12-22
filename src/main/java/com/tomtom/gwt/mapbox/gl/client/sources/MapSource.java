@@ -1,6 +1,6 @@
-package com.tomtom.gwt.mapbox.gl.client.mapsources;
+package com.tomtom.gwt.mapbox.gl.client.sources;
 
-import com.tomtom.gwt.mapbox.gl.client.Evented;
+import com.tomtom.gwt.mapbox.gl.client.events.Evented;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;

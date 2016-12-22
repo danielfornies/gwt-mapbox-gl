@@ -1,4 +1,4 @@
-package com.tomtom.gwt.mapbox.gl.client.mapsources.input;
+package com.tomtom.gwt.mapbox.gl.client.sources.input;
 
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.geojson.client.Feature;

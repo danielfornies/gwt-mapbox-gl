@@ -1,4 +1,4 @@
-package com.tomtom.gwt.mapbox.gl.client;
+package com.tomtom.gwt.mapbox.gl.client.events;
 
 import jsinterop.annotations.JsFunction;
 

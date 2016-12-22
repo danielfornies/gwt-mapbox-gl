@@ -1,5 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.layers;
 
+import com.tomtom.gwt.mapbox.gl.client.layers.filter.Filter;
 import com.tomtom.gwt.mapbox.gl.client.layers.layout.AbstractLayout;
 import com.tomtom.gwt.mapbox.gl.client.layers.paint.AbstractPaint;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
@@ -23,9 +24,7 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
 
         @JsOverlay
         public static Builder newBuilder(String id) {
-            Builder builder = new Builder();
-            builder.setId(id);
-            return builder;
+            return new Builder().withId(id);
         }
 
         private Builder() {
@@ -35,11 +34,12 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         public MapLayer<L, P> build() {
             MapLayer layer = new MapLayer();
             JSUtils.copyAllFields(this, layer);
+            JSUtils.log(layer);
             return layer;
         }
         
         @JsOverlay
-        public Builder withId(String id) {
+        private Builder withId(String id) {
             setId(id);
             return this;
         }
@@ -90,6 +90,33 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         }
         
         @JsOverlay
+        public Builder withMaxZoom(double maxZoom) {
+            setMaxzoom(maxZoom);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setMaxzoom(double value);
+        
+        @JsOverlay
+        public Builder withMinZoom(double minZoom) {
+            setMinzoom(minZoom);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setMinzoom(double value);
+        
+        @JsOverlay
+        public Builder withFilter(Filter filter) {
+            setFilter(filter.getExpression());
+            return this;
+        }
+        
+        @JsProperty
+        public native void setFilter(Object filter);
+        
+        @JsOverlay
         public Builder withLayout(L layout) {
             setLayout(layout);
             return this;
@@ -108,6 +135,7 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         private native void setPaint(P paint);
     }
 
+    @Deprecated
     @JsOverlay
     public static <L extends AbstractLayout, P extends AbstractPaint> MapLayer<L, P> build(
             String id, LayerType type, String source, String sourceLayer, L layout, P paint) {

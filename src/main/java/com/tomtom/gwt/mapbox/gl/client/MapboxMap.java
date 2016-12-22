@@ -1,29 +1,33 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
+import com.tomtom.gwt.mapbox.gl.client.events.AbstractEvented;
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
+import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.ControlAlignment;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FitBoundsOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.FlyToOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapOptions;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.QueryRenderedFeaturesParams;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.QuerySourceFeaturesParams;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.StyleOptions;
-import com.tomtom.gwt.mapbox.gl.client.mapsources.input.AbstractSourceInput;
+import com.tomtom.gwt.mapbox.gl.client.sources.input.AbstractSourceInput;
 import com.tomtom.gwt.mapbox.gl.client.overlay.AbstractOverlay;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import java.util.Collection;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
-import com.tomtom.gwt.mapbox.gl.client.mapsources.MapSource;
+import com.tomtom.gwt.mapbox.gl.client.sources.MapSource;
 import jsinterop.annotations.JsProperty;
 
 /**
- * https://www.mapbox.com/mapbox-gl-js/api/#Map
+ * @see https://www.mapbox.com/mapbox-gl-js/api/#Map
  */
 @JsType(isNative = true, name = "Map", namespace = MAPBOX_GL_NAMESPACE)
 public class MapboxMap extends AbstractEvented {
-
+    
     public MapboxMap(MapOptions options) {
     }
     
@@ -143,5 +147,16 @@ public class MapboxMap extends AbstractEvented {
     @JsProperty
     public native boolean getRepaint();
     
+    public native AbstractGeoJson[] queryRenderedFeatures(Point[] geometry, QueryRenderedFeaturesParams parameters);
+    
+    public native AbstractGeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
+    
+    public native void setPaintProperty(String layer, String name, Object value, String klass);
+    
+    public native <T> T getPaintProperty(String layer, String name, String klass);
+    
+    public native void setLayoutProperty(String layer, String name, Object value);
+    
+    public native <T> T getLayoutProperty(String layer, String name);
     // TODO: all map methods
 }

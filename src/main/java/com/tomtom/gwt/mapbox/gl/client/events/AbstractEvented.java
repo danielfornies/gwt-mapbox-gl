@@ -1,4 +1,4 @@
-package com.tomtom.gwt.mapbox.gl.client;
+package com.tomtom.gwt.mapbox.gl.client.events;
 
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsPackage;

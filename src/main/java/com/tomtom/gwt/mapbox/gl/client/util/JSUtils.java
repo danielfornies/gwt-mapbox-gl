@@ -1,5 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.util;
 
+import com.google.gwt.core.client.JsArray;
+
 /**
  *
  * 
@@ -23,6 +25,14 @@ public final class JSUtils {
         targetObject[fieldName] = fieldValue;
     }-*/;
     
+    public static native JsArray toJsArray(Object... fieldValues) /*-{
+        var result = [];
+        for (index = 0, len = fieldValues.length; index < len; ++index) {
+            result.push(fieldValues[index]);
+        }
+        return result;
+    }-*/;
+    
     public static native <T> T getObject(Object targetObject, String fieldName) /*-{
         return targetObject[fieldName];
     }-*/;
@@ -39,9 +49,13 @@ public final class JSUtils {
         targetObject[fieldName] = fieldValue;
     }-*/;
     
-    public static native void setStopsTestShit(Object targetObject) /*-{
-        targetObject["line-width"] = {"stops" : [[1, 3], [5, 4], [10, 7], [18,9]]};
-    }-*/;
+//    public static native JsArray buildJsArray(Object... objects) {
+//        JsArray array = (JsArray)JavaScriptObject.createArray();
+//        for (Object object : objects) {
+//            JavaScriptObject object = 
+//            array.push(JavaScriptObject.createObject().);
+//        }
+//    }
     
     public static native void log(Object object) /*-{
         $wnd.console.log(object);
