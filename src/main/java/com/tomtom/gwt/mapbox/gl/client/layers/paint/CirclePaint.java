@@ -1,5 +1,15 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_BLUR;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_COLOR;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_OPACITY;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_PITCH_SCALE;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_RADIUS;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_STROKE_COLOR;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_STROKE_OPACITY;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_STROKE_WIDTH;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_TRANSLATE;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_TRANSLATE_ANCHOR;
 import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
@@ -34,121 +44,121 @@ public class CirclePaint extends AbstractPaint {
         
         @JsOverlay
         public Builder withCircleRadius(int radiusPixels) {
-            JSUtils.setInt(this, "circle-radius", radiusPixels);
+            JSUtils.setInt(this, CIRCLE_RADIUS, radiusPixels);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleRadiusFunction(StyleFunction  radiusFunction) {
-            JSUtils.setObject(this, "circle-radius", radiusFunction);
+            JSUtils.setObject(this, CIRCLE_RADIUS, radiusFunction);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleColor(String color) {
-            JSUtils.setObject(this, "circle-color", color);
+            JSUtils.setObject(this, CIRCLE_COLOR, color);
             return this;
         }
-
+        
         @JsOverlay
         public Builder withCircleColorFunction(StyleFunction colorFunction) {
-            JSUtils.setObject(this, "circle-color", colorFunction);
+            JSUtils.setObject(this, CIRCLE_COLOR, colorFunction);
             return this;
         }
 
         @JsOverlay
         public Builder withCircleBlur(double blur) {
-            JSUtils.setDouble(this, "circle-blur", blur);
+            JSUtils.setDouble(this, CIRCLE_BLUR, blur);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleBlurFunction(StyleFunction blurFunction) {
-            JSUtils.setObject(this, "circle-blur", blurFunction);
+            JSUtils.setObject(this, CIRCLE_BLUR, blurFunction);
             return this;
         }
 
         @JsOverlay
         public Builder withCircleOpacity(double opacity) {
-            JSUtils.setDouble(this, "circle-opacity", opacity);
+            JSUtils.setDouble(this, CIRCLE_OPACITY, opacity);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleOpacityFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-opacity", function);
+            JSUtils.setObject(this, CIRCLE_OPACITY, function);
             return this;
         }
 
         @JsOverlay
         public Builder withCircleTranslate(int offsetPixelsX, int offsetPixelsY) {
-            JSUtils.setObject(this, "circle-translate", new int[]{offsetPixelsX, offsetPixelsY});
+            JSUtils.setObject(this, CIRCLE_TRANSLATE, new int[]{offsetPixelsX, offsetPixelsY});
             return this;
         }
         
         @JsOverlay
         public Builder withCircleTranslateFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-translate", function);
+            JSUtils.setObject(this, CIRCLE_TRANSLATE, function);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleTranslateAnchor(Anchor anchor) {
-            JSUtils.setObject(this, "circle-translate-anchor", anchor.name());
+            JSUtils.setObject(this, CIRCLE_TRANSLATE_ANCHOR, anchor.name());
             return this;
         }
         
         @JsOverlay
         public Builder withCircleTranslateAnchorFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-translate-anchor", function);
+            JSUtils.setObject(this, CIRCLE_TRANSLATE_ANCHOR, function);
             return this;
         }
         
         @JsOverlay
         public Builder withCirclePitchScale(Anchor anchor) {
-            JSUtils.setObject(this, "circle-pitch-scale", anchor.name());
+            JSUtils.setObject(this, CIRCLE_PITCH_SCALE, anchor.name());
             return this;
         }
         
         @JsOverlay
         public Builder withCirclePitchScaleFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-pitch-scale", function);
+            JSUtils.setObject(this, CIRCLE_PITCH_SCALE, function);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleStrokeWidth(int strokeWidthPixels) {
-            JSUtils.setInt(this, "circle-stroke-width", strokeWidthPixels);
+            JSUtils.setInt(this, CIRCLE_STROKE_WIDTH, strokeWidthPixels);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleStrokeWidthFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-stroke-width", function);
+            JSUtils.setObject(this, CIRCLE_STROKE_WIDTH, function);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleStrokeColor(String strokeColor) {
-            JSUtils.setObject(this, "circle-stroke-color", strokeColor);
+            JSUtils.setObject(this, CIRCLE_STROKE_COLOR, strokeColor);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleStrokeColorFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-stroke-color", function);
+            JSUtils.setObject(this, CIRCLE_STROKE_COLOR, function);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleStrokeOpacity(double opacity) {
-            JSUtils.setDouble(this, "circle-stroke-opacity", opacity);
+            JSUtils.setDouble(this, CIRCLE_STROKE_OPACITY, opacity);
             return this;
         }
         
         @JsOverlay
         public Builder withCircleStrokeOpacityFunction(StyleFunction function) {
-            JSUtils.setObject(this, "circle-stroke-opacity", function);
+            JSUtils.setObject(this, CIRCLE_STROKE_OPACITY, function);
             return this;
         }
     }

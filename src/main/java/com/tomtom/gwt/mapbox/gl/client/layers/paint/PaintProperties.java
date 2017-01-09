@@ -1,0 +1,43 @@
+package com.tomtom.gwt.mapbox.gl.client.layers.paint;
+
+/**
+ * Constants with paint property names.
+ */
+public final class PaintProperties {
+
+    // Circle Paint  --------------------------
+    public static final String CIRCLE_RADIUS = "circle-radius";
+    public static final String CIRCLE_COLOR = "circle-color";
+    public static final String CIRCLE_BLUR = "circle-blur";
+    public static final String CIRCLE_OPACITY = "circle-opacity";
+    public static final String CIRCLE_TRANSLATE = "circle-translate";
+    public static final String CIRCLE_TRANSLATE_ANCHOR = "circle-translate-anchor";
+    public static final String CIRCLE_PITCH_SCALE = "circle-pitch-scale";
+    public static final String CIRCLE_STROKE_WIDTH = "circle-stroke-width";
+    public static final String CIRCLE_STROKE_COLOR = "circle-stroke-color";
+    public static final String CIRCLE_STROKE_OPACITY = "circle-stroke-opacity";
+
+    // Line Paint  -----------------------------
+    public static final String LINE_OPACITY = "line-opacity";
+    public static final String LINE_COLOR = "line-color";
+    public static final String LINE_TRANSLATE = "line-translate";
+    public static final String LINE_TRANSLATE_ANCHOR = "line-translate-anchor";
+    public static final String LINE_WIDTH = "line-width";
+    public static final String LINE_GAP_WIDTH = "line-gap-width";
+    public static final String LINE_OFFSET = "line-offset";
+    public static final String LINE_BLUR = "line-blur";
+    public static final String LINE_DASHARRAY = "line-dasharray";
+    public static final String LINE_PATTERN = "line-pattern";
+
+    // Symbol Paint -----------------------------
+    public static final String ICON_OPACITY = "icon-opacity";
+    public static final String ICON_COLOR = "icon-color";
+    public static final String ICON_HALO_COLOR = "icon-halo-color";
+    public static final String ICON_HALO_WIDTH = "icon-halo-width";
+    public static final String ICON_HALO_BLUR = "icon-halo-blur";
+    public static final String ICON_TRANSLATE = "icon-translate";
+    public static final String ICON_TRANSLATE_ANCHOR = "icon-translate-anchor";
+
+    private PaintProperties() {
+    }
+}

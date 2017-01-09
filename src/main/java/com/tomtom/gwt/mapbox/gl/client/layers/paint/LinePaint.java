@@ -1,6 +1,16 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 
 import com.tomtom.gwt.mapbox.gl.client.layers.paint.AbstractPaint.Anchor;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_BLUR;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_COLOR;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_DASHARRAY;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_GAP_WIDTH;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_OFFSET;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_OPACITY;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_PATTERN;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_TRANSLATE;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_TRANSLATE_ANCHOR;
+import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_WIDTH;
 import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
@@ -34,37 +44,37 @@ public class LinePaint extends AbstractPaint {
 
         @JsOverlay
         public Builder withLineOpacity(double value) {
-            JSUtils.setObject(this, "line-opacity", value);
+            JSUtils.setObject(this, LINE_OPACITY, value);
             return this;
         }
         
         @JsOverlay
         public Builder withLineOpacityFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-opacity", function);
+            JSUtils.setObject(this, LINE_OPACITY, function);
             return this;
         }
 
         @JsOverlay
         public Builder withLineColor(String value) {
-            JSUtils.setObject(this, "line-color", value);
+            JSUtils.setObject(this, LINE_COLOR, value);
             return this;
         }
         
         @JsOverlay
         public Builder withLineColorFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-color", function);
+            JSUtils.setObject(this, LINE_COLOR, function);
             return this;
         }
 
         @JsOverlay
         public Builder withLineTranslate(double[][] rightDownPixelsOffset) {
-            JSUtils.setObject(this, "line-translate", rightDownPixelsOffset);
+            JSUtils.setObject(this, LINE_TRANSLATE, rightDownPixelsOffset);
             return this;
         }
         
         @JsOverlay
         public Builder withLineTranslateFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-translate", function);
+            JSUtils.setObject(this, LINE_TRANSLATE, function);
             return this;
         }
 
@@ -82,79 +92,79 @@ public class LinePaint extends AbstractPaint {
 
         @JsOverlay
         public Builder withLineTranslateAnchor(Object value) {
-            JSUtils.setObject(this, "line-translate-anchor", value);
+            JSUtils.setObject(this, LINE_TRANSLATE_ANCHOR, value);
             return this;
         }
-
+        
         @JsOverlay
         public Builder withLineWidth(int widthPixels) {
-            JSUtils.setInt(this, "line-width", widthPixels);
+            JSUtils.setInt(this, LINE_WIDTH, widthPixels);
             return this;
         }
-
+        
         @JsOverlay
         public Builder withLineWidthFunction(StyleFunction widthFunction) {
-            JSUtils.setObject(this, "line-width", widthFunction);
+            JSUtils.setObject(this, LINE_WIDTH, widthFunction);
             return this;
         }
 
         @JsOverlay
         public Builder withLineGapWidth(int innerGapWidthPixels) {
-            JSUtils.setInt(this, "line-gap-width", innerGapWidthPixels);
+            JSUtils.setInt(this, LINE_GAP_WIDTH, innerGapWidthPixels);
             return this;
         }
         
         @JsOverlay
         public Builder withLineGapWidthFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-gap-width", function);
+            JSUtils.setObject(this, LINE_GAP_WIDTH, function);
             return this;
         }
 
         @JsOverlay
         public Builder withLineOffset(int pixelsOffset) {
-            JSUtils.setObject(this, "line-offset", pixelsOffset);
+            JSUtils.setObject(this, LINE_OFFSET, pixelsOffset);
             return this;
         }
         
         @JsOverlay
         public Builder withLineOffsetFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-offset", function);
+            JSUtils.setObject(this, LINE_OFFSET, function);
             return this;
         }
 
         @JsOverlay
         public Builder withLineBlur(int blurPixels) {
-            JSUtils.setObject(this, "line-blur", blurPixels);
+            JSUtils.setObject(this, LINE_BLUR, blurPixels);
             return this;
         }
         
         @JsOverlay
         public Builder withLineBlurFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-blur", function);
+            JSUtils.setObject(this, LINE_BLUR, function);
             return this;
         }
 
         @JsOverlay
         public Builder withLineDashArray(double[] lineWidthLengths) {
-            JSUtils.setObject(this, "line-dasharray", lineWidthLengths);
+            JSUtils.setObject(this, LINE_DASHARRAY, lineWidthLengths);
             return this;
         }
         
         @JsOverlay
         public Builder withLineDashArrayFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-dasharray", function);
+            JSUtils.setObject(this, LINE_DASHARRAY, function);
             return this;
         }
 
         @JsOverlay
         public Builder withLinePattern(String linePatternImage) {
-            JSUtils.setObject(this, "line-pattern", linePatternImage);
+            JSUtils.setObject(this, LINE_PATTERN, linePatternImage);
             return this;
         }
         
         @JsOverlay
         public Builder withLinePatternFunction(StyleFunction function) {
-            JSUtils.setObject(this, "line-pattern", function);
+            JSUtils.setObject(this, LINE_PATTERN, function);
             return this;
         }
     }

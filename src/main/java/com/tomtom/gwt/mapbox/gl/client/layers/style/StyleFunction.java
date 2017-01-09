@@ -1,5 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.style;
 
+import com.google.gwt.core.client.JsArray;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -32,9 +33,18 @@ public class StyleFunction {
             return function;
         }
         
-        // TODO: offer more typed stops depending on function type etc
+        @JsOverlay
+        public void setStopsArray(Object[][] stops) {
+            setStops(stops);
+        }
+        
+        @JsOverlay
+        public void setStopsArray(JsArray stops) {
+            setStops(stops);
+        }
+        
         @JsProperty
-        public native void setStops(Object[][] stops);
+        private native void setStops(Object stops);
 
         @JsProperty
         public native void setProperty(String propertyName);

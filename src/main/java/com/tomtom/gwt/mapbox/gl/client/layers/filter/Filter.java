@@ -79,15 +79,15 @@ public final class Filter {
         return Filter.build(belongs.apiValue, key, values);
     }
     
-    // TODO: check this one out, and make sure we can't go more than depth 1 (no combined combined filters)
+    // TODO: check this one out
     @JsOverlay
     public static Filter build(Combine combine, Filter... filters) {
-        Object[] combinedFilter = new Object[]{filters.length + 1};
-        combinedFilter[0] = combine.apiValue;
-        for (int i = 1; i < combinedFilter.length; i++) {
-            combinedFilter[i] = filters[i-1].getExpression();
+        Object[] combinedExpression = new Object[]{filters.length + 1};
+        combinedExpression[0] = combine.apiValue;
+        for (int i = 1; i < combinedExpression.length; i++) {
+            combinedExpression[i] = filters[i-1].getExpression();
         }
-        return Filter.build(combine.apiValue, filters);
+        return Filter.build(combinedExpression);
     }
     
     @JsOverlay

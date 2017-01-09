@@ -55,10 +55,18 @@ public class MapboxMap extends AbstractEvented {
     public native MapboxMap removeSource(String id);
 
     @JsOverlay
-    public final MapboxMap addLayers(Collection<MapLayer> layers, MapLayer before) {
+    public final MapboxMap addLayers(MapLayer layerOnTop, Collection<MapLayer> layers) {
         layers.forEach((layer) -> {
-            addLayer(layer, before);
+            addLayer(layer, layerOnTop);
         });
+        return this;
+    }
+    
+    @JsOverlay
+    public final MapboxMap addLayers(MapLayer layerOnTop, MapLayer... layers) {
+        for (MapLayer layer : layers) {
+            addLayer(layer, layerOnTop);
+        }
         return this;
     }
 
@@ -68,8 +76,8 @@ public class MapboxMap extends AbstractEvented {
     }
 
     @JsOverlay
-    public final MapboxMap addLayer(MapLayer layer, MapLayer before) {
-        return addLayer(layer, before != null ? before.getId() : null);
+    public final MapboxMap addLayer(MapLayer layer, MapLayer layerOnTop) {
+        return addLayer(layer, layerOnTop != null ? layerOnTop.getId() : null);
     }
 
     public native MapboxMap addLayer(MapLayer layer, String before);
@@ -79,6 +87,14 @@ public class MapboxMap extends AbstractEvented {
         layers.forEach((layer) -> {
             removeLayer(layer);
         });
+        return this;
+    }
+    
+    @JsOverlay
+    public final MapboxMap removeLayers(MapLayer... layers) {
+        for (MapLayer layer : layers) {
+            removeLayer(layer);
+        }
         return this;
     }
 
@@ -95,11 +111,34 @@ public class MapboxMap extends AbstractEvented {
     }
 
     public native MapboxMap removeLayer(String id);
-
+    
+    @JsOverlay
+    public final MapboxMap moveLayer(MapLayer layer, MapLayer layerOnTop) {
+        return moveLayer(layer.getId(), layerOnTop != null ? layerOnTop.getId() : null);
+    }
+    
+    @JsOverlay
+    public final MapboxMap moveLayers(MapLayer layerOnTop, Collection<MapLayer> layers) {
+        layers.forEach((layer) -> {
+            moveLayer(layer, layerOnTop);
+        });
+        return this;
+    }
+    
+    @JsOverlay
+    public final MapboxMap moveLayers(MapLayer layerOnTop, MapLayer... layers) {
+        for (MapLayer layer : layers) {
+            moveLayer(layer, layerOnTop);
+        }
+        return this;
+    }
+    
+    public native MapboxMap moveLayer(String id, String beforeId);
+    
     public native double getZoom();
 
     @JsOverlay
-    public final int getZoomInt() {
+    public final int getRoundedZoom() {
         return (int) (Math.round(getZoom()));
     }
 
@@ -151,12 +190,58 @@ public class MapboxMap extends AbstractEvented {
     
     public native AbstractGeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
     
-    public native void setPaintProperty(String layer, String name, Object value, String klass);
+    /**
+     * 
+     * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
+     * @param layer
+     * @param name
+     * @param value
+     * @param klass
+     * @return 
+     */
+    @JsOverlay
+    public final MapboxMap setPaintProperty(MapLayer layer, String name, Object value, String klass) {
+        return setPaintProperty(layer.getId(), name, value, klass);
+    }
+    
+    /**
+     * 
+     * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
+     * @param layer
+     * @param name
+     * @param value
+     * @param klass
+     * @return 
+     */
+    public native MapboxMap setPaintProperty(String layer, String name, Object value, String klass);
     
     public native <T> T getPaintProperty(String layer, String name, String klass);
     
-    public native void setLayoutProperty(String layer, String name, Object value);
+    /**
+     * 
+     * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
+     * @param layer
+     * @param name
+     * @param value
+     * @return 
+     */
+    @JsOverlay
+    public final MapboxMap setLayoutProperty(MapLayer layer, String name, Object value) {
+        return setLayoutProperty(layer.getId(), name, value);
+    }
+    
+    /**
+     * 
+     * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
+     * @param layer
+     * @param name
+     * @param value
+     * @return 
+     */
+    public native MapboxMap setLayoutProperty(String layer, String name, Object value);
     
     public native <T> T getLayoutProperty(String layer, String name);
+    
+    
     // TODO: all map methods
 }

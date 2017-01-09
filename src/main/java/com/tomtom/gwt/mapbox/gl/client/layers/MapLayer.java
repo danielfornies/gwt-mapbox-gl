@@ -26,6 +26,11 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         public static Builder newBuilder(String id) {
             return new Builder().withId(id);
         }
+        
+        @JsOverlay
+        public static Builder newBuilder(String id, MapLayer refLayer) {
+            return new Builder().withId(id).withRef(refLayer);
+        }
 
         private Builder() {
         }
@@ -66,8 +71,14 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         private native void setMetadata(Object metadata);
         
         @JsOverlay
-        public Builder withRef(String ref) {
-            setRef(ref);
+        public Builder withRef(MapLayer layer) {
+            setRef(layer.getId());
+            return this;
+        }
+        
+        @JsOverlay
+        public Builder withRef(String layerId) {
+            setRef(layerId);
             return this;
         }
         

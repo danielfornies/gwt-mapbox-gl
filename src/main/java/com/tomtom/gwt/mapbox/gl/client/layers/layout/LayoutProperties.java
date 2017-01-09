@@ -1,0 +1,38 @@
+package com.tomtom.gwt.mapbox.gl.client.layers.layout;
+
+/**
+ * Constants with layout property names.
+ */
+public final class LayoutProperties {
+
+    /**
+     * Common visibility property to all layout types.
+     */
+    public static final String VISIBILITY = "visibility";
+
+    // Line Layout ----------------------------
+    public static final String LINE_CAP = "line-cap";
+    public static final String LINE_JOIN = "line-join";
+    public static final String LINE_MITER_LIMIT = "line-miter-limit";
+    public static final String LINE_JOIN_LIMIT = "line-join-limit";
+
+    // Symbol Layout -------------------------
+    public static final String SYMBOL_PLACEMENT = "symbol-placement";
+    public static final String SYMBOL_SPACING = "symbol-spacing";
+    public static final String SYMBOL_AVOID_EDGES = "symbol-avoid-edges";
+    public static final String ICON_AVOID_OVERLAP = "icon-avoid-overlap";
+    public static final String ICON_IGNORE_PLACEMENT = "icon-ignore-placement";
+    public static final String ICON_OPTIONAL = "icon-optional";
+    public static final String ICON_ROTATION_ALIGNMENT = "icon-rotation-alignment";
+    public static final String ICON_SIZE = "icon-size";
+    public static final String ICON_TEXT_FIT = "icon-text-fit";
+    public static final String ICON_TEXT_FIT_PADDING = "icon-text-fit-padding";
+    public static final String ICON_IMAGE = "icon-image";
+    public static final String ICON_ROTATE = "icon-rotate";
+    public static final String ICON_PADDING = "icon-padding";
+    public static final String ICON_KEEP_UPRIGHT = "icon-keep-upright";
+    public static final String ICON_OFFSET = "icon-offset";
+
+    private LayoutProperties() {
+    }
+}

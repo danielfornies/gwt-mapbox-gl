@@ -5,6 +5,7 @@ import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.VISIBILITY;
 
 /**
  * Common parent class for all layer layout types.
@@ -19,18 +20,18 @@ public abstract class AbstractLayout {
     }
     
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public abstract static class AbstractLayoutBuilder {
+    public abstract static class AbstractLayoutBuilder<T extends AbstractLayoutBuilder> {
         
         protected AbstractLayoutBuilder() {
         }
         
         @JsOverlay
-        public final AbstractLayoutBuilder withVisibility(Visibility value) {
+        public final T withVisibility(Visibility value) {
             setVisibility(value.name());
-            return this;
+            return (T)this;
         }
 
-        @JsProperty
+        @JsProperty(name = VISIBILITY)
         private native void setVisibility(Object value);
     }
 
