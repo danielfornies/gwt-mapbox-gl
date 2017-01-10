@@ -124,14 +124,14 @@ public enum MapEventType {
     data,
     /**
      * Fired when the map's style loads or changes. See MapDataEvent for more information.
-     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:data
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:styledata
      */
     styledata,
     /**
      * Fired when one of the map's sources loads or changes. 
      * This event is not fired if a tile belonging to a source loads or changes (that is handled by tiledata). 
      * See MapDataEvent for more information.
-     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:styledata
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:sourcedata
      */
     sourcedata,
     /**
