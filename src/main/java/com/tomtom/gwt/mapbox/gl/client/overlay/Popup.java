@@ -2,6 +2,7 @@ package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 import com.google.gwt.dom.client.Node;
 import com.tomtom.gwt.mapbox.gl.client.Point;
+import static com.tomtom.gwt.mapbox.gl.client.overlay.Popup.POPUP_CLASS_NAME;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;
@@ -12,8 +13,11 @@ import jsinterop.annotations.JsType;
 /**
  * @see https://www.mapbox.com/mapbox-gl-js/api/#Popup
  */
-@JsType(isNative = true, namespace = MAPBOX_GL_NAMESPACE)
+@JsType(isNative = true, name = POPUP_CLASS_NAME, namespace = MAPBOX_GL_NAMESPACE)
 public class Popup extends AbstractOverlay {
+    
+    @JsOverlay
+    public static final String POPUP_CLASS_NAME = "Popup";
     
     public static enum PopupAnchor {
         TOP("top"),

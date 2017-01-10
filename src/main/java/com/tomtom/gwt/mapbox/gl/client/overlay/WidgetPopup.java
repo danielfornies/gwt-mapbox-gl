@@ -1,12 +1,16 @@
 package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 import com.google.gwt.user.client.ui.Widget;
+import static com.tomtom.gwt.mapbox.gl.client.overlay.Popup.POPUP_CLASS_NAME;
+import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;
+import jsinterop.annotations.JsType;
 
 /**
  *
  * @param <W>
  */
+@JsType(isNative = true, name = POPUP_CLASS_NAME, namespace = MAPBOX_GL_NAMESPACE)
 public class WidgetPopup<W extends Widget> extends Popup implements HasWidget<W> {
     
     private W widget;
