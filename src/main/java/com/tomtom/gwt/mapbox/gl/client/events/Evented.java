@@ -13,11 +13,11 @@ public interface Evented {
     
     <T extends Evented> T on(String type, MapboxEventListener listener);
     
-    <T extends Evented> T  off(String type, MapboxEventListener listener);
+    <T extends Evented> T off(String type, MapboxEventListener listener);
     
-    <T extends Evented> T  once(String type, MapboxEventListener listener);
+    <T extends Evented> T once(String type, MapboxEventListener listener);
     
-    <T extends Evented> T  fire(String type, Object data);
+    <T extends Evented> T fire(String type, Object data);
     
     boolean listens(String type);
 }
