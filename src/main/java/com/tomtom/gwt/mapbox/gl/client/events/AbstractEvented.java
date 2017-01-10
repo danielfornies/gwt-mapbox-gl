@@ -12,13 +12,13 @@ import jsinterop.annotations.JsType;
 public abstract class AbstractEvented implements Evented {
     
     @Override
-    public native <T extends Evented> T  on(String type, MapboxEventListener listener);
+    public native <T extends Evented, E> T  on(String type, MapboxEventListener<E> listener);
     
     @Override
-    public native <T extends Evented> T  off(String type, MapboxEventListener listener);
+    public native <T extends Evented, E> T  off(String type, MapboxEventListener<E> listener);
     
     @Override
-    public native <T extends Evented> T  once(String type, MapboxEventListener listener);
+    public native <T extends Evented, E> T  once(String type, MapboxEventListener<E> listener);
     
     @Override
     public native <T extends Evented> T  fire(String type, Object data);

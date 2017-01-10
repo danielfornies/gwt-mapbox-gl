@@ -5,17 +5,17 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
- *
+ * Methods mixed in to other classes for event capabilities.
  * @see https://www.mapbox.com/mapbox-gl-js/api/#Evented
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public interface Evented {
     
-    <T extends Evented> T on(String type, MapboxEventListener listener);
+    <T extends Evented, E> T on(String type, MapboxEventListener<E> listener);
     
-    <T extends Evented> T off(String type, MapboxEventListener listener);
+    <T extends Evented, E> T off(String type, MapboxEventListener<E> listener);
     
-    <T extends Evented> T once(String type, MapboxEventListener listener);
+    <T extends Evented, E> T once(String type, MapboxEventListener<E> listener);
     
     <T extends Evented> T fire(String type, Object data);
     

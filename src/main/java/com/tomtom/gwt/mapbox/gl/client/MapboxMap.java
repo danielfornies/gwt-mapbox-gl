@@ -1,11 +1,11 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
+import com.tomtom.gwt.mapbox.gl.client.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.events.AbstractEvented;
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
-import com.tomtom.gwt.mapbox.gl.client.events.Evented;
 import com.tomtom.gwt.mapbox.gl.client.events.MapboxEventListener;
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.ControlAlignment;
@@ -245,22 +245,22 @@ public class MapboxMap extends AbstractEvented {
     public native <T> T getLayoutProperty(String layer, String name);
     
     @JsOverlay
-    public final MapboxMap on(MapEvent eventType, MapboxEventListener listener) {
+    public final <E> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
         return on(eventType.name(), listener);
     }
     
     @JsOverlay
-    public final MapboxMap off(MapEvent eventType, MapboxEventListener listener) {
+    public final <E> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
     
     @JsOverlay
-    public final MapboxMap once(MapEvent eventType, MapboxEventListener listener) {
+    public final <E> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
         return once(eventType.name(), listener);
     }
     
     @JsOverlay
-    public final MapboxMap fire(MapEvent eventType, Object data) {
+    public final MapboxMap fire(MapEventType eventType, Object data) {
         return fire(eventType.name(), data);
     }
     // TODO: all map methods

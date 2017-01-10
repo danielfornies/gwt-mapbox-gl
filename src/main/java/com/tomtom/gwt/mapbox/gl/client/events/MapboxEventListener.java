@@ -5,7 +5,7 @@ import jsinterop.annotations.JsFunction;
 /**
  *
  * 
- * @param <T>
+ * @param <T> An event subtype.
  */
 @JsFunction
 public interface MapboxEventListener<T> {
