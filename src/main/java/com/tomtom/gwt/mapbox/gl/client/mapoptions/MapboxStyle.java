@@ -7,6 +7,9 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
+/**
+ * @see https://www.mapbox.com/mapbox-gl-style-spec/#root
+ */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class MapboxStyle {
     

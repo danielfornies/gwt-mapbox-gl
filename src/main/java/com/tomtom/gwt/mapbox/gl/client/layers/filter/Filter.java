@@ -76,7 +76,11 @@ public final class Filter {
 
     @JsOverlay
     public static Filter build(Membership belongs, String key, Object... values) {
-        return Filter.build(belongs.apiValue, key, values);
+        Object[] expressionArray = new Object[values.length + 2];
+        expressionArray[0] = belongs.apiValue;
+        expressionArray[1] = key;
+        System.arraycopy(values, 0, expressionArray, 2, values.length);
+        return Filter.build(expressionArray);
     }
     
     // TODO: check this one out

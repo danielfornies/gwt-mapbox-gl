@@ -47,8 +47,12 @@ public class Popup extends AbstractOverlay {
             PopupOptions popupOptions = new PopupOptions();
             popupOptions.setCloseButton(closeButton);
             popupOptions.setCloseOnClick(closeOnClick);
-            popupOptions.setAnchor(anchor.apiValue);
-            popupOptions.setOffset(offset);
+            if (anchor != null) {
+                popupOptions.setAnchor(anchor.apiValue);
+            }
+            if (offset != null) {
+                popupOptions.setOffset(offset);
+            }
             return popupOptions;
         }
         

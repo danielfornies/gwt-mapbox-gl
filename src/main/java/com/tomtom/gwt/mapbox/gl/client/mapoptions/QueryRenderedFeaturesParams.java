@@ -16,7 +16,7 @@ import jsinterop.annotations.JsType;
 public class QueryRenderedFeaturesParams {
     
     @JsOverlay
-    public static final QueryRenderedFeaturesParams build(String[] layerIDs, Filter filter) {
+    public static final QueryRenderedFeaturesParams build(Filter filter, String... layerIDs) {
         QueryRenderedFeaturesParams params = new QueryRenderedFeaturesParams();
         if (layerIDs != null && layerIDs.length > 0) {
             params.setLayers(layerIDs);

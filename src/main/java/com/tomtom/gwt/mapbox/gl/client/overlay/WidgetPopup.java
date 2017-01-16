@@ -26,6 +26,7 @@ public class WidgetPopup<W extends Widget> extends Popup implements HasWidget<W>
     
     @JsOverlay
     private WidgetPopup setWidget(W widget) {
+        setDOMContent(widget.getElement());
         this.widget = widget;
         return this;
     }

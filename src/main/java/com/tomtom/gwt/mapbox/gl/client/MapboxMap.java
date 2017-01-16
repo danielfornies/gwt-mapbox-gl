@@ -29,17 +29,17 @@ import jsinterop.annotations.JsProperty;
  */
 @JsType(isNative = true, name = "Map", namespace = MAPBOX_GL_NAMESPACE)
 public class MapboxMap extends AbstractEvented {
-    
+
     public MapboxMap(MapOptions options) {
     }
-    
+
     @JsOverlay
     public final MapboxMap addControl(IControl control, ControlAlignment position) {
         return addControl(control, position.getApiValue());
     }
-    
+
     public native MapboxMap addControl(IControl control, String position);
-    
+
     public native MapboxMap removeControl(IControl control);
 
     public native MapboxMap addClass(String klass, StyleOptions options);
@@ -59,15 +59,15 @@ public class MapboxMap extends AbstractEvented {
     @JsOverlay
     public final MapboxMap addLayers(MapLayer layerOnTop, Collection<MapLayer> layers) {
         layers.forEach((layer) -> {
-            addLayer(layer, layerOnTop);
+            addLayer(layerOnTop, layer);
         });
         return this;
     }
-    
+
     @JsOverlay
     public final MapboxMap addLayers(MapLayer layerOnTop, MapLayer... layers) {
         for (MapLayer layer : layers) {
-            addLayer(layer, layerOnTop);
+            addLayer(layerOnTop, layer);
         }
         return this;
     }
@@ -78,7 +78,7 @@ public class MapboxMap extends AbstractEvented {
     }
 
     @JsOverlay
-    public final MapboxMap addLayer(MapLayer layer, MapLayer layerOnTop) {
+    public final MapboxMap addLayer(MapLayer layerOnTop, MapLayer layer) {
         return addLayer(layer, layerOnTop != null ? layerOnTop.getId() : null);
     }
 
@@ -91,7 +91,7 @@ public class MapboxMap extends AbstractEvented {
         });
         return this;
     }
-    
+
     @JsOverlay
     public final MapboxMap removeLayers(MapLayer... layers) {
         for (MapLayer layer : layers) {
@@ -113,30 +113,30 @@ public class MapboxMap extends AbstractEvented {
     }
 
     public native MapboxMap removeLayer(String id);
-    
+
     @JsOverlay
-    public final MapboxMap moveLayer(MapLayer layer, MapLayer layerOnTop) {
+    public final MapboxMap moveLayer(MapLayer layerOnTop, MapLayer layer) {
         return moveLayer(layer.getId(), layerOnTop != null ? layerOnTop.getId() : null);
     }
-    
+
     @JsOverlay
     public final MapboxMap moveLayers(MapLayer layerOnTop, Collection<MapLayer> layers) {
         layers.forEach((layer) -> {
-            moveLayer(layer, layerOnTop);
+            moveLayer(layerOnTop, layer);
         });
         return this;
     }
-    
+
     @JsOverlay
     public final MapboxMap moveLayers(MapLayer layerOnTop, MapLayer... layers) {
         for (MapLayer layer : layers) {
-            moveLayer(layer, layerOnTop);
+            moveLayer(layerOnTop, layer);
         }
         return this;
     }
-    
+
     public native MapboxMap moveLayer(String id, String beforeId);
-    
+
     public native double getZoom();
 
     @JsOverlay
@@ -171,94 +171,165 @@ public class MapboxMap extends AbstractEvented {
             overlay.remove();
         });
     }
-    
+
     public native Point project(LngLat lngLat);
 
     public native LngLat unproject(Point pixelCoordinates);
-    
+
     public native Element getContainer();
-    
+
     public native Element getCanvasContainer();
-    
+
     public native CanvasElement getCanvas();
-    
+
     @JsProperty
     public native void setRepaint(boolean repaint);
-    
+
     @JsProperty
     public native boolean getRepaint();
-    
-    public native AbstractGeoJson[] queryRenderedFeatures(Point[] geometry, QueryRenderedFeaturesParams parameters);
-    
-    public native AbstractGeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
-    
+
     /**
-     * 
+     * Returns an array of GeoJSON Feature objects representing visible features that satisfy the query parameters.
+     *
+     * @param geometry (Point[]) The geometry of the query region: either a single point or southwest and northeast points describing a bounding box. Omitting this parameter
+     * (i.e. calling Map#queryRenderedFeatures with zero arguments, or with only a parameters argument) is equivalent to passing a bounding box encompassing the entire map viewport.
+     * @param parameters an instance of QueryRenderedFeaturesParams.
+     * @return Array of AbstractGeoJson: An array of GeoJSON feature objects . The properties value of each returned feature object contains the properties of its source feature. For GeoJSON sources,
+     * only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
+     *
+     * Each feature includes a top-level layer property whose value is an object representing the style layer to which the feature belongs. Layout and paint properties in this object contain values
+     * which are fully evaluated for the given zoom level and feature.
+     *
+     * Features from layers whose visibility property is "none", or from layers whose zoom range excludes the current zoom level are not included. Symbol features that have been hidden due to text or
+     * icon collision are not included. Features from all other layers are included, including features that may have no visible contribution to the rendered result; for example, because the layer's
+     * opacity or color alpha component is set to 0.
+     *
+     * The topmost rendered feature appears first in the returned array, and subsequent features are sorted by descending z-order. Features that are rendered multiple times (due to wrapping across the
+     * antimeridian at low zoom levels) are returned only once (though subject to the following caveat).
+     *
+     * Because features come from tiled vector data or GeoJSON data that is converted to tiles internally, feature geometries may be split or duplicated across tile boundaries and, as a result,
+     * features may appear multiple times in query results. For example, suppose there is a highway running through the bounding rectangle of a query. The results of the query will be those parts of
+     * the highway that lie within the map tiles covering the bounding rectangle, even if the highway extends into other tiles, and the portion of the highway within each map tile will be returned as
+     * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#queryRenderedFeatures
+     */
+    public native AbstractGeoJson[] queryRenderedFeatures(Point[] geometry, QueryRenderedFeaturesParams parameters);
+
+    /**
+     * Returns an array of GeoJSON Feature objects representing features within the specified vector tile or GeoJSON source that satisfy the query parameters.
+     *
+     * @param sourceID The ID of the vector tile or GeoJSON source to query.
+     * @param parameters an instance of QuerySourceFeaturesParams
+     * @return Array of AbstractGeoJson: An array of GeoJSON Feature objects . In contrast to Map#queryRenderedFeatures, this function returns all features matching the query parameters, whether or not they are
+     * rendered by the current style (i.e. visible). The domain of the query includes all currently-loaded vector tiles and GeoJSON source tiles: this function does not check tiles outside the
+     * currently visible viewport.
+     *
+     * Because features come from tiled vector data or GeoJSON data that is converted to tiles internally, feature geometries may be split or duplicated across tile boundaries and, as a result,
+     * features may appear multiple times in query results. For example, suppose there is a highway running through the bounding rectangle of a query. The results of the query will be those parts of
+     * the highway that lie within the map tiles covering the bounding rectangle, even if the highway extends into other tiles, and the portion of the highway within each map tile will be returned as
+     * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#querySourceFeatures
+     */
+    public native AbstractGeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
+
+    /**
+     *
      * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
      * @param layer
      * @param name
      * @param value
      * @param klass
-     * @return 
+     * @return
      */
     @JsOverlay
     public final MapboxMap setPaintProperty(MapLayer layer, String name, Object value, String klass) {
         return setPaintProperty(layer.getId(), name, value, klass);
     }
-    
+
     /**
-     * 
+     * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
+     * @param layers
+     * @param name
+     * @param value
+     * @param klass
+     * @return
+     */
+    @JsOverlay
+    public final MapboxMap setPaintProperty(Collection<MapLayer> layers, String name, Object value, String klass) {
+        layers.forEach((layer) -> {
+            setPaintProperty(layer, name, value, klass);
+        });
+        return this;
+    }
+
+    /**
+     *
      * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
      * @param layer
      * @param name
      * @param value
      * @param klass
-     * @return 
+     * @return
      */
     public native MapboxMap setPaintProperty(String layer, String name, Object value, String klass);
-    
+
     public native <T> T getPaintProperty(String layer, String name, String klass);
-    
+
     /**
-     * 
+     *
      * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
      * @param layer
      * @param name
      * @param value
-     * @return 
+     * @return
      */
     @JsOverlay
     public final MapboxMap setLayoutProperty(MapLayer layer, String name, Object value) {
         return setLayoutProperty(layer.getId(), name, value);
     }
-    
+
     /**
-     * 
+     * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
+     * @param layers
+     * @param name
+     * @param value
+     * @return
+     */
+    @JsOverlay
+    public final MapboxMap setLayoutProperty(Collection<MapLayer> layers, String name, Object value) {
+        layers.forEach((layer) -> {
+            setLayoutProperty(layer, name, value);
+        });
+        return this;
+    }
+
+    /**
+     *
      * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
      * @param layer
      * @param name
      * @param value
-     * @return 
+     * @return
      */
     public native MapboxMap setLayoutProperty(String layer, String name, Object value);
-    
+
     public native <T> T getLayoutProperty(String layer, String name);
-    
+
     @JsOverlay
     public final <E> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
         return on(eventType.name(), listener);
     }
-    
+
     @JsOverlay
     public final <E> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
-    
+
     @JsOverlay
     public final <E> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
         return once(eventType.name(), listener);
     }
-    
+
     @JsOverlay
     public final MapboxMap fire(MapEventType eventType, Object data) {
         return fire(eventType.name(), data);
