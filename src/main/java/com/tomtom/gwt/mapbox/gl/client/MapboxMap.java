@@ -213,7 +213,7 @@ public class MapboxMap extends AbstractEvented {
      * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#queryRenderedFeatures
      */
-    public native AbstractGeoJson[] queryRenderedFeatures(Point[] geometry, QueryRenderedFeaturesParams parameters);
+    public native AbstractGeoJson[] queryRenderedFeatures(Point geometry, QueryRenderedFeaturesParams parameters);
 
     /**
      * Returns an array of GeoJSON Feature objects representing features within the specified vector tile or GeoJSON source that satisfy the query parameters.
