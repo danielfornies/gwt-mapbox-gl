@@ -39,7 +39,6 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         public MapLayer<L, P> build() {
             MapLayer layer = new MapLayer();
             JSUtils.copyAllFields(this, layer);
-            JSUtils.log(layer);
             return layer;
         }
         
