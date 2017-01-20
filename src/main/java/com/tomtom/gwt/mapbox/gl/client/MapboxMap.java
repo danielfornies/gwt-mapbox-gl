@@ -22,6 +22,13 @@ import java.util.Collection;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 import com.tomtom.gwt.mapbox.gl.client.sources.MapSource;
+import com.tomtom.gwt.mapbox.gl.client.handlers.BoxZoomHandler;
+import com.tomtom.gwt.mapbox.gl.client.handlers.DoubleClickZoomHandler;
+import com.tomtom.gwt.mapbox.gl.client.handlers.DragPanHandler;
+import com.tomtom.gwt.mapbox.gl.client.handlers.DragRotateHandler;
+import com.tomtom.gwt.mapbox.gl.client.handlers.KeyboardHandler;
+import com.tomtom.gwt.mapbox.gl.client.handlers.ScrollZoomHandler;
+import com.tomtom.gwt.mapbox.gl.client.handlers.TouchZoomRotateHandler;
 import jsinterop.annotations.JsProperty;
 
 /**
@@ -334,5 +341,46 @@ public class MapboxMap extends AbstractEvented {
     public final MapboxMap fire(MapEventType eventType, Object data) {
         return fire(eventType.name(), data);
     }
-    // TODO: all map methods
+    
+    /**
+     * @return The box zoom handler of this map.
+     */
+    @JsProperty
+    public native BoxZoomHandler getBoxZoom();
+    
+    /**
+     * @return The scroll zoom handler of this map.
+     */
+    @JsProperty
+    public native ScrollZoomHandler getScrollZoom();
+    
+    /**
+     * @return The drag-pan handler of this map.
+     */
+    @JsProperty
+    public native DragPanHandler getDragPan();
+    
+    /**
+     * @return The drag-rotate handler of this map.
+     */
+    @JsProperty
+    public native DragRotateHandler getDragRotate();
+    
+    /**
+     * @return The keyboard handler of this map.
+     */
+    @JsProperty
+    public native KeyboardHandler getKeyboard();
+    
+    /**
+     * @return The double-click-zoom handler of this map.
+     */
+    @JsProperty
+    public native DoubleClickZoomHandler getDoubleClickZoom();
+    
+    /**
+     * @return The touch-zoom-rotate handler of this map.
+     */
+    @JsProperty
+    public native TouchZoomRotateHandler getTouchZoomRotate();
 }

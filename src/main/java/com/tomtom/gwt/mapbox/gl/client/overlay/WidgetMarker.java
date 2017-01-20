@@ -24,7 +24,7 @@ public class WidgetMarker<W extends Widget> extends Marker implements HasWidget<
     
     @JsOverlay
     public static <W extends Widget> WidgetMarker<W> build(W widget, MarkerOptions options) {
-        return new WidgetMarker(widget.getElement(), options).setWidget(widget);
+        return new WidgetMarker(widget.getElement(), options).withWidget(widget);
     }
     
     private WidgetMarker(Element element, MarkerOptions options) {
@@ -32,7 +32,7 @@ public class WidgetMarker<W extends Widget> extends Marker implements HasWidget<
     }
     
     @JsOverlay
-    private WidgetMarker setWidget(W widget) {
+    private WidgetMarker withWidget(W widget) {
         this.widget = widget;
         return this;
     }
