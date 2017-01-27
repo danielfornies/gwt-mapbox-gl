@@ -60,6 +60,13 @@ public class MapboxMap extends AbstractEvented {
     public native <T extends MapSource> T getSource(String id);
 
     public native MapboxMap addSource(String id, AbstractSourceInput source);
+    
+    /**
+     * @param id The ID of the source to be checked.
+     * @return A Boolean indicating whether the source is loaded.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#isSourceLoaded
+     */
+    public native boolean isSourceLoaded (String id);
 
     public native MapboxMap removeSource(String id);
 
