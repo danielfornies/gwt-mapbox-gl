@@ -2,7 +2,6 @@ package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.Node;
-import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.ui.Widget;
 import com.tomtom.gwt.mapbox.gl.client.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
@@ -27,9 +26,9 @@ public class Popup<W extends Widget> extends AbstractOverlay<W> {
     
     @JsOverlay
     public static <W extends Widget> Popup<W> build(W widget, PopupOptions options) {
-        Element wrapperElement = DOM.createDiv();
-        wrapperElement.appendChild(widget.getElement());
-        return (Popup)new Popup(options).setDOMContent(widget.getElement()).withWidget(widget, wrapperElement);
+        // we use a wrapper element to allow for dragging if necessary:
+        Element wrapperElement = createWrapper(widget, null);
+        return (Popup)new Popup(options).setDOMContent(wrapperElement).withWidget(widget, wrapperElement);
     }
 
     public native boolean isOpen();

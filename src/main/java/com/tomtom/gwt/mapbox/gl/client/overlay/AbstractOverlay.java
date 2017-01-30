@@ -10,6 +10,7 @@ import com.tomtom.gwt.mapbox.gl.client.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.events.MapMouseEvent;
 import com.tomtom.gwt.mapbox.gl.client.events.MapboxEventListener;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
+import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -58,6 +59,22 @@ public abstract class AbstractOverlay<W extends Widget> implements HasWidget<W> 
         this.widget = widget;
         this.wrapperElement = wrapperElement;
         return (T) this;
+    }
+    
+    /**
+     * Creates a wrapper element for the given widget. The wrapper will contain the widget's element as a single child.
+     * @param widget The widget from which to create a wrapper element.
+     * @param baseClassName Base class name to apply to the wrapping Element. Useful if we need to ensure properties such as z-index are applied here as well.
+     * @return 
+     */
+    @JsOverlay
+    protected static final Element createWrapper(Widget widget, String baseClassName) {
+        Element wrapperElement = DOM.createDiv();
+        wrapperElement.appendChild(widget.getElement());
+        if (baseClassName != null) {
+            wrapperElement.addClassName(baseClassName);
+        }
+        return wrapperElement;
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 import com.google.gwt.dom.client.Element;
-import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.ui.Widget;
 import com.tomtom.gwt.mapbox.gl.client.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
@@ -27,15 +26,22 @@ public class Marker<W extends Widget> extends AbstractOverlay<W> {
     
     @JsOverlay
     public static <W extends Widget> Marker<W> buildWithSize(W widget, int widthPx, int heightPx, Alignment alignment) {
-        return build(widget, MarkerOptions.build(OffsetCalculator.toOffsetPx(widthPx, heightPx, alignment)));
+        return build(widget, MarkerOptions.build(OffsetCalculator.toOffsetPx(widthPx, heightPx, alignment)), null);
     }
-
+    
     @JsOverlay
     public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options) {
-        Element wrapperElement = DOM.createDiv();
-        wrapperElement.appendChild(widget.getElement());
+        return build(widget, options, null);
+    }
+    
+    @JsOverlay
+    public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options, String wrapperElementClassName) {
+        // we use a wrapper element to allow for dragging if necessary:
+        Element wrapperElement = createWrapper(widget, wrapperElementClassName);
         return (Marker)new Marker(wrapperElement, options).withWidget(widget, wrapperElement);
     }
+    
+    public native Element getElement();
 
     public native Marker setPopup(Popup popup);
 
