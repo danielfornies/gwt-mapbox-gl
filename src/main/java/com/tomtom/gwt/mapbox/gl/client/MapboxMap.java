@@ -32,6 +32,10 @@ import com.tomtom.gwt.mapbox.gl.client.handlers.TouchZoomRotateHandler;
 import jsinterop.annotations.JsProperty;
 
 /**
+ * The Map object represents the map on your page. 
+ * It exposes methods and properties that enable you to programmatically change the map, and fires events as users interact with it. 
+ * You create a Map by specifying a container and other options. Then Mapbox GL JS initializes the map on the page and returns your Map object.
+ *
  * @see https://www.mapbox.com/mapbox-gl-js/api/#Map
  */
 @JsType(isNative = true, name = "Map", namespace = MAPBOX_GL_NAMESPACE)
@@ -60,13 +64,13 @@ public class MapboxMap extends AbstractEvented {
     public native <T extends MapSource> T getSource(String id);
 
     public native MapboxMap addSource(String id, AbstractSourceInput source);
-    
+
     /**
      * @param id The ID of the source to be checked.
      * @return A Boolean indicating whether the source is loaded.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#isSourceLoaded
      */
-    public native boolean isSourceLoaded (String id);
+    public native boolean isSourceLoaded(String id);
 
     public native MapboxMap removeSource(String id);
 
@@ -205,8 +209,8 @@ public class MapboxMap extends AbstractEvented {
     /**
      * Returns an array of GeoJSON Feature objects representing visible features that satisfy the query parameters.
      *
-     * @param geometry (Point[]) The geometry of the query region: either a single point or southwest and northeast points describing a bounding box. Omitting this parameter
-     * (i.e. calling Map#queryRenderedFeatures with zero arguments, or with only a parameters argument) is equivalent to passing a bounding box encompassing the entire map viewport.
+     * @param geometry (Point[]) The geometry of the query region: either a single point or southwest and northeast points describing a bounding box. Omitting this parameter (i.e. calling
+     * Map#queryRenderedFeatures with zero arguments, or with only a parameters argument) is equivalent to passing a bounding box encompassing the entire map viewport.
      * @param parameters an instance of QueryRenderedFeaturesParams.
      * @return Array of AbstractGeoJson: An array of GeoJSON feature objects . The properties value of each returned feature object contains the properties of its source feature. For GeoJSON sources,
      * only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
@@ -234,9 +238,9 @@ public class MapboxMap extends AbstractEvented {
      *
      * @param sourceID The ID of the vector tile or GeoJSON source to query.
      * @param parameters an instance of QuerySourceFeaturesParams
-     * @return Array of AbstractGeoJson: An array of GeoJSON Feature objects . In contrast to Map#queryRenderedFeatures, this function returns all features matching the query parameters, whether or not they are
-     * rendered by the current style (i.e. visible). The domain of the query includes all currently-loaded vector tiles and GeoJSON source tiles: this function does not check tiles outside the
-     * currently visible viewport.
+     * @return Array of AbstractGeoJson: An array of GeoJSON Feature objects . In contrast to Map#queryRenderedFeatures, this function returns all features matching the query parameters, whether or
+     * not they are rendered by the current style (i.e. visible). The domain of the query includes all currently-loaded vector tiles and GeoJSON source tiles: this function does not check tiles
+     * outside the currently visible viewport.
      *
      * Because features come from tiled vector data or GeoJSON data that is converted to tiles internally, feature geometries may be split or duplicated across tile boundaries and, as a result,
      * features may appear multiple times in query results. For example, suppose there is a highway running through the bounding rectangle of a query. The results of the query will be those parts of
@@ -348,43 +352,43 @@ public class MapboxMap extends AbstractEvented {
     public final MapboxMap fire(MapEventType eventType, Object data) {
         return fire(eventType.name(), data);
     }
-    
+
     /**
      * @return The box zoom handler of this map.
      */
     @JsProperty
     public native BoxZoomHandler getBoxZoom();
-    
+
     /**
      * @return The scroll zoom handler of this map.
      */
     @JsProperty
     public native ScrollZoomHandler getScrollZoom();
-    
+
     /**
      * @return The drag-pan handler of this map.
      */
     @JsProperty
     public native DragPanHandler getDragPan();
-    
+
     /**
      * @return The drag-rotate handler of this map.
      */
     @JsProperty
     public native DragRotateHandler getDragRotate();
-    
+
     /**
      * @return The keyboard handler of this map.
      */
     @JsProperty
     public native KeyboardHandler getKeyboard();
-    
+
     /**
      * @return The double-click-zoom handler of this map.
      */
     @JsProperty
     public native DoubleClickZoomHandler getDoubleClickZoom();
-    
+
     /**
      * @return The touch-zoom-rotate handler of this map.
      */

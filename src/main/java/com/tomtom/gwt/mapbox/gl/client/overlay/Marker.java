@@ -1,6 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 import com.google.gwt.dom.client.Element;
+import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.ui.Widget;
 import com.tomtom.gwt.mapbox.gl.client.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
@@ -18,6 +19,9 @@ import com.tomtom.gwt.mapbox.gl.client.overlay.util.OffsetCalculator;
 @JsType(isNative = true, namespace = MAPBOX_GL_NAMESPACE)
 public class Marker<W extends Widget> extends AbstractOverlay<W> {
     
+    /*
+     * Native constructor.
+     */
     private Marker(Element element, MarkerOptions options) {
     }
     
@@ -28,7 +32,9 @@ public class Marker<W extends Widget> extends AbstractOverlay<W> {
 
     @JsOverlay
     public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options) {
-        return (Marker)new Marker(widget.getElement(), options).withWidget(widget);
+        Element wrapperElement = DOM.createDiv();
+        wrapperElement.appendChild(widget.getElement());
+        return (Marker)new Marker(wrapperElement, options).withWidget(widget, wrapperElement);
     }
 
     public native Marker setPopup(Popup popup);
