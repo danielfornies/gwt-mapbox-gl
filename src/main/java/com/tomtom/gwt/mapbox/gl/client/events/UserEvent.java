@@ -1,14 +1,17 @@
 package com.tomtom.gwt.mapbox.gl.client.events;
 
-import com.google.gwt.event.dom.client.MouseEvent;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- *
- * @see https://www.mapbox.com/mapbox-gl-js/api/#MapMouseEvent
+ * Represents an event triggered by the user (mouse-touch related).
+ * @param <T> The sub-type for the original event.
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public interface MapMouseEvent extends MapEventWithLocation, UserEvent<MouseEvent> {
+public interface UserEvent<T> {
+    
+    @JsProperty
+    T getOriginalEvent();
 }

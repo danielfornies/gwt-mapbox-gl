@@ -11,11 +11,8 @@ import jsinterop.annotations.JsType;
  * @see https://www.mapbox.com/mapbox-gl-js/api/#MapBoxZoomEvent
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public interface MapBoxZoomEvent {
+public interface MapBoxZoomEvent extends UserEvent<MouseEvent> {
     
-    @JsProperty
-    MouseEvent getOriginalEvent();
-   
     /**
      * @return The bounding box of the "box zoom" interaction. This property is only provided for boxzoomend events. 
      */
