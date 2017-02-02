@@ -1,6 +1,5 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.layout;
 
-import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_AVOID_OVERLAP;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_IGNORE_PLACEMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_IMAGE;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_KEEP_UPRIGHT;
@@ -21,6 +20,7 @@ import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_ALLOW_OVERLAP;
 
 /**
  * https://www.mapbox.com/mapbox-gl-style-spec/#layout_symbol
@@ -84,7 +84,7 @@ public class SymbolLayout extends AbstractLayout {
         
         @JsOverlay
         public Builder withIconAllowOverlap(boolean allowOverlap) {
-            JSUtils.setBoolean(this, ICON_AVOID_OVERLAP, allowOverlap);
+            JSUtils.setBoolean(this, ICON_ALLOW_OVERLAP, allowOverlap);
             return this;
         }
         

@@ -20,7 +20,7 @@ public final class LayoutProperties {
     public static final String SYMBOL_PLACEMENT = "symbol-placement";
     public static final String SYMBOL_SPACING = "symbol-spacing";
     public static final String SYMBOL_AVOID_EDGES = "symbol-avoid-edges";
-    public static final String ICON_AVOID_OVERLAP = "icon-avoid-overlap";
+    public static final String ICON_ALLOW_OVERLAP = "icon-allow-overlap";
     public static final String ICON_IGNORE_PLACEMENT = "icon-ignore-placement";
     public static final String ICON_OPTIONAL = "icon-optional";
     public static final String ICON_ROTATION_ALIGNMENT = "icon-rotation-alignment";
