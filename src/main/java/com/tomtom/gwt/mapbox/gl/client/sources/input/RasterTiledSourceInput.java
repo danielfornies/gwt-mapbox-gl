@@ -17,9 +17,9 @@ public class RasterTiledSourceInput extends AbstractTiledSourceInput {
     }
     
     @JsOverlay
-    public final static RasterTiledSourceInput build(String[] tiles, int minZoom, int maxZoom, int tileSizePx) {
+    public final static RasterTiledSourceInput build(String[] tileURLs, int minZoom, int maxZoom, int tileSizePx) {
         RasterTiledSourceInput mapSource = new RasterTiledSourceInput();
-        mapSource.init("raster", tiles, minZoom, maxZoom);
+        mapSource.init("raster", tileURLs, minZoom, maxZoom);
         mapSource.setTileSize(tileSizePx);
         return mapSource;
     }

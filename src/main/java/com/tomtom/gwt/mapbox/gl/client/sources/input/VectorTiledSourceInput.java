@@ -16,9 +16,9 @@ public class VectorTiledSourceInput extends AbstractTiledSourceInput {
     }
     
     @JsOverlay
-    public static VectorTiledSourceInput build(String[] tiles, int minZoom, int maxZoom) {
+    public static VectorTiledSourceInput build(String[] tileURLs, int minZoom, int maxZoom) {
         VectorTiledSourceInput mapSource = new VectorTiledSourceInput();
-        mapSource.init("vector", tiles, minZoom, maxZoom);
+        mapSource.init("vector", tileURLs, minZoom, maxZoom);
         return mapSource;
     }
 }

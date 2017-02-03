@@ -14,9 +14,9 @@ import jsinterop.annotations.JsType;
 public abstract class AbstractTiledSourceInput extends AbstractSourceInput {
     
     @JsOverlay
-    protected final void init(String type, String[] tiles, int minZoom, int maxZoom) {
+    protected final void init(String type, String[] tileURLs, int minZoom, int maxZoom) {
         setType(type);
-        setTiles(tiles);
+        setTiles(tileURLs);
         setMinzoom(minZoom);
         setMaxzoom(maxZoom);
     }
