@@ -7,8 +7,8 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- *
- * 
+ * Tiled sources (vector and raster) must specify their details in terms of the TileJSON specification.
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public abstract class AbstractTiledSourceInput extends AbstractSourceInput {

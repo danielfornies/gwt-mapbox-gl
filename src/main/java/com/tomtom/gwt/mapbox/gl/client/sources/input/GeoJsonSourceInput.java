@@ -11,9 +11,9 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- *
- * 
- * @param <T>
+ * A GeoJSON source. Data must be provided via a "data" property, whose value can be a URL or inline GeoJSON.
+ * @param <T> A URL or inline GeoJson
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class GeoJsonSourceInput<T> extends AbstractSourceInput {

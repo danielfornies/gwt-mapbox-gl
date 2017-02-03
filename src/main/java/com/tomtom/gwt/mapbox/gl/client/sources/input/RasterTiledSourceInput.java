@@ -7,8 +7,8 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- *
- * 
+ * A raster tile source. For raster tiles hosted by Mapbox, the "url" value should be of the form mapbox://mapid.
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-raster
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class RasterTiledSourceInput extends AbstractTiledSourceInput {
