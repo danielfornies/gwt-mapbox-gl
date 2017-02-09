@@ -162,7 +162,7 @@ public class MapboxMap extends AbstractEvented {
         return (int) (Math.round(getZoom()));
     }
 
-    public native MapboxMap setZoom(int zoom);
+    public native MapboxMap setZoom(double zoom);
 
     public native LngLat getCenter();
 

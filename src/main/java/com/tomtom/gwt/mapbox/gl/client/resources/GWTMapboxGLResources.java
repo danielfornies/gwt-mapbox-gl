@@ -5,6 +5,7 @@ import com.google.gwt.core.shared.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.CssResource;
 import com.google.gwt.resources.client.CssResource.NotStrict;
+import com.google.gwt.resources.client.ExternalTextResource;
 import com.google.gwt.resources.client.TextResource;
 
 /**
@@ -42,14 +43,27 @@ public class GWTMapboxGLResources {
         }
     }
     
+    /**
+     * Client bundle containing references to the resources needed to use this library (JS and base CSS).
+     */
     public interface MapboxGLClientBundle extends ClientBundle {
 
         /**
+         * 
          * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.js
-         * @return 
+         * @return The resource with this production version of mapbox gl js.
          */
         @Source("mapbox-gl.js")
         TextResource getMapboxJS();
+        
+        /**
+         * Returns the resource with this development version of mapbox gl js (not minimized).
+         * This one is to be used for debugging purposes only.
+         * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.js
+         * @return The resource with this development version of mapbox gl js.
+         */
+        @Source("mapbox-gl-dev.js")
+        ExternalTextResource getMapboxDevJS();
 
         /**
          * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.css
