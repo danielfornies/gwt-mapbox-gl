@@ -26,12 +26,12 @@ public class SymbolPaint extends AbstractPaint {
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder {
         
+        private Builder() {
+        }
+        
         @JsOverlay
         public static Builder newBuilder() {
             return new Builder();
-        }
-        
-        private Builder() {
         }
         
         @JsOverlay

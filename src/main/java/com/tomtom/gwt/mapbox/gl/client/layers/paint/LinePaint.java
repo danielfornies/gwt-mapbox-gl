@@ -19,7 +19,8 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
- * https://www.mapbox.com/mapbox-gl-style-spec/#paint_line https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
+ * @see https://www.mapbox.com/mapbox-gl-style-spec/#paint_line 
+ * @see https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class LinePaint extends AbstractPaint {
@@ -30,12 +31,12 @@ public class LinePaint extends AbstractPaint {
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder {
 
+        private Builder() {
+        }
+        
         @JsOverlay
         public static Builder newBuilder() {
             return new Builder();
-        }
-
-        private Builder() {
         }
         
         @JsOverlay

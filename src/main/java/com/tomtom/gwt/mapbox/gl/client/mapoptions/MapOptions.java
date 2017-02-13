@@ -16,9 +16,15 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class MapOptions {
 
+    private MapOptions() {
+    }
+    
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public final static class Builder {
 
+        private Builder() {
+        }
+        
         /**
          * 
          * @param containerId The HTML element in which Mapbox GL JS will render the map, or the element's string id .
@@ -54,16 +60,6 @@ public final class MapOptions {
             builder.setContainer(containerId);
             builder.setStyle(style);
             return builder;
-        }
-
-        private Builder() {
-        }
-
-        @JsOverlay
-        public MapOptions build() {
-            MapOptions options = new MapOptions();
-            JSUtils.copyAllFields(this, options);
-            return options;
         }
 
         /**
@@ -223,8 +219,12 @@ public final class MapOptions {
          */
         @JsProperty
         public native void setRenderWorldCopies(boolean enabled);
-    }
-
-    private MapOptions() {
+        
+        @JsOverlay
+        public MapOptions build() {
+            MapOptions options = new MapOptions();
+            JSUtils.copyAllFields(this, options);
+            return options;
+        }
     }
 }

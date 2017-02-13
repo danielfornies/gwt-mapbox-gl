@@ -19,7 +19,7 @@ import jsinterop.annotations.JsType;
 
 /**
  *
- *
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint_circle
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class CirclePaint extends AbstractPaint {
@@ -30,12 +30,12 @@ public class CirclePaint extends AbstractPaint {
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder {
 
+        private Builder() {
+        }
+        
         @JsOverlay
         public static Builder newBuilder() {
             return new Builder();
-        }
-        
-        private Builder() {
         }
         
         @JsOverlay 
