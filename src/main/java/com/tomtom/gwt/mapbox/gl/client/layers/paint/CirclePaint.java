@@ -24,6 +24,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class CirclePaint extends AbstractPaint {
 
+    private CirclePaint() {
+    }
+    
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder {
 
@@ -162,8 +165,4 @@ public class CirclePaint extends AbstractPaint {
             return this;
         }
     }
-
-    private CirclePaint() {
-    }
-    
 }

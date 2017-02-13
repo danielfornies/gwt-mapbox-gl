@@ -5,6 +5,7 @@ import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsType;
 
 /**
+ * A LngLatBounds object represents a geographical bounding box, defined by its southwest and northeast points in longitude and latitude.
  * @see https://www.mapbox.com/mapbox-gl-js/api/#LngLatBounds
  */
 @JsType(isNative = true, namespace = MAPBOX_GL_NAMESPACE)

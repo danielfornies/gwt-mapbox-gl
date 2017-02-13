@@ -17,6 +17,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class LineLayout extends AbstractLayout {
 
+    private LineLayout() {
+    }
+    
     public static enum LineCap {
         butt,
         round,
@@ -80,8 +83,5 @@ public class LineLayout extends AbstractLayout {
             JSUtils.setObject(this, LINE_JOIN_LIMIT, value);
             return this;
         }
-    }
-
-    private LineLayout() {
     }
 }

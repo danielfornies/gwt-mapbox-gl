@@ -14,6 +14,9 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.VIS
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public abstract class AbstractLayout {
     
+    protected AbstractLayout() {
+    }
+    
     public static enum Visibility {
         visible,
         none
@@ -33,8 +36,5 @@ public abstract class AbstractLayout {
 
         @JsProperty(name = VISIBILITY)
         private native void setVisibility(Object value);
-    }
-
-    protected AbstractLayout() {
     }
 }

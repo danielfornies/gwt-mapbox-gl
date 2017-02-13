@@ -28,6 +28,9 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICO
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class SymbolLayout extends AbstractLayout {
 
+    private SymbolLayout() {
+    }
+    
     public static enum SymbolPlacement {
         point,
         line
@@ -159,8 +162,5 @@ public class SymbolLayout extends AbstractLayout {
         public native void setTextField(String value);
 
         // TODO
-    }
-
-    private SymbolLayout() {
     }
 }

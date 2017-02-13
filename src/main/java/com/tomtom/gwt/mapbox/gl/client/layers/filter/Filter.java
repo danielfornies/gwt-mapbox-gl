@@ -15,6 +15,53 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class Filter {
     
+    private Filter() {
+    }
+    
+    @JsProperty
+    private native void setExpression(JsArray filterArray);
+    
+    @JsProperty
+    public native JsArray getExpression();
+    
+    @JsOverlay
+    public static Filter build(Existential has, String key) {
+        return Filter.build(has.apiValue, key);
+    }
+    
+    @JsOverlay
+    public static Filter build(Compare compare, String key, Object value) {
+        return Filter.build(compare.apiValue, key, value);
+    }
+
+    @JsOverlay
+    public static Filter build(Membership belongs, String key, Object... values) {
+        Object[] expressionArray = new Object[values.length + 2];
+        expressionArray[0] = belongs.apiValue;
+        expressionArray[1] = key;
+        System.arraycopy(values, 0, expressionArray, 2, values.length);
+        return Filter.build(expressionArray);
+    }
+    
+    // TODO: check this one out
+    @JsOverlay
+    public static Filter build(Combine combine, Filter... filters) {
+        Object[] combinedExpression = new Object[]{filters.length + 1};
+        combinedExpression[0] = combine.apiValue;
+        for (int i = 1; i < combinedExpression.length; i++) {
+            combinedExpression[i] = filters[i-1].getExpression();
+        }
+        return Filter.build(combinedExpression);
+    }
+    
+    @JsOverlay
+    private static Filter build(Object... array) {
+        Filter filter = new Filter();
+        // we rebuild the array as a JS array to ensure no extra Java stuff is in there, which in this case seems to cause "DataCloneError: The object could not be cloned."
+        filter.setExpression(JSUtils.toJsArray(array));
+        return filter;
+    }
+    
     public static enum Existential {
         HAS("has"),
         HAS_NOT("!has");
@@ -63,51 +110,4 @@ public final class Filter {
             this.apiValue = apiValue;
         }
     }
-    
-    @JsOverlay
-    public static Filter build(Existential has, String key) {
-        return Filter.build(has.apiValue, key);
-    }
-    
-    @JsOverlay
-    public static Filter build(Compare compare, String key, Object value) {
-        return Filter.build(compare.apiValue, key, value);
-    }
-
-    @JsOverlay
-    public static Filter build(Membership belongs, String key, Object... values) {
-        Object[] expressionArray = new Object[values.length + 2];
-        expressionArray[0] = belongs.apiValue;
-        expressionArray[1] = key;
-        System.arraycopy(values, 0, expressionArray, 2, values.length);
-        return Filter.build(expressionArray);
-    }
-    
-    // TODO: check this one out
-    @JsOverlay
-    public static Filter build(Combine combine, Filter... filters) {
-        Object[] combinedExpression = new Object[]{filters.length + 1};
-        combinedExpression[0] = combine.apiValue;
-        for (int i = 1; i < combinedExpression.length; i++) {
-            combinedExpression[i] = filters[i-1].getExpression();
-        }
-        return Filter.build(combinedExpression);
-    }
-    
-    @JsOverlay
-    private static Filter build(Object... array) {
-        Filter filter = new Filter();
-        // we rebuild the array as a JS array to ensure no extra Java stuff is in there, which in this case seems to cause "DataCloneError: The object could not be cloned."
-        filter.setExpression(JSUtils.toJsArray(array));
-        return filter;
-    }
-    
-    private Filter() {
-    }
-    
-    @JsProperty
-    private native void setExpression(JsArray filterArray);
-    
-    @JsProperty
-    public native JsArray getExpression();
 }

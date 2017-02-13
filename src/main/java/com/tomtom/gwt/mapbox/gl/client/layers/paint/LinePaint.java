@@ -24,6 +24,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class LinePaint extends AbstractPaint {
 
+    private LinePaint() {
+    }
+    
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder {
 
@@ -167,8 +170,5 @@ public class LinePaint extends AbstractPaint {
             JSUtils.setObject(this, LINE_PATTERN, function);
             return this;
         }
-    }
-
-    private LinePaint() {
     }
 }

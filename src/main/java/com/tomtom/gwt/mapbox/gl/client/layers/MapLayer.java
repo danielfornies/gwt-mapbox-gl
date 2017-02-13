@@ -18,7 +18,48 @@ import jsinterop.annotations.JsType;
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
+    
+    private MapLayer() {
+    }
 
+    @JsProperty
+    public native String getId();
+
+    @JsProperty
+    public native String getType();
+
+    @JsProperty
+    public native String getSource();
+
+    @JsProperty
+    public native L getLayout();
+
+    @JsProperty
+    public native P getPaint();
+    
+    @Deprecated
+    @JsOverlay
+    public static <L extends AbstractLayout, P extends AbstractPaint> MapLayer<L, P> build(
+            String id, LayerType type, String source, String sourceLayer, L layout, P paint) {
+        Builder builder = Builder.newBuilder(id).withType(type);
+        if (type != null) {
+            builder.withType(type);
+        }
+        if (source != null) {
+            builder.withSource(source);
+        }
+        if (sourceLayer != null) {
+            builder.withSourceLayer(sourceLayer);
+        }
+        if (layout != null) {
+            builder.withLayout(layout);
+        }
+        if (paint != null) {
+            builder.withPaint(paint);
+        }
+        return builder.build();
+    }
+    
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder<L extends AbstractLayout, P extends AbstractPaint> {
 
@@ -144,45 +185,4 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
         @JsProperty
         private native void setPaint(P paint);
     }
-
-    @Deprecated
-    @JsOverlay
-    public static <L extends AbstractLayout, P extends AbstractPaint> MapLayer<L, P> build(
-            String id, LayerType type, String source, String sourceLayer, L layout, P paint) {
-        Builder builder = Builder.newBuilder(id).withType(type);
-        if (type != null) {
-            builder.withType(type);
-        }
-        if (source != null) {
-            builder.withSource(source);
-        }
-        if (sourceLayer != null) {
-            builder.withSourceLayer(sourceLayer);
-        }
-        if (layout != null) {
-            builder.withLayout(layout);
-        }
-        if (paint != null) {
-            builder.withPaint(paint);
-        }
-        return builder.build();
-    }
-
-    private MapLayer() {
-    }
-
-    @JsProperty
-    public native String getId();
-
-    @JsProperty
-    public native String getType();
-
-    @JsProperty
-    public native String getSource();
-
-    @JsProperty
-    public native L getLayout();
-
-    @JsProperty
-    public native P getPaint();
 }

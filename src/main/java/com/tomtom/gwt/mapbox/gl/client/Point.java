@@ -12,6 +12,21 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, namespace = MAPBOX_GL_NAMESPACE)
 public class Point {
     
+    public Point(int x, int y) {
+    }
+    
+    /**
+     * @return The X screen coordinate in pixels.
+     */
+    @JsProperty
+    public native int getX();
+    
+    /**
+     * @return The Y screen coordinate in pixels.
+     */
+    @JsProperty
+    public native int getY();
+    
     /**
      * Returns whether these 2 points are equal.
      * Two null points are considered equal.
@@ -28,19 +43,4 @@ public class Point {
             return point1 == null;
         }
     }
-    
-    public Point(int x, int y) {
-    }
-    
-    /**
-     * @return The X screen coordinate in pixels.
-     */
-    @JsProperty
-    public native int getX();
-    
-    /**
-     * @return The Y screen coordinate in pixels.
-     */
-    @JsProperty
-    public native int getY();
 }
