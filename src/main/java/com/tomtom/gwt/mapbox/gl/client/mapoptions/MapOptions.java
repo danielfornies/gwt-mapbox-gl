@@ -79,7 +79,7 @@ public final class MapOptions {
          */
         @JsProperty
         public native void setMaxZoom(double value);
-
+        
         /**
          * @param style The map's Mapbox style. This must be an a JSON object conforming to the schema described in the Mapbox Style Specification , or a URL to such JSON. To load a style from the
          * Mapbox API, you can use a URL of the form mapbox://styles/:owner/:style, where :owner is your Mapbox account name and :style is the style ID.

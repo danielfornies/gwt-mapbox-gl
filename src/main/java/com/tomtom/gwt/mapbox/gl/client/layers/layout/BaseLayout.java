@@ -6,15 +6,16 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.VISIBILITY;
+import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 
 /**
  * Common parent class for all layer layout types.
  * @see https://www.mapbox.com/mapbox-gl-style-spec/#layers
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public abstract class AbstractLayout {
+public class BaseLayout {
     
-    protected AbstractLayout() {
+    protected BaseLayout() {
     }
     
     public static enum Visibility {
@@ -23,9 +24,18 @@ public abstract class AbstractLayout {
     }
     
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public abstract static class AbstractLayoutBuilder<T extends AbstractLayoutBuilder> {
+    public static class Builder<T extends Builder> {
         
-        protected AbstractLayoutBuilder() {
+        protected Builder() {
+        }
+        
+        /**
+         * 
+         * @return A new base builder. Use only when no need to use an extension of this Builder.
+         */
+        @JsOverlay
+        public static final Builder newBaseBuilder() {
+            return new Builder();
         }
         
         @JsOverlay
@@ -36,5 +46,15 @@ public abstract class AbstractLayout {
 
         @JsProperty(name = VISIBILITY)
         private native void setVisibility(Object value);
+        
+        /**
+         * @return The built base layout. Use only when no need to use an extension of this builder.
+         */
+        @JsOverlay
+        public final BaseLayout buildBaseLayout() {
+            BaseLayout layout = new BaseLayout();
+            JSUtils.copyAllFields(this, layout);
+            return layout;
+        }
     }
 }

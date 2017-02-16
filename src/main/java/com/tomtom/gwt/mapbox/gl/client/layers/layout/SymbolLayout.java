@@ -26,7 +26,7 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICO
  * https://www.mapbox.com/mapbox-gl-style-spec/#layout_symbol
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public class SymbolLayout extends AbstractLayout {
+public class SymbolLayout extends BaseLayout {
 
     private SymbolLayout() {
     }
@@ -50,7 +50,7 @@ public class SymbolLayout extends AbstractLayout {
     }
 
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static final class Builder extends AbstractLayoutBuilder<Builder> {
+    public static final class Builder extends BaseLayout.Builder<Builder> {
 
         @JsOverlay
         public static Builder newBuilder() {

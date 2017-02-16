@@ -1,7 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.layers;
 
 import com.tomtom.gwt.mapbox.gl.client.layers.filter.Filter;
-import com.tomtom.gwt.mapbox.gl.client.layers.layout.AbstractLayout;
+import com.tomtom.gwt.mapbox.gl.client.layers.layout.BaseLayout;
 import com.tomtom.gwt.mapbox.gl.client.layers.paint.AbstractPaint;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
@@ -17,7 +17,7 @@ import jsinterop.annotations.JsType;
  * @param <P>
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
+public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
     
     private MapLayer() {
     }
@@ -39,7 +39,7 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
     
     @Deprecated
     @JsOverlay
-    public static <L extends AbstractLayout, P extends AbstractPaint> MapLayer<L, P> build(
+    public static <L extends BaseLayout, P extends AbstractPaint> MapLayer<L, P> build(
             String id, LayerType type, String source, String sourceLayer, L layout, P paint) {
         Builder builder = Builder.newBuilder(id).withType(type);
         if (type != null) {
@@ -61,7 +61,7 @@ public class MapLayer<L extends AbstractLayout, P extends AbstractPaint> {
     }
     
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static final class Builder<L extends AbstractLayout, P extends AbstractPaint> {
+    public static final class Builder<L extends BaseLayout, P extends AbstractPaint> {
 
         @JsOverlay
         public static Builder newBuilder(String id) {

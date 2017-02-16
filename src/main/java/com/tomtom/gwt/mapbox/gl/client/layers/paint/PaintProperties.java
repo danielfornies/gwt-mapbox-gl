@@ -5,18 +5,6 @@ package com.tomtom.gwt.mapbox.gl.client.layers.paint;
  */
 public final class PaintProperties {
 
-    // Circle Paint  --------------------------
-    public static final String CIRCLE_RADIUS = "circle-radius";
-    public static final String CIRCLE_COLOR = "circle-color";
-    public static final String CIRCLE_BLUR = "circle-blur";
-    public static final String CIRCLE_OPACITY = "circle-opacity";
-    public static final String CIRCLE_TRANSLATE = "circle-translate";
-    public static final String CIRCLE_TRANSLATE_ANCHOR = "circle-translate-anchor";
-    public static final String CIRCLE_PITCH_SCALE = "circle-pitch-scale";
-    public static final String CIRCLE_STROKE_WIDTH = "circle-stroke-width";
-    public static final String CIRCLE_STROKE_COLOR = "circle-stroke-color";
-    public static final String CIRCLE_STROKE_OPACITY = "circle-stroke-opacity";
-
     // Line Paint  -----------------------------
     public static final String LINE_OPACITY = "line-opacity";
     public static final String LINE_COLOR = "line-color";
@@ -37,6 +25,27 @@ public final class PaintProperties {
     public static final String ICON_HALO_BLUR = "icon-halo-blur";
     public static final String ICON_TRANSLATE = "icon-translate";
     public static final String ICON_TRANSLATE_ANCHOR = "icon-translate-anchor";
+    
+    // Raster Paint -----------------------------
+    public static final String RASTER_OPACITY = "raster-opacity";
+    public static final String RASTER_HUE_ROTATE = "raster-hue-rotate";
+    public static final String RASTER_BRIGHTNESS_MIN = "raster-brightness-min";
+    public static final String RASTER_BRIGHTNESS_MAX = "raster-brightness-max";
+    public static final String RASTER_SATURATION = "raster-saturation";
+    public static final String RASTER_CONTRAST = "raster-contrast";
+    public static final String RASTER_FADE_DURATION = "raster-fade-duration";
+    
+    // Circle Paint  --------------------------
+    public static final String CIRCLE_RADIUS = "circle-radius";
+    public static final String CIRCLE_COLOR = "circle-color";
+    public static final String CIRCLE_BLUR = "circle-blur";
+    public static final String CIRCLE_OPACITY = "circle-opacity";
+    public static final String CIRCLE_TRANSLATE = "circle-translate";
+    public static final String CIRCLE_TRANSLATE_ANCHOR = "circle-translate-anchor";
+    public static final String CIRCLE_PITCH_SCALE = "circle-pitch-scale";
+    public static final String CIRCLE_STROKE_WIDTH = "circle-stroke-width";
+    public static final String CIRCLE_STROKE_COLOR = "circle-stroke-color";
+    public static final String CIRCLE_STROKE_OPACITY = "circle-stroke-opacity";
 
     private PaintProperties() {
     }

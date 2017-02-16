@@ -46,121 +46,121 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withCircleRadius(int radiusPixels) {
+        public Builder withRadius(int radiusPixels) {
             JSUtils.setInt(this, CIRCLE_RADIUS, radiusPixels);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleRadiusFunction(StyleFunction  radiusFunction) {
+        public Builder withRadiusFunction(StyleFunction  radiusFunction) {
             JSUtils.setObject(this, CIRCLE_RADIUS, radiusFunction);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleColor(String color) {
+        public Builder withColor(String color) {
             JSUtils.setObject(this, CIRCLE_COLOR, color);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleColorFunction(StyleFunction colorFunction) {
+        public Builder withColorFunction(StyleFunction colorFunction) {
             JSUtils.setObject(this, CIRCLE_COLOR, colorFunction);
             return this;
         }
 
         @JsOverlay
-        public Builder withCircleBlur(double blur) {
+        public Builder withBlur(double blur) {
             JSUtils.setDouble(this, CIRCLE_BLUR, blur);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleBlurFunction(StyleFunction blurFunction) {
+        public Builder withBlurFunction(StyleFunction blurFunction) {
             JSUtils.setObject(this, CIRCLE_BLUR, blurFunction);
             return this;
         }
 
         @JsOverlay
-        public Builder withCircleOpacity(double opacity) {
+        public Builder withOpacity(double opacity) {
             JSUtils.setDouble(this, CIRCLE_OPACITY, opacity);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleOpacityFunction(StyleFunction function) {
+        public Builder withOpacityFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_OPACITY, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withCircleTranslate(int offsetPixelsX, int offsetPixelsY) {
+        public Builder withTranslate(int offsetPixelsX, int offsetPixelsY) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE, new int[]{offsetPixelsX, offsetPixelsY});
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleTranslateFunction(StyleFunction function) {
+        public Builder withTranslateFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE, function);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleTranslateAnchor(Anchor anchor) {
+        public Builder withTranslateAnchor(Anchor anchor) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE_ANCHOR, anchor.name());
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleTranslateAnchorFunction(StyleFunction function) {
+        public Builder withTranslateAnchorFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE_ANCHOR, function);
             return this;
         }
         
         @JsOverlay
-        public Builder withCirclePitchScale(Anchor anchor) {
+        public Builder withPitchScale(Anchor anchor) {
             JSUtils.setObject(this, CIRCLE_PITCH_SCALE, anchor.name());
             return this;
         }
         
         @JsOverlay
-        public Builder withCirclePitchScaleFunction(StyleFunction function) {
+        public Builder withPitchScaleFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_PITCH_SCALE, function);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleStrokeWidth(int strokeWidthPixels) {
+        public Builder withStrokeWidth(int strokeWidthPixels) {
             JSUtils.setInt(this, CIRCLE_STROKE_WIDTH, strokeWidthPixels);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleStrokeWidthFunction(StyleFunction function) {
+        public Builder withStrokeWidthFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_STROKE_WIDTH, function);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleStrokeColor(String strokeColor) {
+        public Builder withStrokeColor(String strokeColor) {
             JSUtils.setObject(this, CIRCLE_STROKE_COLOR, strokeColor);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleStrokeColorFunction(StyleFunction function) {
+        public Builder withStrokeColorFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_STROKE_COLOR, function);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleStrokeOpacity(double opacity) {
+        public Builder withStrokeOpacity(double opacity) {
             JSUtils.setDouble(this, CIRCLE_STROKE_OPACITY, opacity);
             return this;
         }
         
         @JsOverlay
-        public Builder withCircleStrokeOpacityFunction(StyleFunction function) {
+        public Builder withStrokeOpacityFunction(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_STROKE_OPACITY, function);
             return this;
         }

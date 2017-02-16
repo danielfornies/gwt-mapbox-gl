@@ -47,127 +47,127 @@ public class LinePaint extends AbstractPaint {
         }
 
         @JsOverlay
-        public Builder withLineOpacity(double value) {
+        public Builder withOpacity(double value) {
             JSUtils.setObject(this, LINE_OPACITY, value);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineOpacityFunction(StyleFunction function) {
+        public Builder withOpacityFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_OPACITY, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineColor(String value) {
+        public Builder withColor(String value) {
             JSUtils.setObject(this, LINE_COLOR, value);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineColorFunction(StyleFunction function) {
+        public Builder withColorFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_COLOR, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineTranslate(double[][] rightDownPixelsOffset) {
+        public Builder withTranslate(double[][] rightDownPixelsOffset) {
             JSUtils.setObject(this, LINE_TRANSLATE, rightDownPixelsOffset);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineTranslateFunction(StyleFunction function) {
+        public Builder withTranslateFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_TRANSLATE, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineTranslateAnchor(Anchor anchor) {
-            withLineTranslateAnchor(anchor.name());
+        public Builder withTranslateAnchor(Anchor anchor) {
+            withTranslateAnchor(anchor.name());
             return this;
         }
         
         @JsOverlay
-        public Builder withLineTranslateAnchorFunction(StyleFunction function) {
-            withLineTranslateAnchor(function);
+        public Builder withTranslateAnchorFunction(StyleFunction function) {
+            withTranslateAnchor(function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineTranslateAnchor(Object value) {
+        public Builder withTranslateAnchor(Object value) {
             JSUtils.setObject(this, LINE_TRANSLATE_ANCHOR, value);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineWidth(int widthPixels) {
+        public Builder withWidth(int widthPixels) {
             JSUtils.setInt(this, LINE_WIDTH, widthPixels);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineWidthFunction(StyleFunction widthFunction) {
+        public Builder withWidthFunction(StyleFunction widthFunction) {
             JSUtils.setObject(this, LINE_WIDTH, widthFunction);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineGapWidth(int innerGapWidthPixels) {
+        public Builder withGapWidth(int innerGapWidthPixels) {
             JSUtils.setInt(this, LINE_GAP_WIDTH, innerGapWidthPixels);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineGapWidthFunction(StyleFunction function) {
+        public Builder withGapWidthFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_GAP_WIDTH, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineOffset(int pixelsOffset) {
-            JSUtils.setObject(this, LINE_OFFSET, pixelsOffset);
+        public Builder withOffset(int pixelsOffset) {
+            JSUtils.setInt(this, LINE_OFFSET, pixelsOffset);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineOffsetFunction(StyleFunction function) {
+        public Builder withOffsetFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_OFFSET, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineBlur(int blurPixels) {
+        public Builder withBlur(int blurPixels) {
             JSUtils.setObject(this, LINE_BLUR, blurPixels);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineBlurFunction(StyleFunction function) {
+        public Builder withBlurFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_BLUR, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLineDashArray(double[] lineWidthLengths) {
+        public Builder withDashArray(double[] lineWidthLengths) {
             JSUtils.setObject(this, LINE_DASHARRAY, lineWidthLengths);
             return this;
         }
         
         @JsOverlay
-        public Builder withLineDashArrayFunction(StyleFunction function) {
+        public Builder withDashArrayFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_DASHARRAY, function);
             return this;
         }
 
         @JsOverlay
-        public Builder withLinePattern(String linePatternImage) {
+        public Builder withPattern(String linePatternImage) {
             JSUtils.setObject(this, LINE_PATTERN, linePatternImage);
             return this;
         }
         
         @JsOverlay
-        public Builder withLinePatternFunction(StyleFunction function) {
+        public Builder withPatternFunction(StyleFunction function) {
             JSUtils.setObject(this, LINE_PATTERN, function);
             return this;
         }

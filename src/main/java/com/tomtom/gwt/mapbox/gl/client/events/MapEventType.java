@@ -53,6 +53,7 @@ public enum MapEventType {
     mouseup,
     /**
      * Fired when a pointing device (usually a mouse) is moved within the map.
+     * * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:mousemove
      */
     mousemove,
     /**

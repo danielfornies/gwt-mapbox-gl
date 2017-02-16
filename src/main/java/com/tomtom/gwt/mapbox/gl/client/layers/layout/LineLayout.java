@@ -15,7 +15,7 @@ import jsinterop.annotations.JsType;
  * https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public class LineLayout extends AbstractLayout {
+public class LineLayout extends BaseLayout {
 
     private LineLayout() {
     }
@@ -33,7 +33,7 @@ public class LineLayout extends AbstractLayout {
     }
 
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-    public static final class Builder extends AbstractLayoutBuilder<Builder> {
+    public static final class Builder extends BaseLayout.Builder<Builder> {
 
         @JsOverlay
         public static final Builder newBuilder() {

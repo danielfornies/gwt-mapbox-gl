@@ -55,11 +55,16 @@ public final class Filter {
     }
     
     @JsOverlay
-    private static Filter build(Object... array) {
+    public static Filter build(JsArray expression) {
         Filter filter = new Filter();
-        // we rebuild the array as a JS array to ensure no extra Java stuff is in there, which in this case seems to cause "DataCloneError: The object could not be cloned."
-        filter.setExpression(JSUtils.toJsArray(array));
+        filter.setExpression(expression);
         return filter;
+    }
+    
+    @JsOverlay
+    private static Filter build(Object... array) {
+        // we rebuild the array as a JS array to ensure no extra Java stuff is in there, which in this case seems to cause "DataCloneError: The object could not be cloned."
+        return build(JSUtils.toJsArray(array));
     }
     
     public static enum Existential {
