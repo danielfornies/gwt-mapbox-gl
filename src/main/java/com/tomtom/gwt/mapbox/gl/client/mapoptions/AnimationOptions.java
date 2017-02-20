@@ -14,6 +14,12 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class AnimationOptions {
     
+    @JsOverlay
+    public static final AnimationOptions DEFAULT = Builder.newBuilder().build();
+    
+    @JsOverlay
+    public static final AnimationOptions DISABLED = Builder.newBuilder().withAnimate(false).build();
+    
     private AnimationOptions() {
     }
     

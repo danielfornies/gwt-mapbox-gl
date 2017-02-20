@@ -1,6 +1,5 @@
 package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 
-import com.tomtom.gwt.mapbox.gl.client.layers.paint.AbstractPaint.Anchor;
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_BLUR;
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_COLOR;
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_DASHARRAY;
@@ -12,6 +11,7 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_TRANSLATE_ANCHOR;
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.LINE_WIDTH;
 import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.Anchor;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;

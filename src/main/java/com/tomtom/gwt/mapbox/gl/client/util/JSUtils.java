@@ -3,8 +3,7 @@ package com.tomtom.gwt.mapbox.gl.client.util;
 import com.google.gwt.core.client.JsArray;
 
 /**
- *
- * 
+ * Various JS native utilities.
  */
 public final class JSUtils {
     
@@ -16,8 +15,10 @@ public final class JSUtils {
     }-*/;
     
     public static native void copyAllFields(Object sourceObject, Object targetObject) /*-{
-        for (var field in sourceObject) {
-            targetObject[field] = sourceObject[field];
+        if (sourceObject && targetObject) {
+            for (var field in sourceObject) {
+                targetObject[field] = sourceObject[field];
+            }
         }
     }-*/;
     
@@ -48,14 +49,6 @@ public final class JSUtils {
     public static native void setBoolean(Object targetObject, String fieldName, boolean fieldValue) /*-{
         targetObject[fieldName] = fieldValue;
     }-*/;
-    
-//    public static native JsArray buildJsArray(Object... objects) {
-//        JsArray array = (JsArray)JavaScriptObject.createArray();
-//        for (Object object : objects) {
-//            JavaScriptObject object = 
-//            array.push(JavaScriptObject.createObject().);
-//        }
-//    }
     
     public static native void log(Object object) /*-{
         $wnd.console.log(object);

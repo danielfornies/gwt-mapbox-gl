@@ -9,13 +9,16 @@ import jsinterop.annotations.JsType;
 
 /**
  * Options describing the destination and animation of the transition. 
- * Accepts CameraOptions , AnimationOptions , and other additional options.
+ * Accepts CameraOptions , AnimationOptions, and other additional options.
  *
  * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#flyTo
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class FlyToOptions {
 
+    @JsOverlay
+    public static final FlyToOptions DEFAULT = Builder.newBuilder().build();
+    
     private FlyToOptions() {
     }
 

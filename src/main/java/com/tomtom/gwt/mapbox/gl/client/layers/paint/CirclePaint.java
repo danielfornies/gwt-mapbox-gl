@@ -11,6 +11,7 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCL
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_TRANSLATE;
 import static com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties.CIRCLE_TRANSLATE_ANCHOR;
 import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.Anchor;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;

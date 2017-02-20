@@ -14,6 +14,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class CameraOptions {
     
+    @JsOverlay
+    public static final CameraOptions DEFAULT = Builder.newBuilder().build();
+    
     private CameraOptions() {
     }
     
@@ -24,7 +27,7 @@ public class CameraOptions {
             builder.withCenter(center);
         }
         if (zoom != null) {
-            builder.withzoom(zoom);
+            builder.withZoom(zoom);
         }
         return builder.build();
     }
@@ -55,7 +58,7 @@ public class CameraOptions {
          * @return This builder.
          */
         @JsOverlay
-        public Builder withzoom(double zoom) {
+        public Builder withZoom(double zoom) {
             setZoom(zoom);
             return this;
         }

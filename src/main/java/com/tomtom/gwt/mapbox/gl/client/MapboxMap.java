@@ -1,6 +1,8 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
+import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
+import com.google.gwt.core.client.JsArrayInteger;
 import com.tomtom.gwt.mapbox.gl.client.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.events.AbstractEvented;
 import com.google.gwt.dom.client.CanvasElement;
@@ -30,6 +32,10 @@ import com.tomtom.gwt.mapbox.gl.client.handlers.KeyboardHandler;
 import com.tomtom.gwt.mapbox.gl.client.handlers.ScrollZoomHandler;
 import com.tomtom.gwt.mapbox.gl.client.handlers.TouchZoomRotateHandler;
 import com.tomtom.gwt.mapbox.gl.client.layers.filter.Filter;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.AnimationOptions;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.CameraOptions;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.EaseToOptions;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.LightOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapboxStyle;
 import jsinterop.annotations.JsProperty;
 
@@ -478,55 +484,65 @@ public class MapboxMap extends AbstractEvented {
     private native JsArray getFilter(String layer);
     
     /**
+     * Sets the value of a paint property in the specified style layer.
      *
-     * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
-     * @param layer
-     * @param name
-     * @param value
-     * @param klass
-     * @return
+     * @param layer The layer to set the paint property in.
+     * @param name The name of the paint property to set.
+     * @param value The value of the paint propery to set. Must be of a type appropriate for the property, as defined in the Mapbox Style Specification.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setPaintProperty
      */
     @JsOverlay
-    public final MapboxMap setPaintProperty(MapLayer layer, String name, Object value, String klass) {
-        return setPaintProperty(layer.getId(), name, value, klass);
+    public final MapboxMap setPaintProperty(MapLayer layer, String name, Object value) {
+        return setPaintProperty(layer.getId(), name, value);
     }
 
     /**
-     * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
-     * @param layers
-     * @param name
-     * @param value
-     * @param klass
-     * @return
+     * Sets the value of a paint property in the specified style layers.
+     * 
+     * @param layers The layers to set the paint property in.
+     * @param name The layer to set the paint property in.
+     * @param value The value of the paint propery to set. Must be of a type appropriate for the property, as defined in the Mapbox Style Specification.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setPaintProperty
      */
     @JsOverlay
-    public final MapboxMap setPaintProperty(Collection<MapLayer> layers, String name, Object value, String klass) {
+    public final MapboxMap setPaintProperty(Collection<MapLayer> layers, String name, Object value) {
         layers.forEach((layer) -> {
-            setPaintProperty(layer, name, value, klass);
+            setPaintProperty(layer, name, value);
         });
         return this;
     }
 
     /**
-     *
-     * @see com.tomtom.gwt.mapbox.gl.client.layers.paint.PaintProperties
-     * @param layer
-     * @param name
-     * @param value
-     * @param klass
-     * @return
+     * Sets the value of a paint property in the specified style layer.
+     * 
+     * @param layer The ID of the layer to set the paint property in.
+     * @param name The name of the paint property to set.
+     * @param value The value of the paint propery to set. Must be of a type appropriate for the property, as defined in the Mapbox Style Specification .
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setPaintProperty
      */
-    public native MapboxMap setPaintProperty(String layer, String name, Object value, String klass);
-
-    public native <T> T getPaintProperty(String layer, String name, String klass);
+    public native MapboxMap setPaintProperty(String layer, String name, Object value);
 
     /**
-     *
-     * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
-     * @param layer
-     * @param name
-     * @param value
-     * @return
+     * Returns the value of a paint property in the specified style layer.
+     * @param <T> The expected subtype for the property.
+     * @param layer The ID of the layer to get the paint property from.
+     * @param name The name of a paint property to get.
+     * @return The value of the specified paint property.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getPaintProperty
+     */
+    public native <T> T getPaintProperty(String layer, String name);
+
+    /**
+     * Sets the value of a layout property in the specified style layer.
+     * 
+     * @param layer The layer to set the layout property in.
+     * @param name The name of the layout property to set.
+     * @param value The value of the layout propery. Must be of a type appropriate for the property, as defined in the Mapbox Style Specification.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setLayoutProperty
      */
     @JsOverlay
     public final MapboxMap setLayoutProperty(MapLayer layer, String name, Object value) {
@@ -534,11 +550,13 @@ public class MapboxMap extends AbstractEvented {
     }
 
     /**
-     * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
-     * @param layers
-     * @param name
-     * @param value
-     * @return
+     * Sets the value of a layout property in the specified style layers.
+     * 
+     * @param layers The layers to set the layout property in.
+     * @param name The name of the layout property to set.
+     * @param value The value of the layout propery. Must be of a type appropriate for the property, as defined in the Mapbox Style Specification.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setLayoutProperty
      */
     @JsOverlay
     public final MapboxMap setLayoutProperty(Collection<MapLayer> layers, String name, Object value) {
@@ -549,62 +567,314 @@ public class MapboxMap extends AbstractEvented {
     }
 
     /**
-     *
-     * @see com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties
-     * @param layer
-     * @param name
-     * @param value
-     * @return
+     * Sets the value of a layout property in the specified style layer.
+     * 
+     * @param layer The ID of the layer to set the layout property in.
+     * @param name The name of the layout property to set.
+     * @param value The value of the layout propery. Must be of a type appropriate for the property, as defined in the Mapbox Style Specification.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setLayoutProperty
      */
     public native MapboxMap setLayoutProperty(String layer, String name, Object value);
 
+    /**
+     * Returns the value of a layout property in the specified style layer.
+     * 
+     * @param <T> The subtype of the returned property.
+     * @param layer The ID of the layer to get the layout property from.
+     * @param name The name of the layout property to get.
+     * @return The value of the specified layout property.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getLayoutProperty
+     */
     public native <T> T getLayoutProperty(String layer, String name);
     
+    /**
+     * Sets the any combination of light values.
+     * @param options Light properties to set. Must conform to the Mapbox Style Specification.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setLight
+     */
+    public native MapboxMap setLight(LightOptions options);
+    
+    /**
+     * Returns the value of the light object.
+     * @return Light properties of the style.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getLight
+     */
+    public native LightOptions getLight();
+    
+    /**
+     * Returns the map's containing HTML element.
+     * @return The map's container.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getContainer
+     */
+    public native Element getContainer();
+
+    /**
+     * Returns the HTML element containing the map's canvas element.
+     * If you want to add non-GL overlays to the map, you should append them to this element.
+     * This is the element to which event bindings for map interactivity (such as panning and zooming) are attached. 
+     * It will receive bubbled events from child elements such as the canvas, but not from map controls.
+     *
+     * @return The container of the map's canvas.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getCanvasContainer
+     */
+    public native Element getCanvasContainer();
+
+    /**
+     * Returns the map's canvas element.
+     * @return The map's canvas element.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getCanvas
+     */
+    public native CanvasElement getCanvas();
+    
+    /**
+     * Returns a Boolean indicating whether the map is fully loaded.
+     * Returns false if the style is not yet fully loaded, or if there has been a change to the sources or style that has not yet fully loaded.
+     * @return A Boolean indicating whether the map is fully loaded.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#loaded
+     */
+    public native boolean loaded();
+    
+    /**
+     * Clean up and release all internal resources associated with this map.
+     * This includes DOM elements, event bindings, web workers, and WebGL resources.
+     * Use this method when you are done using the map and wish to ensure that it no longer consumes browser resources. 
+     * Afterwards, you must not call any other methods on the map.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#remove
+     */
+    public native void remove();
+    
+    /**
+     * Sets a Boolean indicating whether the map will render an outline around each tile. These tile boundaries are useful for debugging.
+     * @param enabled Boolean indicating whether the map will render an outline around each tile
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#showTileBoundaries
+     */
+    @JsProperty
+    public native void setShowTileBoundaries(boolean enabled);
+    
+    /**
+     * Gets a Boolean indicating whether the map will render an outline around each tile. These tile boundaries are useful for debugging.
+     * @return Boolean indicating whether the map will render an outline around each tile
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#showTileBoundaries
+     */
+    @JsProperty
+    public native boolean isShowTileBoundaries();
+    
+    /**
+     * Sets and sets a Boolean indicating whether the map will render boxes around all symbols in the data source, revealing which symbols were rendered or which were hidden due to collisions. This information is useful for debugging.
+     * @param enabled Boolean indicating whether the map will render boxes around all symbols in the data source, revealing which symbols were rendered or which were hidden due to collisions
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#showCollisionBoxes
+     */
+    @JsProperty
+    public native void setShowCollisionBoxes(boolean enabled);
+    
+    /**
+     * Gets and sets a Boolean indicating whether the map will render boxes around all symbols in the data source, revealing which symbols were rendered or which were hidden due to collisions. This information is useful for debugging.
+     * @return Boolean indicating whether the map will render boxes around all symbols in the data source, revealing which symbols were rendered or which were hidden due to collisions
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#showCollisionBoxes
+     */
+    @JsProperty
+    public native boolean isShowCollisionBoxes();
+    
+    /**
+     * Sets a Boolean indicating whether the map will continuously repaint. This information is useful for analyzing performance.
+     * @param enabled Boolean indicating whether the map will continuously repaint
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#repaint
+     */
+    @JsProperty
+    public native void setRepaint(boolean enabled);
+    
+    /**
+     * Gets a Boolean indicating whether the map will continuously repaint. This information is useful for analyzing performance.
+     * @return Boolean indicating whether the map will continuously repaint
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#repaint
+     */
+    @JsProperty
+    public native boolean isRepaint();
+    
+    /**
+     * Returns the map's geographical centerpoint.
+     * 
+     * @return The map's geographical centerpoint.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getCenter
+     */
+    public native LngLat getCenter();
+
+    /**
+     * Sets the map's geographical centerpoint. Equivalent to jumpTo({center: center}).
+     * 
+     * @param center The centerpoint to set.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setCenter
+     */
+    public native MapboxMap setCenter(LngLat center);
+
+    /**
+     * Pans the map by the specified offset.
+     * @param xOffsetPixels x coordinates by which to pan the map.
+     * @param yOffsetPixels y coordinates by which to pan the map.
+     * @param options Animation options for the pan transition.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#panBy
+     */
+    @JsOverlay
+    public final MapboxMap panBy(int xOffsetPixels, int yOffsetPixels, AnimationOptions options) {
+        JsArrayInteger array = JavaScriptObject.createArray().cast();
+        array.push(xOffsetPixels);
+        array.push(yOffsetPixels);
+        return panBy(array, options);
+    }
+    
+    private native MapboxMap panBy(JsArrayInteger offset, AnimationOptions options);
+    
+    /**
+     * Pans the map to the specified location, with an animated transition.
+     * @param lngLat The location to pan the map to.
+     * @param options Animation options for the panning transition.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#panTo
+     */
+    public native MapboxMap panTo(LngLat lngLat, AnimationOptions options);
+    
+    /**
+     * Returns the map's current zoom level.
+     * @return The map's current zoom level.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getZoom
+     */
     public native double getZoom();
 
+    /**
+     * @return The rounded value of the current zoom level.
+     */
     @JsOverlay
     public final int getRoundedZoom() {
         return (int) (Math.round(getZoom()));
     }
 
+    /**
+     * Sets the map's zoom level. Equivalent to jumpTo({zoom: zoom}).
+     * @param zoom The zoom level to set (0-20).
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setZoom
+     */
     public native MapboxMap setZoom(double zoom);
 
-    public native LngLat getCenter();
-
-    public native void setCenter(LngLat center);
-
+    /**
+     * Zooms the map to the specified zoom level, with an animated transition.
+     * @param zoom The zoom level to transition to.
+     * @param optons The animation options.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#zoomTo
+     */
+    public native MapboxMap zoomTo(double zoom, AnimationOptions optons);
+    
+    /**
+     * Increases the map's zoom level by 1.
+     * @param options The animation options.
+     * @return 
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#zoomIn
+     */
+    public native MapboxMap zoomIn(AnimationOptions options);
+    
+    /**
+     * Decreases the map's zoom level by 1.
+     * @param options The animation options.
+     * @return 
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#zoomOut
+     */
+    public native MapboxMap zoomOut(AnimationOptions options);
+    
+    /**
+     * Returns the map's current bearing (rotation).
+     * @return The map's current bearing, measured in degrees counter-clockwise from north.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getBearing
+     */
+    public native double getBearing();
+    
+    /**
+     * Sets the maps' bearing (rotation). Equivalent to jumpTo({bearing: bearing}).
+     * @param bearing  The bearing to set, measured in degrees counter-clockwise from north.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setBearing
+     */
+    public native MapboxMap setBearing(double bearing);
+    
+    /**
+     * Rotates the map to the specified bearing, with an animated transition.
+     * @param bearing The bearing to rotate the map to, measured in degrees counter-clockwise from north.
+     * @param options The animation options.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#rotateTo
+     */
+    public native MapboxMap rotateTo(double bearing, AnimationOptions options);
+    
+    /**
+     * Rotates the map to a bearing of 0 (due north), with an animated transition.
+     * @param options The animation options.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#resetNorth
+     */
+    public native MapboxMap resetNorth(AnimationOptions options);
+    
+    /**
+     * Snaps the map's bearing to 0 (due north), if the current bearing is close enough to it (i.e. within the bearingSnap threshold).
+     * @param options The animation options.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#snapToNorth
+     */
+    public native MapboxMap snapToNorth(AnimationOptions options);
+    
+    /**
+     * Returns the map's current pitch (tilt).
+     * @return The map's current pitch, measured in degrees away from the plane of the screen.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getPitch
+     */
+    public native double getPitch();
+    
+    /**
+     * Sets the map's pitch (tilt). Equivalent to jumpTo({pitch: pitch}).
+     * @param pitch The pitch to set, measured in degrees away from the plane of the screen (0-60).
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#setPitch
+     */
+    public native MapboxMap setPitch(double pitch);
+    
+    /**
+     * Pans and zooms the map to contain its visible area within the specified geographical bounds.
+     * @param bounds Center these bounds in the viewport and use the highest zoom level up to and including  Map#getMaxZoom() that fits them in the viewport.
+     * @param options The padding/offset/animation/camera options. See FitBoundsOptions for more details.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#fitBounds
+     */
     public native MapboxMap fitBounds(LngLatBounds bounds, FitBoundsOptions options);
 
-    public native MapboxMap panTo(LngLat lngLat);
-
+    /**
+     * Changes any combination of center, zoom, bearing, and pitch, without an animated transition. The map will retain its current values for any details not specified in options.
+     * @param options The camera options.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#jumpTo
+     */
+    public native MapboxMap jumpTo(CameraOptions options);
+    
+    /**
+     * Changes any combination of center, zoom, bearing, and pitch, with an animated transition between old and new values. 
+     * The map will retain its current values for any details not specified in options.
+     * @param options Options describing the destination and animation of the transition.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#easeTo
+     */
+    public native MapboxMap easeTo(EaseToOptions options);
+    
+    /**
+     * Changes any combination of center, zoom, bearing, and pitch, animating the transition along a curve that evokes flight. 
+     * The animation seamlessly incorporates zooming and panning to help the user maintain her bearings even after traversing a great distance.
+     * @param options Options describing the destination and animation of the transition. Accepts CameraOptions , AnimationOptions, and additional options.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#flyTo
+     */
     public native MapboxMap flyTo(FlyToOptions options);
 
-    @JsOverlay
-    public final <T extends AbstractOverlay> void addOverlays(Collection<T> overlays) {
-        overlays.forEach((overlay) -> {
-            overlay.addTo(this);
-        });
-    }
-
-    @JsOverlay
-    public final <T extends AbstractOverlay> void removeOverlays(Collection<T> overlays) {
-        overlays.forEach((overlay) -> {
-            overlay.remove();
-        });
-    }
-
-    public native Element getContainer();
-
-    public native Element getCanvasContainer();
-
-    public native CanvasElement getCanvas();
-
-    @JsProperty
-    public native void setRepaint(boolean repaint);
-
-    @JsProperty
-    public native boolean getRepaint();
-    
     /**
      * Returns a Boolean indicating whether the camera is moving.
      * @return A Boolean indicating whether the camera is moving.
@@ -618,6 +888,34 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#stop
      */
     public native MapboxMap stop();
+    
+    /**
+     * Adds the give overlays to the map.
+     * @param <T> The subtype of AbstractOverlay to add.
+     * @param overlays The collection of overlays to add, in the order coming from such collection. None of them can be null.
+     * @return This.
+     */
+    @JsOverlay
+    public final <T extends AbstractOverlay> MapboxMap addOverlays(Collection<T> overlays) {
+        overlays.forEach((overlay) -> {
+            overlay.addTo(this);
+        });
+        return this;
+    }
+
+    /**
+     * Removes the given overlays from the map.
+     * @param <T> The subtype of AbstractOverlay to remove.
+     * @param overlays The collection of overlays to remove, in the order coming from such collection. None of them can be null.
+     * @return This.
+     */
+    @JsOverlay
+    public final <T extends AbstractOverlay> MapboxMap removeOverlays(Collection<T> overlays) {
+        overlays.forEach((overlay) -> {
+            overlay.remove();
+        });
+        return this;
+    }
     
     @JsOverlay
     public final <E> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {

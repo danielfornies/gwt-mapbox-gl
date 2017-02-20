@@ -14,6 +14,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class FitBoundsOptions {
 
+    @JsOverlay
+    public static final FitBoundsOptions DEFAULT = Builder.newBuilder().build();
+    
     private FitBoundsOptions() {
     }
 
