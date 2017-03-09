@@ -25,6 +25,13 @@ public final class PaintProperties {
     public static final String ICON_HALO_BLUR = "icon-halo-blur";
     public static final String ICON_TRANSLATE = "icon-translate";
     public static final String ICON_TRANSLATE_ANCHOR = "icon-translate-anchor";
+    public static final String TEXT_OPACITY = "text-opacity";
+    public static final String TEXT_COLOR = "text-color";
+    public static final String TEXT_HALO_COLOR = "text-halo-color";
+    public static final String TEXT_HALO_WIDTH = "text-halo-width";
+    public static final String TEXT_HALO_BLUR = "text-halo-blur";
+    public static final String TEXT_TRANSLATE = "text-translate";
+    public static final String TEXT_TRANSLATE_ANCHOR = "text-translate-anchor";
     
     // Raster Paint -----------------------------
     public static final String RASTER_OPACITY = "raster-opacity";
