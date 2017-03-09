@@ -53,7 +53,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withRadiusFunction(StyleFunction  radiusFunction) {
+        public Builder withRadius(StyleFunction  radiusFunction) {
             JSUtils.setObject(this, CIRCLE_RADIUS, radiusFunction);
             return this;
         }
@@ -65,7 +65,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withColorFunction(StyleFunction colorFunction) {
+        public Builder withColor(StyleFunction colorFunction) {
             JSUtils.setObject(this, CIRCLE_COLOR, colorFunction);
             return this;
         }
@@ -77,7 +77,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withBlurFunction(StyleFunction blurFunction) {
+        public Builder withBlur(StyleFunction blurFunction) {
             JSUtils.setObject(this, CIRCLE_BLUR, blurFunction);
             return this;
         }
@@ -89,7 +89,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withOpacityFunction(StyleFunction function) {
+        public Builder withOpacity(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_OPACITY, function);
             return this;
         }
@@ -101,7 +101,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withTranslateFunction(StyleFunction function) {
+        public Builder withTranslate(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE, function);
             return this;
         }
@@ -113,7 +113,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withTranslateAnchorFunction(StyleFunction function) {
+        public Builder withTranslateAnchor(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE_ANCHOR, function);
             return this;
         }
@@ -125,7 +125,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withPitchScaleFunction(StyleFunction function) {
+        public Builder withPitchScale(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_PITCH_SCALE, function);
             return this;
         }
@@ -137,7 +137,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withStrokeWidthFunction(StyleFunction function) {
+        public Builder withStrokeWidth(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_STROKE_WIDTH, function);
             return this;
         }
@@ -149,7 +149,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withStrokeColorFunction(StyleFunction function) {
+        public Builder withStrokeColor(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_STROKE_COLOR, function);
             return this;
         }
@@ -161,7 +161,7 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withStrokeOpacityFunction(StyleFunction function) {
+        public Builder withStrokeOpacity(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_STROKE_OPACITY, function);
             return this;
         }

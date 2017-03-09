@@ -53,7 +53,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withOpacityFunction(StyleFunction function) {
+        public Builder withOpacity(StyleFunction function) {
             JSUtils.setObject(this, LINE_OPACITY, function);
             return this;
         }
@@ -65,7 +65,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withColorFunction(StyleFunction function) {
+        public Builder withColor(StyleFunction function) {
             JSUtils.setObject(this, LINE_COLOR, function);
             return this;
         }
@@ -77,26 +77,20 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withTranslateFunction(StyleFunction function) {
+        public Builder withTranslate(StyleFunction function) {
             JSUtils.setObject(this, LINE_TRANSLATE, function);
             return this;
         }
 
         @JsOverlay
         public Builder withTranslateAnchor(Anchor anchor) {
-            withTranslateAnchor(anchor.name());
+            JSUtils.setObject(this, LINE_TRANSLATE_ANCHOR, anchor.name());
             return this;
         }
         
         @JsOverlay
-        public Builder withTranslateAnchorFunction(StyleFunction function) {
-            withTranslateAnchor(function);
-            return this;
-        }
-
-        @JsOverlay
-        public Builder withTranslateAnchor(Object value) {
-            JSUtils.setObject(this, LINE_TRANSLATE_ANCHOR, value);
+        public Builder withTranslateAnchor(StyleFunction function) {
+            JSUtils.setObject(this, LINE_TRANSLATE_ANCHOR, function);
             return this;
         }
         
@@ -107,7 +101,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withWidthFunction(StyleFunction widthFunction) {
+        public Builder withWidth(StyleFunction widthFunction) {
             JSUtils.setObject(this, LINE_WIDTH, widthFunction);
             return this;
         }
@@ -119,7 +113,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withGapWidthFunction(StyleFunction function) {
+        public Builder withGapWidth(StyleFunction function) {
             JSUtils.setObject(this, LINE_GAP_WIDTH, function);
             return this;
         }
@@ -131,7 +125,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withOffsetFunction(StyleFunction function) {
+        public Builder withOffset(StyleFunction function) {
             JSUtils.setObject(this, LINE_OFFSET, function);
             return this;
         }
@@ -143,7 +137,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withBlurFunction(StyleFunction function) {
+        public Builder withBlur(StyleFunction function) {
             JSUtils.setObject(this, LINE_BLUR, function);
             return this;
         }
@@ -155,7 +149,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withDashArrayFunction(StyleFunction function) {
+        public Builder withDashArray(StyleFunction function) {
             JSUtils.setObject(this, LINE_DASHARRAY, function);
             return this;
         }
@@ -167,7 +161,7 @@ public class LinePaint extends AbstractPaint {
         }
         
         @JsOverlay
-        public Builder withPatternFunction(StyleFunction function) {
+        public Builder withPattern(StyleFunction function) {
             JSUtils.setObject(this, LINE_PATTERN, function);
             return this;
         }
