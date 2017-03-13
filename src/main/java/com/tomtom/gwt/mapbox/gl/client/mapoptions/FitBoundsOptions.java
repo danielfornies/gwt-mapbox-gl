@@ -1,6 +1,5 @@
 package com.tomtom.gwt.mapbox.gl.client.mapoptions;
 
-import com.tomtom.gwt.mapbox.gl.client.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -62,16 +61,6 @@ public class FitBoundsOptions {
         }
         
         /**
-         * @param easingFunction An easing function for the animated transition.
-         * @return This builder.
-         */
-        @JsOverlay
-        public Builder withEasing(EasingFunction easingFunction) {
-            setEasing(easingFunction);
-            return this;
-        }
-        
-        /**
          * @param paddingPixels (default 0) The amount of padding, in pixels, to allow around the specified bounds.
          * @return This builder.
          */
@@ -82,12 +71,12 @@ public class FitBoundsOptions {
         }
         
         /**
-         * @param offsetPixels (default [0,0]) The center of the given bounds relative to the map's center, measured in pixels.
+         * @param padding The amount of padding in pixels to add to the given bounds.
          * @return This builder.
          */
         @JsOverlay
-        public Builder withOffset(Point offsetPixels) {
-            setOffset(offsetPixels);
+        public Builder withPadding(PaddingOptions padding) {
+            setPadding(padding);
             return this;
         }
         
@@ -105,13 +94,7 @@ public class FitBoundsOptions {
         private native void setLinear(boolean linear);
 
         @JsProperty
-        private native void setEasing(EasingFunction easingFunction);
-
-        @JsProperty
-        private native void setPadding(int paddingPixels);
-
-        @JsProperty
-        private native void setOffset(Point offsetPixels);
+        private native void setPadding(Object padding);
 
         @JsProperty
         private native void setMaxZoom(int maxZoom);

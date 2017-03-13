@@ -100,16 +100,6 @@ public class FlyToOptions {
             return this;
         }
         
-        /**
-         * @param easing An easing function for the animated transition.
-         * @return This builder.
-         */
-        @JsOverlay
-        public Builder withEasing(EasingFunction easing) {
-            setEasing(easing);
-            return this;
-        }
-        
         @JsProperty
         private native void setCurve(double curveAmount);
 
@@ -121,9 +111,6 @@ public class FlyToOptions {
 
         @JsProperty
         private native void setScreenSpeed(double screenfulsPerSecond);
-
-        @JsProperty
-        private native void setEasing(EasingFunction easing);
 
         @JsOverlay
         public FlyToOptions build() {
