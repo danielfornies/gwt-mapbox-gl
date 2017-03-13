@@ -4,6 +4,7 @@ import com.tomtom.gwt.mapbox.gl.client.events.AbstractEvented;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
@@ -34,11 +35,15 @@ public class PaddingOptions extends AbstractEvented {
         return options;
     }
     
+    @JsProperty
     private native void setTop(int valuePixels);
     
+    @JsProperty
     private native void setBottom(int valuePixels);
     
+    @JsProperty
     private native void setLeft(int valuePixels);
     
+    @JsProperty
     private native void setRight(int valuePixels);
 }
