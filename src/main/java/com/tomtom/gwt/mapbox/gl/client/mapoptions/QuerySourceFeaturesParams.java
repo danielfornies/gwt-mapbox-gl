@@ -15,6 +15,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class QuerySourceFeaturesParams {
     
+    private QuerySourceFeaturesParams() {
+    }
+    
     @JsOverlay
     public static final QuerySourceFeaturesParams build(String sourceLayerID, Filter filter) {
         QuerySourceFeaturesParams params = new QuerySourceFeaturesParams();
@@ -25,9 +28,6 @@ public class QuerySourceFeaturesParams {
             params.setFilter(filter.getExpression());
         }
         return params;
-    }
-    
-    private QuerySourceFeaturesParams() {
     }
     
     @JsProperty
