@@ -18,6 +18,9 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class QueryRenderedFeaturesParams {
     
+    private QueryRenderedFeaturesParams() {
+    }
+    
     @JsOverlay
     public static final QueryRenderedFeaturesParams buildWithMapLayers(Filter filter, Collection<MapLayer> mapLayers) {
         return build(filter, mapLayers.stream().map(MapLayer::getId).collect(Collectors.toList()));
@@ -39,9 +42,6 @@ public class QueryRenderedFeaturesParams {
         }
         
         return params;
-    }
-    
-    private QueryRenderedFeaturesParams() {
     }
     
     @JsProperty
