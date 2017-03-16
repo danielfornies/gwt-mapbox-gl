@@ -10,7 +10,6 @@ import com.tomtom.gwt.mapbox.gl.client.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.events.MapMouseEvent;
 import com.tomtom.gwt.mapbox.gl.client.events.MapboxEventListener;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
-import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
