@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.tomtom.gwt</groupId>
     <artifactId>gwt-mapbox-gl</artifactId>
-    <version>0.33.1.0-SNAPSHOT</version>
+    <version>0.32.1.1-SNAPSHOT</version>
     <packaging>jar</packaging>
     <parent>
         <groupId>com.tomtom</groupId>
