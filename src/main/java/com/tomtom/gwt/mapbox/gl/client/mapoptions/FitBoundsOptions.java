@@ -66,7 +66,8 @@ public class FitBoundsOptions {
          */
         @JsOverlay
         public Builder withPadding(int paddingPixels) {
-            setPadding(paddingPixels);
+            // casting to double to ensure it's treated as a JS number:
+            setPadding((double)paddingPixels);
             return this;
         }
         
