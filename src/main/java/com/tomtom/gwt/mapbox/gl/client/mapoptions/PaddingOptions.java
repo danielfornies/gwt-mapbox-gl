@@ -9,7 +9,7 @@ import jsinterop.annotations.JsType;
 
 /**
  * Options for setting padding on a call to Map#fitBounds. All properties of this object must be non-negative integers.
- * @see https://www.mapbox.com/mapbox-gl-js/api/#paddingoptions
+ * @see https://www.mapbox.com/mapbox-gl-js/api/#PaddingOptions
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class PaddingOptions extends AbstractEvented {
