@@ -21,13 +21,19 @@ public class CameraOptions {
     }
     
     @JsOverlay
-    public static final CameraOptions build(LngLat center, Double zoom) {
+    public static final CameraOptions build(LngLat center, Double zoom, Double pitch, Double bearing) {
         Builder builder = Builder.newBuilder();
         if (center != null) {
             builder.withCenter(center);
         }
         if (zoom != null) {
             builder.withZoom(zoom);
+        }
+        if (pitch != null) {
+            builder.withPitch(pitch);
+        }
+        if (bearing != null) {
+            builder.withBearing(bearing);
         }
         return builder.build();
     }
@@ -68,7 +74,7 @@ public class CameraOptions {
          * @return This builder.
          */
         @JsOverlay
-        public Builder withBearing(int bearingDegrees) {
+        public Builder withBearing(double bearingDegrees) {
             setBearing(bearingDegrees);
             return this;
         }
@@ -78,7 +84,7 @@ public class CameraOptions {
          * @return This builder.
          */
         @JsOverlay
-        public Builder withPitch(int pitchDegrees) {
+        public Builder withPitch(double pitchDegrees) {
             setPitch(pitchDegrees);
             return this;
         }
@@ -100,10 +106,10 @@ public class CameraOptions {
         private native void setZoom(double zoom);
 
         @JsProperty
-        private native void setBearing(int bearingDegrees);
+        private native void setBearing(double bearingDegrees);
 
         @JsProperty
-        private native void setPitch(int pitchDegrees);
+        private native void setPitch(double pitchDegrees);
 
         @JsProperty
         private native void setAround(LngLat zoomCenter);
