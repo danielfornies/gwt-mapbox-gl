@@ -9,6 +9,7 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
+import com.tomtom.gwt.mapbox.gl.client.events.Evented;
 import com.tomtom.gwt.mapbox.gl.client.events.MapboxEventListener;
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.ControlAlignment;
@@ -921,12 +922,72 @@ public class MapboxMap extends AbstractEvented {
     public final <E> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
         return on(eventType.name(), listener);
     }
+    
+    /**
+     * Adds a listener for events of a specified type occurring on features in a specified style layer.
+     *
+     * @param <E>
+     * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
+     * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
+     * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
+     * @param layer A style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the
+     * matching features.
+     * @param listener The function to be called when the event is fired.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
+     */
+    @JsOverlay
+    public final <E> MapboxMap on(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
+        return on(eventType.name(), layer.getId(), listener);
+    }
+
+    /**
+     * Adds a listener for events of a specified type occurring on features in a specified style layer.
+     *
+     * @param <T>
+     * @param <E>
+     * @param type The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
+     * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
+     * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
+     * @param layer The ID of a style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array
+     * of the matching features.
+     * @param listener The function to be called when the event is fired.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
+     */
+    public native <T extends Evented, E> T  on(String type, String layer, MapboxEventListener<E> listener);
 
     @JsOverlay
     public final <E> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
-
+    
+    /**
+     * Removes an event listener for layer-specific events previously added with Map#on.
+     * @param <E>
+     * @param eventType The event type previously used to install the listener.
+     * @param layer The layer previously used to install the listener.
+     * @param listener The function previously installed as a listener.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
+     */
+    @JsOverlay
+    public final <E> MapboxMap off(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
+        return off(eventType.name(), listener);
+    }
+    
+    /**
+     * Removes an event listener for layer-specific events previously added with Map#on.
+     * @param <T>
+     * @param <E>
+     * @param type The event type previously used to install the listener.
+     * @param layer The layer ID previously used to install the listener.
+     * @param listener The function previously installed as a listener.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
+     */
+    public native <T extends Evented, E> T  off(String type, String layer, MapboxEventListener<E> listener);
+    
     @JsOverlay
     public final <E> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
         return once(eventType.name(), listener);

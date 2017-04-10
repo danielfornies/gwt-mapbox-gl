@@ -230,5 +230,15 @@ public enum MapEventType {
      * Fired whenever the map's pitch (tilt) changes.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:pitch
      */
-    pitch
+    pitch,
+    /**
+     * Fired whenever the map's pitch (tilt) begins a change as the result of either user interaction or methods such as Map#flyTo.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:pitchstart
+     */
+    pitchstart,
+    /**
+     * Fired immediately after the map's pitch (tilt) finishes changing as the result of either user interaction or methods such as Map#flyTo.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:pitchend
+     */
+    pitchend
 }
