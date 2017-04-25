@@ -59,7 +59,7 @@ public class GWTMapboxGLResources {
         /**
          * Returns the resource with this development version of mapbox gl js (not minimized).
          * This one is to be used for debugging purposes only.
-         * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.js
+         * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl-dev.js
          * @return The resource with this development version of mapbox gl js.
          */
         @Source("mapbox-gl-dev.js")
