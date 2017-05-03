@@ -222,6 +222,13 @@ public class MapboxMap extends AbstractEvented {
     public native MapboxMap getStyle();
     
     /**
+     * Returns a Boolean indicating whether the map's style is fully loaded.
+     * @return A Boolean indicating whether the style is fully loaded.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#isstyleloaded
+     */
+    public native boolean isStyleLoaded();
+    
+    /**
      * Adds a source to the map's style.
      * @param id The ID of the source to add. Must not conflict with existing sources.
      * @param source The source object, conforming to the Mapbox Style Specification's source definition .
@@ -236,6 +243,13 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#isSourceLoaded
      */
     public native boolean isSourceLoaded(String id);
+    
+    /**
+     * Returns a Boolean indicating whether all tiles in the viewport from all sources on the style are loaded.
+     * @return A Boolean indicating whether all tiles are loaded.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#aretilesloaded
+     */
+    public native boolean areTilesLoaded();
 
     /**
      * Removes a source from the map's style.
