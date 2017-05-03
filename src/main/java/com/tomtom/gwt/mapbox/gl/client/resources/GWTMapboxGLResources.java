@@ -49,7 +49,6 @@ public class GWTMapboxGLResources {
     public interface MapboxGLClientBundle extends ClientBundle {
 
         /**
-         * 
          * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.js
          * @return The resource with this production version of mapbox gl js.
          */
@@ -67,7 +66,7 @@ public class GWTMapboxGLResources {
 
         /**
          * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.css
-         * @return 
+         * @return The main mapbox GL CSS styles.
          */
         @Source("mapbox-gl.css")
         @NotStrict

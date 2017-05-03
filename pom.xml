@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.tomtom.gwt</groupId>
     <artifactId>gwt-mapbox-gl</artifactId>
-    <version>0.36.0.0-SNAPSHOT</version>
+    <version>0.37.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <parent>
         <groupId>com.tomtom</groupId>
@@ -13,6 +13,7 @@
     
     <description>GWT wrapper for the Mapbox GL JS SDK.
 This project version number corresponds to the mapbox-gl-js' one, with an extra suffix.
+See the resources packages for the embedded JS-CSS content.
 https://www.mapbox.com/mapbox-gl-js</description>
     
     <properties>
