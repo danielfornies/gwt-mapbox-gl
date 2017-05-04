@@ -8,7 +8,7 @@
     <parent>
         <groupId>com.tomtom</groupId>
         <artifactId>gwt-super</artifactId>
-        <version>3.ONP-SNAPSHOT</version>
+        <version>6.ONP-SNAPSHOT</version>
     </parent>
     
     <description>GWT wrapper for the Mapbox GL JS SDK.
