@@ -43,6 +43,7 @@ import com.tomtom.gwt.mapbox.gl.client.mapoptions.LightOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapboxStyle;
 import jsinterop.annotations.JsProperty;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.ImageLoadCallback;
+import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 
 /**
  * The Map object represents the map on your page. 
@@ -275,15 +276,21 @@ public class MapboxMap extends AbstractEvented {
     /**
      * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
      * An Map#error event will be fired if there is not enough space in the sprite to add this image.
+     * If some CORS-header exception occurs, it is caught and logged here, not thrown.
      * @param name The name of the image.
      * @param resource The resource pointing to the image file/URL.
      */
     @JsOverlay
     public final void addImage(String name, ImageResource resource) {
-        // NOTE: tried a new Image(resource).getUrl() approach, but for some strange reason, doesn't work. Perhaps the way the data is embedded in the URL there doesn't work here.
-        loadImage(resource.getSafeUri().asString(), (error, image) -> {
-            addImage(name, image);
-        });
+        // We surround the operation in a try-catch, to ensure an error is logged instead of thrown if some CORS-header issue makes it fail.
+        try {
+            // NOTE: tried a new Image(resource).getUrl() approach, but for some strange reason, doesn't work. Perhaps the way the data is embedded in the URL there doesn't work here.
+            loadImage(resource.getSafeUri().asString(), (error, image) -> {
+                addImage(name, image);
+            });
+        } catch(Throwable t) {
+            JSUtils.log(t);
+        }
     }
     
     /**
