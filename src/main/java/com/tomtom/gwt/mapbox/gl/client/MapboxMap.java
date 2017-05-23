@@ -7,6 +7,8 @@ import com.tomtom.gwt.mapbox.gl.client.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.events.AbstractEvented;
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
+import com.google.gwt.resources.client.ImageResource;
+import com.google.gwt.typedarrays.client.ArrayBufferViewNative;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.events.Evented;
@@ -36,9 +38,11 @@ import com.tomtom.gwt.mapbox.gl.client.layers.filter.Filter;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.AnimationOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.CameraOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.EaseToOptions;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.ImageOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.LightOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapboxStyle;
 import jsinterop.annotations.JsProperty;
+import com.tomtom.gwt.mapbox.gl.client.mapoptions.ImageLoadCallback;
 
 /**
  * The Map object represents the map on your page. 
@@ -267,7 +271,55 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getSource
      */
     public native <T extends MapSource> T getSource(String id);
+    
+    /**
+     * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
+     * An Map#error event will be fired if there is not enough space in the sprite to add this image.
+     * @param name The name of the image.
+     * @param resource The resource pointing to the image file/URL.
+     */
+    @JsOverlay
+    public final void addImage(String name, ImageResource resource) {
+        // NOTE: tried a new Image(resource).getUrl() approach, but for some strange reason, doesn't work. Perhaps the way the data is embedded in the URL there doesn't work here.
+        loadImage(resource.getSafeUri().asString(), (error, image) -> {
+            addImage(name, image);
+        });
+    }
+    
+    /**
+     * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
+     * An Map#error event will be fired if there is not enough space in the sprite to add this image.
+     * @param name The name of the image.
+     * @param image The image as an  HTMLImageElement.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
+     */
+    public native void addImage(String name, Element image);
 
+    /**
+     * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
+     * An Map#error event will be fired if there is not enough space in the sprite to add this image.
+     * @param name The name of the image.
+     * @param image  The image as an  ArrayBufferView (using the format of  ImageData#data )
+     * @param options Required options for the ArrayBufferView image.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
+     */
+    public native void addImage(String name, ArrayBufferViewNative image, ImageOptions options);
+    
+    /**
+     * Remove an image from the style (such as one used by icon-image or background-pattern).
+     * @param name The name of the image.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#removeimage
+     */
+    public native void removeImage(String name);
+    
+    /**
+     * Load an image from an external URL for use with Map#addImage. External domains must support CORS.
+     * @param url The URL of the image.
+     * @param callback Called when the image has loaded or with an error argument if there is an error.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#loadimage
+     */
+    public native void loadImage(String url, ImageLoadCallback callback);
+    
     /**
      * Adds the given Mapbox style layers to the map's style from bottom to top, in the given order.
      * @param layerOnTop An existing layer to insert the new layers before. If this argument is omitted, the layers will be appended to the end of the layers array.
