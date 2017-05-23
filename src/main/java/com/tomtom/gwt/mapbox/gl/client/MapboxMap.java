@@ -7,6 +7,7 @@ import com.tomtom.gwt.mapbox.gl.client.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.events.AbstractEvented;
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
+import com.google.gwt.dom.client.ImageElement;
 import com.google.gwt.resources.client.ImageResource;
 import com.google.gwt.typedarrays.client.ArrayBufferViewNative;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
@@ -43,6 +44,7 @@ import com.tomtom.gwt.mapbox.gl.client.mapoptions.LightOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapboxStyle;
 import jsinterop.annotations.JsProperty;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.ImageLoadCallback;
+import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 
 /**
  * The Map object represents the map on your page. 
@@ -275,15 +277,42 @@ public class MapboxMap extends AbstractEvented {
     /**
      * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
      * An Map#error event will be fired if there is not enough space in the sprite to add this image.
+     * If some CORS-header exception occurs, it is caught and logged here, not thrown.
+     * WARNING: Might not work in IE/Edge. https://stackoverflow.com/questions/33154646/data-uri-link-a-href-data-doesnt-work-in-microsoft-edge
      * @param name The name of the image.
      * @param resource The resource pointing to the image file/URL.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
      */
     @JsOverlay
     public final void addImage(String name, ImageResource resource) {
-        // NOTE: tried a new Image(resource).getUrl() approach, but for some strange reason, doesn't work. Perhaps the way the data is embedded in the URL there doesn't work here.
-        loadImage(resource.getSafeUri().asString(), (error, image) -> {
-            addImage(name, image);
-        });
+        addImage(name, resource.getSafeUri().asString());
+    }
+    
+    /**
+     * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
+     * An Map#error event will be fired if there is not enough space in the sprite to add this image.
+     * If some CORS-header exception occurs, it is caught and logged here, not thrown.
+     * WARNING: Might not work in IE/Edge if using data URIs. https://stackoverflow.com/questions/33154646/data-uri-link-a-href-data-doesnt-work-in-microsoft-edge
+     * @param name The name of the image.
+     * @param imageUrl The URL 
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
+     */
+    @JsOverlay
+    public final void addImage(String name, String imageUrl) {
+        // We surround the operation in a try-catch, to ensure an error is logged instead of thrown if some CORS-header issue makes it fail.
+        try {
+            // NOTE: tried a new Image(resource).getUrl() approach, but for some strange reason, doesn't work. Perhaps the way the data is embedded in the URL there doesn't work here.
+            loadImage(imageUrl, (error, image) -> {
+                if (error != null) {
+                    JSUtils.log(error);
+                }
+                if (image != null) {
+                    addImage(name, image);
+                }
+            });
+        } catch(Throwable t) {
+            JSUtils.log(t);
+        }
     }
     
     /**
@@ -293,7 +322,7 @@ public class MapboxMap extends AbstractEvented {
      * @param image The image as an  HTMLImageElement.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
      */
-    public native void addImage(String name, Element image);
+    public native void addImage(String name, ImageElement image);
 
     /**
      * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
