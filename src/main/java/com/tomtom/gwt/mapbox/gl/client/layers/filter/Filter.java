@@ -9,7 +9,7 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- *
+ * A filter selects specific features from a layer.
  * @see https://www.mapbox.com/mapbox-gl-style-spec/#types-filter
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
@@ -43,7 +43,6 @@ public final class Filter {
         return Filter.build(expressionArray);
     }
     
-    // TODO: check this one out
     @JsOverlay
     public static Filter build(Combine combine, Filter... filters) {
         Object[] combinedExpression = new Object[]{filters.length + 1};

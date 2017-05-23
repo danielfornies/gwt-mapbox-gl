@@ -1,8 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.util;
 
 /**
- *
- * 
+ * Common constants to be used along the project.
  */
 public class Constants {
     
