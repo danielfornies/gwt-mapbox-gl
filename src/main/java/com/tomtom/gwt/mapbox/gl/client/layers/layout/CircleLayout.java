@@ -11,13 +11,8 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class CircleLayout extends BaseLayout {
     
-    protected CircleLayout() {
+    // TODO: builder etc
+    
+    private CircleLayout() {
     }
-    
-    
-    
-    
-    // TODO
-    
-    
 }
