@@ -16,13 +16,8 @@ This project version number corresponds to the mapbox-gl-js' one, with an extra 
 See the resources packages for the embedded JS-CSS content.
 https://www.mapbox.com/mapbox-gl-js</description>
     
-    <description>GWT wrapper for the Mapbox GL JS SDK.
-This project version number corresponds to the mapbox-gl-js' one, with an extra suffix.
-See the resources packages for the embedded JS-CSS content.
-https://www.mapbox.com/mapbox-gl-js</description>
-    
     <properties>
-        <gwt-geojson.version>1.0-SNAPSHOT</gwt-geojson.version>
+        <gwt-geojson.version>1.3</gwt-geojson.version>
     </properties>
     
     <scm>
