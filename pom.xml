@@ -8,8 +8,13 @@
     <parent>
         <groupId>com.tomtom</groupId>
         <artifactId>gwt-super</artifactId>
-        <version>6.ONP-SNAPSHOT</version>
+        <version>9.ONP</version>
     </parent>
+    
+    <description>GWT wrapper for the Mapbox GL JS SDK.
+This project version number corresponds to the mapbox-gl-js' one, with an extra suffix.
+See the resources packages for the embedded JS-CSS content.
+https://www.mapbox.com/mapbox-gl-js</description>
     
     <description>GWT wrapper for the Mapbox GL JS SDK.
 This project version number corresponds to the mapbox-gl-js' one, with an extra suffix.
