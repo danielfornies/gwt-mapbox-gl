@@ -20,6 +20,11 @@ https://www.mapbox.com/mapbox-gl-js</description>
         <gwt-geojson.version>1.0-SNAPSHOT</gwt-geojson.version>
     </properties>
     
+    <scm>
+        <connection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</connection>
+        <developerConnection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</developerConnection>
+    </scm>
+    
     <dependencies>
         <dependency>
             <groupId>com.google.gwt</groupId>
