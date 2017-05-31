@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.tomtom.gwt</groupId>
     <artifactId>gwt-mapbox-gl</artifactId>
-    <version>0.37.0.0-SNAPSHOT</version>
+    <version>0.37.0.0.DEV-SNAPSHOT</version>
     <packaging>jar</packaging>
     <parent>
         <groupId>com.tomtom</groupId>
@@ -16,20 +16,12 @@ This project version number corresponds to the mapbox-gl-js' one, with an extra 
 See the resources packages for the embedded JS-CSS content.
 https://www.mapbox.com/mapbox-gl-js</description>
     
-    <description>GWT wrapper for the Mapbox GL JS SDK.
-This project version number corresponds to the mapbox-gl-js' one, with an extra suffix.
-See the resources packages for the embedded JS-CSS content.
-https://www.mapbox.com/mapbox-gl-js</description>
-    
-    <properties>
-        <gwt-geojson.version>1.0-SNAPSHOT</gwt-geojson.version>
-    </properties>
-    
     <scm>
         <connection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</connection>
         <developerConnection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</developerConnection>
+        <tag>HEAD</tag>
     </scm>
-    
+
     <dependencies>
         <dependency>
             <groupId>com.google.gwt</groupId>
@@ -42,6 +34,11 @@ https://www.mapbox.com/mapbox-gl-js</description>
         </dependency>
     </dependencies>
     
+    <properties>
+        <gwt-geojson.version>1.6</gwt-geojson.version>
+        <additionalparam>-Xdoclint:none</additionalparam>
+    </properties>
+
     <build>
         <resources>
             <resource>
