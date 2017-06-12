@@ -16,7 +16,8 @@ import com.google.gwt.resources.client.TextResource;
 public class GWTMapboxGLResources {
 
     static {
-        // load mapbox-gl-supported.js
+        // MapboxGLClientBundle will be loaded lazily but before that it is needed to check whether Mapbox GL is supported by the browser.
+        // Therefore, load MapboxGLSupportBundle during initialization.
         MapboxGLSupportBundle clientBundle = GWT.create(MapboxGLSupportBundle.class);
         ScriptInjector.fromString(clientBundle.getMapboxGLSupportJS().getText()).setWindow(ScriptInjector.TOP_WINDOW).inject();
     }
@@ -57,12 +58,15 @@ public class GWTMapboxGLResources {
     public static native boolean isMapboxGLSupported() /*-{
         // mapboxgl.supported() does not check existence of ArrayBuffer and ArrayBuffer.isView
         // so it needs to be checked additionally
-        if (!(ArrayBuffer && !!ArrayBuffer.isView)) {
+        if (!(ArrayBuffer && ArrayBuffer.isView)) {
             return false;
         }
         return $wnd.mapboxgl.supported();
     }-*/;
 
+    /**
+     * Client bundle containing a JavaScript code for checking Mapbox GL browser support.
+     */
     public interface MapboxGLSupportBundle extends ClientBundle {
         /**
          * https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-supported/v1.2.0/mapbox-gl-supported.js
