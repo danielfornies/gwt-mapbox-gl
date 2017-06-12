@@ -15,6 +15,13 @@ import com.google.gwt.resources.client.TextResource;
  */
 public class GWTMapboxGLResources {
 
+    static {
+        // MapboxGLClientBundle will be loaded lazily but before that it is needed to check whether Mapbox GL is supported by the browser.
+        // Therefore, load MapboxGLSupportBundle during initialization.
+        MapboxGLSupportBundle clientBundle = GWT.create(MapboxGLSupportBundle.class);
+        ScriptInjector.fromString(clientBundle.getMapboxGLSupportJS().getText()).setWindow(ScriptInjector.TOP_WINDOW).inject();
+    }
+
     private static boolean initialized = false;
     
     private GWTMapboxGLResources() {
@@ -42,7 +49,33 @@ public class GWTMapboxGLResources {
             initialized = true;
         }
     }
-    
+
+    /**
+     * Returns a boolean indicating whether the browser supports Mapbox GL JS.
+     * @see https://www.mapbox.com/mapbox-gl-js/example/check-for-support/
+     * @return true if it is supported
+     */
+    public static native boolean isMapboxGLSupported() /*-{
+        // mapboxgl.supported() does not check existence of ArrayBuffer and ArrayBuffer.isView
+        // so it needs to be checked additionally
+        if (!(ArrayBuffer && ArrayBuffer.isView)) {
+            return false;
+        }
+        return $wnd.mapboxgl.supported();
+    }-*/;
+
+    /**
+     * Client bundle containing a JavaScript code for checking Mapbox GL browser support.
+     */
+    public interface MapboxGLSupportBundle extends ClientBundle {
+        /**
+         * https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-supported/v1.2.0/mapbox-gl-supported.js
+         * @return The resource with this production version of mapbox-gl-supported.js.
+         */
+        @Source("mapbox-gl-supported.js")
+        TextResource getMapboxGLSupportJS();
+    }
+
     /**
      * Client bundle containing references to the resources needed to use this library (JS and base CSS).
      */
