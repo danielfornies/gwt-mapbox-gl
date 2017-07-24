@@ -2,6 +2,7 @@ package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 
 /**
  * Constants with paint property names.
+ * They need to be to be set by object[property-name] since their names contain "-" and are illegal to be set as object.property-name.
  */
 public final class PaintProperties {
 

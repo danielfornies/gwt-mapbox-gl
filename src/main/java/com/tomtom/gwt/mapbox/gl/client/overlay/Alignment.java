@@ -1,8 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.overlay;
 
 /**
- *
- * 
+ * Possible alignment values for an overlay rendered element on the map.
  */
 public enum Alignment {
     TOP_CENTER,
