@@ -1,9 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client;
 
-import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;
-import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
@@ -146,18 +144,12 @@ public class LngLatBounds {
     /**
      * LngLatBounds builder object, convenient to keep a mutable version.
      */
-    @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static class Builder {
 
         // This convenience local reference can be mutated, since we can access its private setters from this builder.
         private final LngLatBounds bounds;
 
-        @JsOverlay
-        public static final Builder newBuilder(LngLat sw, LngLat ne) {
-            return new Builder(sw, ne);
-        }
-        
-        private Builder(LngLat sw, LngLat ne) {
+        public Builder(LngLat sw, LngLat ne) {
             bounds = new LngLatBounds(sw, ne);
         }
         
@@ -166,8 +158,7 @@ public class LngLatBounds {
          * @param northEast The north east corner.
          * @return This Builder.
          */
-        @JsOverlay
-        public final Builder withNorthEast(LngLat northEast) {
+        public Builder withNorthEast(LngLat northEast) {
             bounds.setNorthEast(northEast);
             return this;
         }
@@ -177,8 +168,7 @@ public class LngLatBounds {
          * @param southWest The south west corner.
          * @return This Builder.
          */
-        @JsOverlay
-        public final Builder withSouthWest(LngLat southWest) {
+        public Builder withSouthWest(LngLat southWest) {
             bounds.setSouthWest(southWest);
             return this;
         }
@@ -189,8 +179,7 @@ public class LngLatBounds {
          * @param coordinates Coordinates to extend these bounds with.
          * @return This Builder.
          */
-        @JsOverlay
-        public final Builder extend(LngLat coordinates) {
+        public Builder extend(LngLat coordinates) {
             bounds.extend(coordinates);
             return this;
         }
@@ -201,14 +190,15 @@ public class LngLatBounds {
          * @param bounds The bounds to extend with.
          * @return This Builder.
          */
-        @JsOverlay
-        public final Builder extend(LngLatBounds bounds) {
+        public Builder extend(LngLatBounds bounds) {
             this.bounds.extend(bounds);
             return this;
         }
         
-        @JsOverlay
-        public final LngLatBounds build() {
+        /**
+         * @return A new LngLatBounds with the current state of this Builder.
+         */
+        public LngLatBounds build() {
             return new LngLatBounds(bounds.getSouthWest(), bounds.getNorthEast());
         }
     }
