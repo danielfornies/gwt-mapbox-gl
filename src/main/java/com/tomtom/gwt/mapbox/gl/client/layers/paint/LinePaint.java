@@ -132,7 +132,7 @@ public class LinePaint extends AbstractPaint {
 
         @JsOverlay
         public Builder withBlur(int blurPixels) {
-            JSUtils.setObject(this, LINE_BLUR, blurPixels);
+            JSUtils.setInt(this, LINE_BLUR, blurPixels);
             return this;
         }
         
