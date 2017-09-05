@@ -35,7 +35,7 @@ https://www.mapbox.com/mapbox-gl-js</description>
     </dependencies>
     
     <properties>
-        <gwt-geojson.version>1.DEV.0-SNAPSHOT</gwt-geojson.version>
+        <gwt-geojson.version>1.7</gwt-geojson.version>
         <additionalparam>-Xdoclint:none</additionalparam>
     </properties>
 
