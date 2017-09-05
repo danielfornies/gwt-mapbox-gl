@@ -378,6 +378,36 @@ public class MapboxMap extends AbstractEvented {
         }
         return this;
     }
+    
+    /**
+     * Adds the given Mapbox style layers to the map's style from bottom to top, in the given order.
+     * @param layerIDOnTop The ID of an existing layer to insert the new layers before. If this argument is omitted, the layers will be appended to the end of the layers array.
+     * @param layers The layers to add, from bottom to top.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#addLayer
+     */
+    @JsOverlay
+    public final MapboxMap addLayers(String layerIDOnTop, Collection<MapLayer> layers) {
+        layers.forEach((layer) -> {
+            addLayer(layer, layerIDOnTop);
+        });
+        return this;
+    }
+    
+    /**
+     * Adds the given Mapbox style layers to the map's style from bottom to top, in the given order.
+     * @param layerIDOnTop The ID of an existing layer to insert the new layers before. If this argument is omitted, the layers will be appended to the end of the layers array.
+     * @param layers The layers to add, from bottom to top.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#addLayer
+     */
+    @JsOverlay
+    public final MapboxMap addLayers(String layerIDOnTop, MapLayer... layers) {
+        for (MapLayer layer : layers) {
+            addLayer(layer, layerIDOnTop);
+        }
+        return this;
+    }
 
     /**
      * Adds a Mapbox style layer to the map's style.
