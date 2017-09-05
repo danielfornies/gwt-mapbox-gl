@@ -36,8 +36,14 @@ public class Marker<W extends Widget> extends AbstractOverlay<W> {
     
     @JsOverlay
     public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options, String wrapperElementClassName) {
+        return build(widget, options, wrapperElementClassName, null);
+    }
+
+    @JsOverlay
+    public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options, String wrapperElementClassName, String title) {
         // we use a wrapper element to allow for dragging if necessary:
         Element wrapperElement = createWrapper(widget, wrapperElementClassName);
+        wrapperElement.setTitle(title);
         return (Marker)new Marker(wrapperElement, options).withWidget(widget, wrapperElement);
     }
     
