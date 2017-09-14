@@ -1053,6 +1053,24 @@ public class MapboxMap extends AbstractEvented {
     public final <E> MapboxMap on(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
         return on(eventType.name(), layer.getId(), listener);
     }
+    
+    /**
+     * Adds a listener for events of a specified type occurring on features in a specified style layer.
+     *
+     * @param <E>
+     * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
+     * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
+     * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
+     * @param layerID The ID of a style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the
+     * matching features.
+     * @param listener The function to be called when the event is fired.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
+     */
+    @JsOverlay
+    public final <E> MapboxMap on(MapEventType eventType, String layerID, MapboxEventListener<E> listener) {
+        return on(eventType.name(), layerID, listener);
+    }
 
     /**
      * Adds a listener for events of a specified type occurring on features in a specified style layer.

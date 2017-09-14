@@ -57,6 +57,23 @@ public enum MapEventType {
      */
     mousemove,
     /**
+     * Fired when a pointing device (usually a mouse) enters a visible portion of a specified layer from outside that layer or outside the map canvas.
+     * This event can only be listened for via the three-argument version of Map#on, where the second argument specifies the desired layer.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:mouseenter
+     */
+    mouseenter,
+    /**
+     * Fired when a pointing device (usually a mouse) leaves a visible portion of a specified layer, or leaves the map canvas. 
+     * This event can only be listened for via the three-argument version of Map#on, where the second argument specifies the desired layer.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:mouseleave
+     */
+    mouseleave,
+    /**
+     * Synonym for mouseenter.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:mouseover
+     */
+    mouseover,
+    /**
      * Fired when a touch point is placed on the map.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:touchstart
      */
