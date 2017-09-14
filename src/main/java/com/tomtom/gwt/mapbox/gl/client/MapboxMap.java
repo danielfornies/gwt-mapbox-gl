@@ -9,7 +9,6 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.ImageElement;
 import com.google.gwt.resources.client.ImageResource;
-import com.google.gwt.typedarrays.client.ArrayBufferViewNative;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.events.Evented;
@@ -39,7 +38,6 @@ import com.tomtom.gwt.mapbox.gl.client.layers.filter.Filter;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.AnimationOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.CameraOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.EaseToOptions;
-import com.tomtom.gwt.mapbox.gl.client.mapoptions.ImageOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.LightOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapboxStyle;
 import jsinterop.annotations.JsProperty;
@@ -323,16 +321,6 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
      */
     public native void addImage(String name, ImageElement image);
-
-    /**
-     * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
-     * An Map#error event will be fired if there is not enough space in the sprite to add this image.
-     * @param name The name of the image.
-     * @param image  The image as an  ArrayBufferView (using the format of  ImageData#data )
-     * @param options Required options for the ArrayBufferView image.
-     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
-     */
-    public native void addImage(String name, ArrayBufferViewNative image, ImageOptions options);
     
     /**
      * Remove an image from the style (such as one used by icon-image or background-pattern).
