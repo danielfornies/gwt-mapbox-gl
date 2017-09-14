@@ -236,9 +236,29 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Scales the original size of the icon by the provided factor. The new pixel size of the image will be the original pixel size multiplied by icon-size. 1 is the original size; 3 triples the size of the image.
+         * Scales less than 1 will scale the image down.
+         * @param iconSizeFactor Units in factor of the original icon size. Defaults to 1. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-size
+         */
         @JsOverlay
-        public Builder withIconSize(int iconSizeFactor) {
-            JSUtils.setInt(this, ICON_SIZE, iconSizeFactor);
+        public Builder withIconSize(double iconSizeFactor) {
+            JSUtils.setDouble(this, ICON_SIZE, iconSizeFactor);
+            return this;
+        }
+        
+        /**
+         * Scales the original size of the icon by the provided factor. The new pixel size of the image will be the original pixel size multiplied by icon-size. 1 is the original size; 3 triples the size of the image.
+         * Scales less than 1 will scale the image down.
+         * @param propertyFunction Interpolated or piecewise function to change the size depending on zoom level and-or property.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-size
+         */
+        @JsOverlay
+        public Builder withIconSize(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, ICON_SIZE, propertyFunction);
             return this;
         }
         
