@@ -8461,7 +8461,7 @@ module.exports.POLAR_RADIUS = 6356752.3142;
 
 },{}],51:[function(require,module,exports){
 module.exports={
-  "version": "0.40.0"
+  "version": "0.40.1"
 }
 },{}],52:[function(require,module,exports){
 'use strict';//      
@@ -15960,21 +15960,29 @@ var CanvasSource = (function (ImageSource) {
      */
     // setCoordinates inherited from ImageSource
 
-    CanvasSource.prototype.readCanvas = function readCanvas () {
+    CanvasSource.prototype.readCanvas = function readCanvas (resize         ) {
+        var this$1 = this;
+
         // We *should* be able to use a pure HTMLCanvasElement in
         // texImage2D/texSubImage2D (in ImageSource#_prepareImage), but for
         // some reason this breaks the map on certain GPUs (see #4262).
 
         if (this.context instanceof CanvasRenderingContext2D) {
-            return this.context.getImageData(0, 0, this.width, this.height);
+            this.canvasData = this.context.getImageData(0, 0, this.width, this.height);
         } else if (this.context instanceof WebGLRenderingContext) {
             var gl = this.context;
             var data = new Uint8Array(this.width * this.height * 4);
             gl.readPixels(0, 0, this.width, this.height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+
             if (!this.secondaryContext) { this.secondaryContext = window.document.createElement('canvas').getContext('2d'); }
-            var imageData = this.secondaryContext.createImageData(this.width, this.height);
-            imageData.data.set(data);
-            return imageData;
+            if (!this.canvasData || resize) {
+                this.canvasData = this.secondaryContext.createImageData(this.width, this.height);
+            }
+
+            // WebGL reads pixels bottom to top, but for our ImageData object we need top to bottom: flip here
+            for (var i = this.height - 1, j = 0; i >= 0; i--, j++) {
+                this$1.canvasData.data.set(data.subarray(i * this$1.width * 4, (i + 1) * this$1.width * 4), j * this$1.width * 4);
+            }
         }
     };
 
@@ -15991,12 +15999,17 @@ var CanvasSource = (function (ImageSource) {
         if (this._hasInvalidDimensions()) { return; }
 
         if (Object.keys(this.tiles).length === 0) { return; } // not enough data for current position
-        var canvasData = this.readCanvas();
-        if (!canvasData) {
+
+        var reread = this.animate || !this.canvasData || resize;
+        if (reread) {
+            this.readCanvas(resize);
+        }
+
+        if (!this.canvasData) {
             this.fire('error', new Error('Could not read canvas data.'));
             return;
         }
-        this._prepareImage(this.map.painter.gl, canvasData, resize);
+        this._prepareImage(this.map.painter.gl, this.canvasData, resize);
     };
 
     CanvasSource.prototype.serialize = function serialize ()         {
@@ -16104,7 +16117,7 @@ var GeoJSONSource = (function (Evented) {
         this.dispatcher = dispatcher;
         this.setEventedParent(eventedParent);
 
-        this._data = options.data;
+        this._data = (options.data     );
         this._options = util.extend({}, options);
 
         if (options.maxzoom !== undefined) { this.maxzoom = options.maxzoom; }
@@ -16649,4 +16662,5457 @@ var ImageSource = (function (Evented) {
     ImageSource.prototype._finishLoading = function _finishLoading () {
         if (this.map) {
             this.setCoordinates(this.coordinates);
-            this.fire('data', {dataType: 'source', sourceDataType: 'metadata'})
+            this.fire('data', {dataType: 'source', sourceDataType: 'metadata'});
+        }
+    };
+
+    ImageSource.prototype.onAdd = function onAdd (map     ) {
+        this.map = map;
+        this.load();
+    };
+
+    /**
+     * Sets the image's coordinates and re-renders the map.
+     *
+     * @param {Array<Array<number>>} coordinates Four geographical coordinates,
+     *   represented as arrays of longitude and latitude numbers, which define the corners of the image.
+     *   The coordinates start at the top left corner of the image and proceed in clockwise order.
+     *   They do not have to represent a rectangle.
+     * @returns {ImageSource} this
+     */
+    ImageSource.prototype.setCoordinates = function setCoordinates (coordinates                                                                          ) {
+        this.coordinates = coordinates;
+
+        // Calculate which mercator tile is suitable for rendering the video in
+        // and create a buffer with the corner coordinates. These coordinates
+        // may be outside the tile, because raster tiles aren't clipped when rendering.
+
+        var map = this.map;
+
+        // transform the geo coordinates into (zoom 0) tile space coordinates
+        var cornerZ0Coords = coordinates.map(function (coord) {
+            return map.transform.locationCoordinate(LngLat.convert(coord)).zoomTo(0);
+        });
+
+        // Compute the coordinates of the tile we'll use to hold this image's
+        // render data
+        var centerCoord = this.centerCoord = util.getCoordinatesCenter(cornerZ0Coords);
+        // `column` and `row` may be fractional; round them down so that they
+        // represent integer tile coordinates
+        centerCoord.column = Math.floor(centerCoord.column);
+        centerCoord.row = Math.floor(centerCoord.row);
+        this.coord = new TileCoord(centerCoord.zoom, centerCoord.column, centerCoord.row);
+
+        // Constrain min/max zoom to our tile's zoom level in order to force
+        // SourceCache to request this tile (no matter what the map's zoom
+        // level)
+        this.minzoom = this.maxzoom = centerCoord.zoom;
+
+        // Transform the corner coordinates into the coordinate space of our
+        // tile.
+        var tileCoords = cornerZ0Coords.map(function (coord) {
+            var zoomedCoord = coord.zoomTo(centerCoord.zoom);
+            return new Point(
+                Math.round((zoomedCoord.column - centerCoord.column) * EXTENT),
+                Math.round((zoomedCoord.row - centerCoord.row) * EXTENT));
+        });
+
+        this._boundsArray = new RasterBoundsArray();
+        this._boundsArray.emplaceBack(tileCoords[0].x, tileCoords[0].y, 0, 0);
+        this._boundsArray.emplaceBack(tileCoords[1].x, tileCoords[1].y, EXTENT, 0);
+        this._boundsArray.emplaceBack(tileCoords[3].x, tileCoords[3].y, 0, EXTENT);
+        this._boundsArray.emplaceBack(tileCoords[2].x, tileCoords[2].y, EXTENT, EXTENT);
+
+        if (this.boundsBuffer) {
+            this.boundsBuffer.destroy();
+            delete this.boundsBuffer;
+        }
+
+        this.fire('data', {dataType:'source', sourceDataType: 'content'});
+        return this;
+    };
+
+    ImageSource.prototype.prepare = function prepare () {
+        if (Object.keys(this.tiles).length === 0 || !this.image) { return; }
+        this._prepareImage(this.map.painter.gl, this.image);
+    };
+
+    ImageSource.prototype._prepareImage = function _prepareImage (gl                       , image                , resize          ) {
+        var this$1 = this;
+
+        if (!this.boundsBuffer) {
+            this.boundsBuffer = new VertexBuffer(gl, this._boundsArray);
+        }
+
+        if (!this.boundsVAO) {
+            this.boundsVAO = new VertexArrayObject();
+        }
+
+        if (!this.textureLoaded) {
+            this.textureLoaded = true;
+            this.texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        } else if (resize) {
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        } else if (image instanceof window.HTMLVideoElement || image instanceof window.ImageData) {
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        }
+
+        for (var w in this$1.tiles) {
+            var tile = this$1.tiles[w];
+            if (tile.state !== 'loaded') {
+                tile.state = 'loaded';
+                tile.texture = this$1.texture;
+            }
+        }
+    };
+
+    ImageSource.prototype.loadTile = function loadTile (tile      , callback                ) {
+        // We have a single tile -- whoose coordinates are this.coord -- that
+        // covers the image we want to render.  If that's the one being
+        // requested, set it up with the image; otherwise, mark the tile as
+        // `errored` to indicate that we have no data for it.
+        // If the world wraps, we may have multiple "wrapped" copies of the
+        // single tile.
+        if (this.coord && this.coord.toString() === tile.coord.toString()) {
+            this.tiles[String(tile.coord.w)] = tile;
+            tile.buckets = {};
+            callback(null);
+        } else {
+            tile.state = 'errored';
+            callback(null);
+        }
+    };
+
+    ImageSource.prototype.serialize = function serialize ()         {
+        return {
+            type: 'image',
+            url: this.options.url,
+            coordinates: this.coordinates
+        };
+    };
+
+    return ImageSource;
+}(Evented));
+
+module.exports = ImageSource;
+
+},{"../data/extent":58,"../data/raster_bounds_array":64,"../geo/lng_lat":68,"../gl/vertex_buffer":72,"../render/vertex_array_object":94,"../util/ajax":202,"../util/browser":203,"../util/evented":211,"../util/util":224,"../util/window":205,"./tile_coord":111,"@mapbox/point-geometry":2}],102:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var ajax = require('../util/ajax');
+var browser = require('../util/browser');
+var normalizeURL = require('../util/mapbox').normalizeSourceURL;
+
+                                                        
+
+module.exports = function(options     , requestTransformFn                          , callback                    ) {
+    var loaded = function(err, tileJSON     ) {
+        if (err) {
+            return callback(err);
+        } else if (tileJSON) {
+            var result      = util.pick(tileJSON, ['tiles', 'minzoom', 'maxzoom', 'attribution', 'mapbox_logo', 'bounds']);
+
+            if (tileJSON.vector_layers) {
+                result.vectorLayers = tileJSON.vector_layers;
+                result.vectorLayerIds = result.vectorLayers.map(function (layer) { return layer.id; });
+            }
+
+            callback(null, result);
+        }
+    };
+
+    if (options.url) {
+        ajax.getJSON(requestTransformFn(normalizeURL(options.url), ajax.ResourceType.Source), loaded);
+    } else {
+        browser.frame(function () { return loaded(null, options); });
+    }
+};
+
+},{"../util/ajax":202,"../util/browser":203,"../util/mapbox":218,"../util/util":224}],103:[function(require,module,exports){
+'use strict';//      
+
+var EXTENT = require('../data/extent');
+
+                                          
+
+/**
+ * Converts a pixel value at a the given zoom level to tile units.
+ *
+ * The shaders mostly calculate everything in tile units so style
+ * properties need to be converted from pixels to tile units using this.
+ *
+ * For example, a translation by 30 pixels at zoom 6.5 will be a
+ * translation by pixelsToTileUnits(30, 6.5) tile units.
+ *
+ * @returns value in tile units
+ * @private
+ */
+module.exports = function(tile                                      , pixelValue        , z        )         {
+    return pixelValue * (EXTENT / (tile.tileSize * Math.pow(2, z - tile.coord.z)));
+};
+
+},{"../data/extent":58}],104:[function(require,module,exports){
+'use strict';//      
+
+var TileCoord = require('./tile_coord');
+
+                                              
+                                                   
+                                                
+
+exports.rendered = function(sourceCache             ,
+                            styleLayers                        ,
+                            queryGeometry                   ,
+                            params                                                        ,
+                            zoom        ,
+                            bearing        ) {
+    var tilesIn = sourceCache.tilesIn(queryGeometry);
+
+    tilesIn.sort(sortTilesIn);
+
+    var renderedFeatureLayers = [];
+    for (var i = 0, list = tilesIn; i < list.length; i += 1) {
+        var tileIn = list[i];
+
+        renderedFeatureLayers.push({
+            wrappedTileID: tileIn.coord.wrapped().id,
+            queryResults: tileIn.tile.queryRenderedFeatures(
+                styleLayers,
+                tileIn.queryGeometry,
+                tileIn.scale,
+                params,
+                bearing)
+        });
+    }
+
+    return mergeRenderedFeatureLayers(renderedFeatureLayers);
+};
+
+exports.source = function(sourceCache             , params     ) {
+    var tiles = sourceCache.getRenderableIds().map(function (id) {
+        return sourceCache.getTileByID(id);
+    });
+
+    var result = [];
+
+    var dataTiles = {};
+    for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        var dataID = new TileCoord(Math.min(tile.sourceMaxZoom, tile.coord.z), tile.coord.x, tile.coord.y, 0).id;
+        if (!dataTiles[dataID]) {
+            dataTiles[dataID] = true;
+            tile.querySourceFeatures(result, params);
+        }
+    }
+
+    return result;
+};
+
+function sortTilesIn(a, b) {
+    var coordA = a.coord;
+    var coordB = b.coord;
+    return (coordA.z - coordB.z) || (coordA.y - coordB.y) || (coordA.w - coordB.w) || (coordA.x - coordB.x);
+}
+
+function mergeRenderedFeatureLayers(tiles) {
+    // Merge results from all tiles, but if two tiles share the same
+    // wrapped ID, don't duplicate features between the two tiles
+    var result = {};
+    var wrappedIDLayerMap = {};
+    for (var i = 0, list = tiles; i < list.length; i += 1) {
+        var tile = list[i];
+
+        var queryResults = tile.queryResults;
+        var wrappedID = tile.wrappedTileID;
+        var wrappedIDLayers = wrappedIDLayerMap[wrappedID] = wrappedIDLayerMap[wrappedID] || {};
+        for (var layerID in queryResults) {
+            var tileFeatures = queryResults[layerID];
+            var wrappedIDFeatures = wrappedIDLayers[layerID] = wrappedIDLayers[layerID] || {};
+            var resultFeatures = result[layerID] = result[layerID] || [];
+            for (var i$1 = 0, list$1 = tileFeatures; i$1 < list$1.length; i$1 += 1) {
+                var tileFeature = list$1[i$1];
+
+                if (!wrappedIDFeatures[tileFeature.featureIndex]) {
+                    wrappedIDFeatures[tileFeature.featureIndex] = true;
+                    resultFeatures.push(tileFeature.feature);
+                }
+            }
+        }
+    }
+    return result;
+}
+
+},{"./tile_coord":111}],105:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var ajax = require('../util/ajax');
+var Evented = require('../util/evented');
+var loadTileJSON = require('./load_tilejson');
+var normalizeURL = require('../util/mapbox').normalizeTileURL;
+var TileBounds = require('./tile_bounds');
+
+                                     
+                                          
+                                 
+                                                 
+                               
+
+var RasterTileSource = (function (Evented) {
+    function RasterTileSource(id        , options                         , dispatcher            , eventedParent         ) {
+        Evented.call(this);
+        this.id = id;
+        this.dispatcher = dispatcher;
+        this.setEventedParent(eventedParent);
+
+        this.type = 'raster';
+        this.minzoom = 0;
+        this.maxzoom = 22;
+        this.roundZoom = true;
+        this.scheme = 'xyz';
+        this.tileSize = 512;
+        this._loaded = false;
+
+        this._options = util.extend({}, options);
+        util.extend(this, util.pick(options, ['url', 'scheme', 'tileSize']));
+    }
+
+    if ( Evented ) RasterTileSource.__proto__ = Evented;
+    RasterTileSource.prototype = Object.create( Evented && Evented.prototype );
+    RasterTileSource.prototype.constructor = RasterTileSource;
+
+    RasterTileSource.prototype.load = function load () {
+        var this$1 = this;
+
+        this.fire('dataloading', {dataType: 'source'});
+        loadTileJSON(this._options, this.map._transformRequest, function (err, tileJSON) {
+            if (err) {
+                this$1.fire('error', err);
+            } else if (tileJSON) {
+                util.extend(this$1, tileJSON);
+                if (tileJSON.bounds) { this$1.tileBounds = new TileBounds(tileJSON.bounds, this$1.minzoom, this$1.maxzoom); }
+
+                // `content` is included here to prevent a race condition where `Style#_updateSources` is called
+                // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives
+                // ref: https://github.com/mapbox/mapbox-gl-js/pull/4347#discussion_r104418088
+                this$1.fire('data', {dataType: 'source', sourceDataType: 'metadata'});
+                this$1.fire('data', {dataType: 'source', sourceDataType: 'content'});
+            }
+        });
+    };
+
+    RasterTileSource.prototype.onAdd = function onAdd (map     ) {
+        this.map = map;
+        this.load();
+    };
+
+    RasterTileSource.prototype.serialize = function serialize () {
+        return util.extend({}, this._options);
+    };
+
+    RasterTileSource.prototype.hasTile = function hasTile (coord           ) {
+        return !this.tileBounds || this.tileBounds.contains(coord, this.maxzoom);
+    };
+
+    RasterTileSource.prototype.loadTile = function loadTile (tile      , callback                ) {
+        var this$1 = this;
+
+        var url = normalizeURL(tile.coord.url(this.tiles, null, this.scheme), this.url, this.tileSize);
+
+        tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), function (err, img) {
+            delete tile.request;
+
+            if (tile.aborted) {
+                this$1.state = 'unloaded';
+                callback(null);
+            } else if (err) {
+                this$1.state = 'errored';
+                callback(err);
+            } else if (img) {
+                if (this$1.map._refreshExpiredTiles) { tile.setExpiryData(img); }
+                delete (img     ).cacheControl;
+                delete (img     ).expires;
+
+                var gl = this$1.map.painter.gl;
+                tile.texture = this$1.map.painter.getTileTexture(img.width);
+                if (tile.texture) {
+                    gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                } else {
+                    tile.texture = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, (true     ));
+                    if (this$1.map.painter.extTextureFilterAnisotropic) {
+                        gl.texParameterf(gl.TEXTURE_2D, this$1.map.painter.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, this$1.map.painter.extTextureFilterAnisotropicMax);
+                    }
+
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                    tile.texture.size = img.width;
+                }
+                gl.generateMipmap(gl.TEXTURE_2D);
+
+                tile.state = 'loaded';
+
+                callback(null);
+            }
+        });
+    };
+
+    RasterTileSource.prototype.abortTile = function abortTile (tile      ) {
+        if (tile.request) {
+            tile.request.abort();
+            delete tile.request;
+        }
+    };
+
+    RasterTileSource.prototype.unloadTile = function unloadTile (tile      ) {
+        if (tile.texture) { this.map.painter.saveTileTexture(tile.texture); }
+    };
+
+    return RasterTileSource;
+}(Evented));
+
+module.exports = RasterTileSource;
+
+},{"../util/ajax":202,"../util/evented":211,"../util/mapbox":218,"../util/util":224,"./load_tilejson":102,"./tile_bounds":110}],106:[function(require,module,exports){
+'use strict';//      
+
+var ajax = require('../util/ajax');
+var Evented = require('../util/evented');
+var window = require('../util/window');
+
+var pluginRequested = false;
+var pluginBlobURL = null;
+
+module.exports.evented = new Evented();
+
+                                            
+
+module.exports.registerForPluginAvailability = function(
+    callback                                                                       
+) {
+    if (pluginBlobURL) {
+        callback({ pluginBlobURL: pluginBlobURL, errorCallback: module.exports.errorCallback});
+    } else {
+        module.exports.evented.once('pluginAvailable', callback);
+    }
+    return callback;
+};
+
+// Exposed so it can be stubbed out by tests
+module.exports.createBlobURL = function(response        ) {
+    return window.URL.createObjectURL(new window.Blob([response.data], {type: "text/javascript"}));
+};
+// Only exposed for tests
+module.exports.clearRTLTextPlugin = function() {
+    pluginRequested = false;
+    pluginBlobURL = null;
+};
+
+module.exports.setRTLTextPlugin = function(pluginURL        , callback               ) {
+    if (pluginRequested) {
+        throw new Error('setRTLTextPlugin cannot be called multiple times.');
+    }
+    pluginRequested = true;
+    module.exports.errorCallback = callback;
+    ajax.getArrayBuffer({ url: pluginURL }, function (err, response) {
+        if (err) {
+            callback(err);
+        } else if (response) {
+            pluginBlobURL = module.exports.createBlobURL(response);
+            module.exports.evented.fire('pluginAvailable', { pluginBlobURL: pluginBlobURL, errorCallback: callback });
+        }
+    });
+};
+
+module.exports.applyArabicShaping = (null           );
+module.exports.processBidirectionalText = (null                                           );
+
+},{"../util/ajax":202,"../util/evented":211,"../util/window":205}],107:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+
+                                                 
+                                           
+                                 
+                               
+                                          
+
+/**
+ * The `Source` interface must be implemented by each source type, including "core" types (`vector`, `raster`,
+ * `video`, etc.) and all custom, third-party types.
+ *
+ * @class Source
+ * @private
+ *
+ * @param {string} id The id for the source. Must not be used by any existing source.
+ * @param {Object} options Source options, specific to the source type (except for `options.type`, which is always
+ * required).
+ * @param {string} options.type The source type, matching the value of `name` used in {@link Style#addSourceType}.
+ * @param {Dispatcher} dispatcher A {@link Dispatcher} instance, which can be used to send messages to the workers.
+ *
+ * @fires data with `{dataType: 'source', sourceDataType: 'metadata'}` to indicate that any necessary metadata
+ * has been loaded so that it's okay to call `loadTile`; and with `{dataType: 'source', sourceDataType: 'content'}`
+ * to indicate that the source data has changed, so that any current caches should be flushed.
+ * @property {string} id The id for the source.  Must match the id passed to the constructor.
+ * @property {number} minzoom
+ * @property {number} maxzoom
+ * @property {boolean} isTileClipped `false` if tiles can be drawn outside their boundaries, `true` if they cannot.
+ * @property {boolean} reparseOverscaled `true` if tiles should be sent back to the worker for each overzoomed zoom
+ * level, `false` if not.
+ * @property {boolean} roundZoom `true` if zoom levels are rounded to the nearest integer in the source data, `false`
+ * if they are floor-ed to the nearest integer.
+ */
+                         
+       
+                                                                                                
+                                                                                                              
+       
+                                 
+
+                  
+               
+                    
+                    
+                     
+                         
+
+                        
+                                
+                                   
+
+                                                                                                                 
+
+                                            
+
+                                
+                                   
+
+                                                         
+                                             
+                                      
+                                       
+
+       
+                                                                                               
+                                                                                                     
+                              
+       
+                        
+
+                          
+ 
+
+var sourceTypes                            = {
+    'vector': require('../source/vector_tile_source'),
+    'raster': require('../source/raster_tile_source'),
+    'geojson': require('../source/geojson_source'),
+    'video': require('../source/video_source'),
+    'image': require('../source/image_source'),
+    'canvas': require('../source/canvas_source')
+};
+
+/*
+ * Creates a tiled data source instance given an options object.
+ *
+ * @param id
+ * @param {Object} source A source definition object compliant with
+ * [`mapbox-gl-style-spec`](https://www.mapbox.com/mapbox-gl-style-spec/#sources) or, for a third-party source type,
+  * with that type's requirements.
+ * @param {Dispatcher} dispatcher
+ * @returns {Source}
+ */
+exports.create = function(id        , specification                     , dispatcher            , eventedParent         ) {
+    var source = new sourceTypes[specification.type](id, specification, dispatcher, eventedParent);
+
+    if (source.id !== id) {
+        throw new Error(("Expected Source id to be " + id + " instead of " + (source.id)));
+    }
+
+    util.bindAll(['load', 'abort', 'unload', 'serialize', 'prepare'], source);
+    return source;
+};
+
+exports.getType = function (name        ) {
+    return sourceTypes[name];
+};
+
+exports.setType = function (name        , type               ) {
+    sourceTypes[name] = type;
+};
+
+},{"../source/canvas_source":97,"../source/geojson_source":98,"../source/image_source":101,"../source/raster_tile_source":105,"../source/vector_tile_source":112,"../source/video_source":114,"../util/util":224}],108:[function(require,module,exports){
+'use strict';//      
+
+var createSource = require('./source').create;
+var Tile = require('./tile');
+var Evented = require('../util/evented');
+var TileCoord = require('./tile_coord');
+var Cache = require('../util/lru_cache');
+var Coordinate = require('../geo/coordinate');
+var util = require('../util/util');
+var EXTENT = require('../data/extent');
+var Point = require('@mapbox/point-geometry');
+
+                                     
+                                 
+                                        
+                                                 
+                                              
+                                      
+
+/**
+ * `SourceCache` is responsible for
+ *
+ *  - creating an instance of `Source`
+ *  - forwarding events from `Source`
+ *  - caching tiles loaded from an instance of `Source`
+ *  - loading the tiles needed to render a given viewport
+ *  - unloading the cached tiles not needed to render a given viewport
+ *
+ * @private
+ */
+var SourceCache = (function (Evented) {
+    function SourceCache(id        , options                     , dispatcher            ) {
+        var this$1 = this;
+
+        Evented.call(this);
+        this.id = id;
+        this.dispatcher = dispatcher;
+
+        this.on('data', function (e) {
+            // this._sourceLoaded signifies that the TileJSON is loaded if applicable.
+            // if the source type does not come with a TileJSON, the flag signifies the
+            // source data has loaded (i.e geojson has been tiled on the worker and is ready)
+            if (e.dataType === 'source' && e.sourceDataType === 'metadata') { this$1._sourceLoaded = true; }
+
+            // for sources with mutable data, this event fires when the underlying data
+            // to a source is changed. (i.e. GeoJSONSource#setData and ImageSource#serCoordinates)
+            if (this$1._sourceLoaded && !this$1._paused && e.dataType === "source" && e.sourceDataType === 'content') {
+                this$1.reload();
+                if (this$1.transform) {
+                    this$1.update(this$1.transform);
+                }
+            }
+        });
+
+        this.on('error', function () {
+            this$1._sourceErrored = true;
+        });
+
+        this._source = createSource(id, options, dispatcher, this);
+
+        this._tiles = {};
+        this._cache = new Cache(0, this._unloadTile.bind(this));
+        this._timers = {};
+        this._cacheTimers = {};
+        this._maxTileCacheSize = null;
+
+        this._isIdRenderable = this._isIdRenderable.bind(this);
+    }
+
+    if ( Evented ) SourceCache.__proto__ = Evented;
+    SourceCache.prototype = Object.create( Evented && Evented.prototype );
+    SourceCache.prototype.constructor = SourceCache;
+
+    SourceCache.prototype.onAdd = function onAdd (map     ) {
+        this.map = map;
+        this._maxTileCacheSize = map ? map._maxTileCacheSize : null;
+        if (this._source && this._source.onAdd) {
+            this._source.onAdd(map);
+        }
+    };
+
+    SourceCache.prototype.onRemove = function onRemove (map     ) {
+        if (this._source && this._source.onRemove) {
+            this._source.onRemove(map);
+        }
+    };
+
+    /**
+     * Return true if no tile data is pending, tiles will not change unless
+     * an additional API call is received.
+     */
+    SourceCache.prototype.loaded = function loaded ()          {
+        var this$1 = this;
+
+        if (this._sourceErrored) { return true; }
+        if (!this._sourceLoaded) { return false; }
+        for (var t in this$1._tiles) {
+            var tile = this$1._tiles[t];
+            if (tile.state !== 'loaded' && tile.state !== 'errored')
+                { return false; }
+        }
+        return true;
+    };
+
+    SourceCache.prototype.getSource = function getSource ()         {
+        return this._source;
+    };
+
+    SourceCache.prototype.pause = function pause () {
+        this._paused = true;
+    };
+
+    SourceCache.prototype.resume = function resume () {
+        if (!this._paused) { return; }
+        var shouldReload = this._shouldReloadOnResume;
+        this._paused = false;
+        this._shouldReloadOnResume = false;
+        if (shouldReload) { this.reload(); }
+        if (this.transform) { this.update(this.transform); }
+    };
+
+    SourceCache.prototype._loadTile = function _loadTile (tile      , callback                ) {
+        return this._source.loadTile(tile, callback);
+    };
+
+    SourceCache.prototype._unloadTile = function _unloadTile (tile      ) {
+        if (this._source.unloadTile)
+            { return this._source.unloadTile(tile); }
+    };
+
+    SourceCache.prototype._abortTile = function _abortTile (tile      ) {
+        if (this._source.abortTile)
+            { return this._source.abortTile(tile); }
+    };
+
+    SourceCache.prototype.serialize = function serialize () {
+        return this._source.serialize();
+    };
+
+    SourceCache.prototype.prepare = function prepare (gl                       ) {
+        var this$1 = this;
+
+        if  (this._source.prepare) {
+            this._source.prepare();
+        }
+
+        for (var i in this$1._tiles) {
+            this$1._tiles[i].upload(gl);
+        }
+    };
+
+    /**
+     * Return all tile ids ordered with z-order, and cast to numbers
+     */
+    SourceCache.prototype.getIds = function getIds ()                {
+        return Object.keys(this._tiles).map(Number).sort(compareKeyZoom);
+    };
+
+    SourceCache.prototype.getRenderableIds = function getRenderableIds () {
+        return this.getIds().filter(this._isIdRenderable);
+    };
+
+    SourceCache.prototype._isIdRenderable = function _isIdRenderable (id        ) {
+        return this._tiles[id].hasData() && !this._coveredTiles[id];
+    };
+
+    SourceCache.prototype.reload = function reload () {
+        var this$1 = this;
+
+        if (this._paused) {
+            this._shouldReloadOnResume = true;
+            return;
+        }
+
+        this._cache.reset();
+        for (var i in this$1._tiles) {
+            this$1._reloadTile(i, 'reloading');
+        }
+    };
+
+    SourceCache.prototype._reloadTile = function _reloadTile (id                 , state           ) {
+        var tile = this._tiles[id];
+
+        // this potentially does not address all underlying
+        // issues https://github.com/mapbox/mapbox-gl-js/issues/4252
+        // - hard to tell without repro steps
+        if (!tile) { return; }
+
+        // The difference between "loading" tiles and "reloading" or "expired"
+        // tiles is that "reloading"/"expired" tiles are "renderable".
+        // Therefore, a "loading" tile cannot become a "reloading" tile without
+        // first becoming a "loaded" tile.
+        if (tile.state !== 'loading') {
+            tile.state = state;
+        }
+
+        this._loadTile(tile, this._tileLoaded.bind(this, tile, id, state));
+    };
+
+    SourceCache.prototype._tileLoaded = function _tileLoaded (tile      , id                 , previousState           , err        ) {
+        if (err) {
+            tile.state = 'errored';
+            if (err.status !== 404) { this._source.fire('error', {tile: tile, error: err}); }
+            // continue to try loading parent/children tiles if a tile doesn't exist (404)
+            else { this.update(this.transform); }
+            return;
+        }
+
+        tile.timeAdded = new Date().getTime();
+        if (previousState === 'expired') { tile.refreshedUponExpiration = true; }
+        this._setTileReloadTimer(id, tile);
+        this._source.fire('data', {dataType: 'source', tile: tile, coord: tile.coord});
+
+        // HACK this is necessary to fix https://github.com/mapbox/mapbox-gl-js/issues/2986
+        if (this.map) { this.map.painter.tileExtentVAO.vao = null; }
+    };
+
+    /**
+     * Get a specific tile by TileCoordinate
+     */
+    SourceCache.prototype.getTile = function getTile (coord           )       {
+        return this.getTileByID(coord.id);
+    };
+
+    /**
+     * Get a specific tile by id
+     */
+    SourceCache.prototype.getTileByID = function getTileByID (id                 )       {
+        return this._tiles[id];
+    };
+
+    /**
+     * get the zoom level adjusted for the difference in map and source tilesizes
+     */
+    SourceCache.prototype.getZoom = function getZoom (transform           )         {
+        return transform.zoom + transform.scaleZoom(transform.tileSize / this._source.tileSize);
+    };
+
+    /**
+     * Recursively find children of the given tile (up to maxCoveringZoom) that are already loaded;
+     * adds found tiles to retain object; returns true if any child is found.
+     */
+    SourceCache.prototype._findLoadedChildren = function _findLoadedChildren (coord           , maxCoveringZoom        , retain                  )          {
+        var this$1 = this;
+
+        var found = false;
+
+        for (var id in this$1._tiles) {
+            var tile = this$1._tiles[id];
+
+            // only consider renderable tiles on higher zoom levels (up to maxCoveringZoom)
+            if (retain[id] || !tile.hasData() || tile.coord.z <= coord.z || tile.coord.z > maxCoveringZoom) { continue; }
+
+            // disregard tiles that are not descendants of the given tile coordinate
+            var z2 = Math.pow(2, Math.min(tile.coord.z, this$1._source.maxzoom) - Math.min(coord.z, this$1._source.maxzoom));
+            if (Math.floor(tile.coord.x / z2) !== coord.x ||
+                Math.floor(tile.coord.y / z2) !== coord.y)
+                { continue; }
+
+            // found loaded child
+            retain[id] = true;
+            found = true;
+
+            // loop through parents; retain the topmost loaded one if found
+            while (tile && tile.coord.z - 1 > coord.z) {
+                var parent = tile.coord.parent(this$1._source.maxzoom);
+                if (!parent) { break; }
+
+                tile = this$1._tiles[parent.id];
+                if (tile && tile.hasData()) {
+                    delete retain[id];
+                    retain[parent.id] = true;
+                }
+            }
+        }
+        return found;
+    };
+
+    /**
+     * Find a loaded parent of the given tile (up to minCoveringZoom);
+     * adds the found tile to retain object and returns the tile if found
+     */
+    SourceCache.prototype.findLoadedParent = function findLoadedParent (coord           , minCoveringZoom        , retain                  )        {
+        var this$1 = this;
+
+        for (var z = coord.z - 1; z >= minCoveringZoom; z--) {
+            var parent = coord.parent(this$1._source.maxzoom);
+            if (!parent) { return; }
+            coord = parent;
+            var id = String(coord.id);
+            var tile = this$1._tiles[id];
+            if (tile && tile.hasData()) {
+                retain[id] = true;
+                return tile;
+            }
+            if (this$1._cache.has(id)) {
+                retain[id] = true;
+                return this$1._cache.getWithoutRemoving(id);
+            }
+        }
+    };
+
+    /**
+     * Resizes the tile cache based on the current viewport's size
+     * or the maxTileCacheSize option passed during map creation
+     *
+     * Larger viewports use more tiles and need larger caches. Larger viewports
+     * are more likely to be found on devices with more memory and on pages where
+     * the map is more important.
+     */
+    SourceCache.prototype.updateCacheSize = function updateCacheSize (transform           ) {
+        var widthInTiles = Math.ceil(transform.width / transform.tileSize) + 1;
+        var heightInTiles = Math.ceil(transform.height / transform.tileSize) + 1;
+        var approxTilesInView = widthInTiles * heightInTiles;
+        var commonZoomRange = 5;
+
+        var viewDependentMaxSize = Math.floor(approxTilesInView * commonZoomRange);
+        var maxSize = typeof this._maxTileCacheSize === 'number' ? Math.min(this._maxTileCacheSize, viewDependentMaxSize) : viewDependentMaxSize;
+
+        this._cache.setMaxSize(maxSize);
+    };
+
+    /**
+     * Removes tiles that are outside the viewport and adds new tiles that
+     * are inside the viewport.
+     */
+    SourceCache.prototype.update = function update (transform           ) {
+        var this$1 = this;
+
+        this.transform = transform;
+        if (!this._sourceLoaded || this._paused) { return; }
+
+        this.updateCacheSize(transform);
+
+        // Covered is a list of retained tiles who's areas are fully covered by other,
+        // better, retained tiles. They are not drawn separately.
+        this._coveredTiles = {};
+
+        var idealTileCoords;
+        if (!this.used) {
+            idealTileCoords = [];
+        } else if (this._source.coord) {
+            idealTileCoords = transform.getVisibleWrappedCoordinates((this._source.coord     ));
+        } else {
+            idealTileCoords = transform.coveringTiles({
+                tileSize: this._source.tileSize,
+                minzoom: this._source.minzoom,
+                maxzoom: this._source.maxzoom,
+                roundZoom: this._source.roundZoom,
+                reparseOverscaled: this._source.reparseOverscaled
+            });
+
+            if (this._source.hasTile) {
+                idealTileCoords = idealTileCoords.filter(function (coord) { return (this$1._source.hasTile     )(coord); });
+            }
+        }
+
+        // Determine the overzooming/underzooming amounts.
+        var zoom = (this._source.roundZoom ? Math.round : Math.floor)(this.getZoom(transform));
+        var minCoveringZoom = Math.max(zoom - SourceCache.maxOverzooming, this._source.minzoom);
+        var maxCoveringZoom = Math.max(zoom + SourceCache.maxUnderzooming,  this._source.minzoom);
+
+        // Retain is a list of tiles that we shouldn't delete, even if they are not
+        // the most ideal tile for the current viewport. This may include tiles like
+        // parent or child tiles that are *already* loaded.
+        var retain = this._updateRetainedTiles(idealTileCoords, zoom);
+
+        var parentsForFading = {};
+
+        if (isRasterType(this._source.type)) {
+            var ids = Object.keys(retain);
+            for (var k = 0; k < ids.length; k++) {
+                var id = ids[k];
+                var coord = TileCoord.fromID(+id);
+                var tile = this$1._tiles[id];
+                if (!tile) { continue; }
+
+                // If the drawRasterTile has never seen this tile, then
+                // tile.fadeEndTime may be unset.  In that case, or if
+                // fadeEndTime is in the future, then this tile is still
+                // fading in. Find tiles to cross-fade with it.
+                if (typeof tile.fadeEndTime === 'undefined' || tile.fadeEndTime >= Date.now()) {
+                    if (this$1._findLoadedChildren(coord, maxCoveringZoom, retain)) {
+                        retain[id] = true;
+                    }
+                    var parentTile = this$1.findLoadedParent(coord, minCoveringZoom, parentsForFading);
+                    if (parentTile) {
+                        this$1._addTile(parentTile.coord);
+                    }
+                }
+            }
+        }
+
+        var fadedParent;
+        for (fadedParent in parentsForFading) {
+            if (!retain[fadedParent]) {
+                // If a tile is only needed for fading, mark it as covered so that it isn't rendered on it's own.
+                this$1._coveredTiles[fadedParent] = true;
+            }
+        }
+        for (fadedParent in parentsForFading) {
+            retain[fadedParent] = true;
+        }
+        // Remove the tiles we don't need anymore.
+        var remove = util.keysDifference(this._tiles, retain);
+        for (var i = 0; i < remove.length; i++) {
+            this$1._removeTile(remove[i]);
+        }
+    };
+
+    SourceCache.prototype._updateRetainedTiles = function _updateRetainedTiles (idealTileCoords                  , zoom        )                       {
+        var this$1 = this;
+
+        var i, coord, tile, covered;
+        var retain = {};
+        var checked                       = {};
+        var minCoveringZoom = Math.max(zoom - SourceCache.maxOverzooming, this._source.minzoom);
+
+
+        for (i = 0; i < idealTileCoords.length; i++) {
+            coord = idealTileCoords[i];
+            tile = this$1._addTile(coord);
+            var parentWasRequested = false;
+            if (tile.hasData()) {
+                retain[coord.id] = true;
+            } else {
+                // The tile we require is not yet loaded or does not exist.
+                // We are now attempting to load child and parent tiles.
+
+                // As we descend up and down the tile pyramid of the ideal tile, we check whether the parent
+                // tile has been previously requested (and errored in this case due to the previous conditional)
+                // in order to determine if we need to request its parent.
+                parentWasRequested = tile.wasRequested();
+
+                // The tile isn't loaded yet, but retain it anyway because it's an ideal tile.
+                retain[coord.id] = true;
+                covered = true;
+                var overscaledZ = zoom + 1;
+                if (overscaledZ > this$1._source.maxzoom) {
+                    // We're looking for an overzoomed child tile.
+                    var childCoord = coord.children(this$1._source.maxzoom)[0];
+                    var childTile = this$1.getTile(childCoord);
+                    if (!!childTile && childTile.hasData()) {
+                        retain[childCoord.id] = true;
+                    } else {
+                        covered = false;
+                    }
+                } else {
+                    // Check all four actual child tiles.
+                    var children = coord.children(this$1._source.maxzoom);
+                    for (var j = 0; j < children.length; j++) {
+                        var childCoord$1 = children[j];
+                        var childTile$1 = childCoord$1 ? this$1.getTile(childCoord$1) : null;
+                        if (!!childTile$1 && childTile$1.hasData()) {
+                            retain[childCoord$1.id] = true;
+                        } else {
+                            covered = false;
+                        }
+                    }
+                }
+
+                if (!covered) {
+
+                    // We couldn't find child tiles that entirely cover the ideal tile.
+                    for (var overscaledZ$1 = zoom - 1; overscaledZ$1 >= minCoveringZoom; --overscaledZ$1) {
+
+                        var parentId = coord.scaledTo(overscaledZ$1, this$1._source.maxzoom);
+                        if (checked[parentId.id]) {
+                            // Break parent tile ascent, this route has been previously checked by another child.
+                            break;
+                        } else {
+                            checked[parentId.id] = true;
+                        }
+
+                        tile = this$1.getTile(parentId);
+                        if (!tile && parentWasRequested) {
+                            tile = this$1._addTile(parentId);
+                        }
+
+                        if (tile) {
+                            retain[parentId.id] = true;
+                            // Save the current values, since they're the parent of the next iteration
+                            // of the parent tile ascent loop.
+                            parentWasRequested = tile.wasRequested();
+                            if (tile.hasData()) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return retain;
+    };
+
+    /**
+     * Add a tile, given its coordinate, to the pyramid.
+     * @private
+     */
+    SourceCache.prototype._addTile = function _addTile (tileCoord           )       {
+        var tile = this._tiles[tileCoord.id];
+        if (tile)
+            { return tile; }
+
+        tile = this._cache.get((tileCoord.id     ));
+        if (tile) {
+            tile.redoPlacement(this._source);
+            if (this._cacheTimers[tileCoord.id]) {
+                clearTimeout(this._cacheTimers[tileCoord.id]);
+                delete this._cacheTimers[tileCoord.id];
+                this._setTileReloadTimer(tileCoord.id, tile);
+            }
+        }
+
+        var cached = Boolean(tile);
+        if (!cached) {
+            var zoom = tileCoord.z;
+            var overscaling = zoom > this._source.maxzoom ? Math.pow(2, zoom - this._source.maxzoom) : 1;
+            tile = new Tile(tileCoord, this._source.tileSize * overscaling, this._source.maxzoom);
+            this._loadTile(tile, this._tileLoaded.bind(this, tile, tileCoord.id, tile.state));
+        }
+
+        // Impossible, but silence flow.
+        if (!tile) { return (null     ); }
+
+        tile.uses++;
+        this._tiles[tileCoord.id] = tile;
+        if (!cached) { this._source.fire('dataloading', {tile: tile, coord: tile.coord, dataType: 'source'}); }
+
+        return tile;
+    };
+
+    SourceCache.prototype._setTileReloadTimer = function _setTileReloadTimer (id                 , tile      ) {
+        var this$1 = this;
+
+        var expiryTimeout = tile.getExpiryTimeout();
+        if (expiryTimeout) {
+            this._timers[id] = setTimeout(function () {
+                this$1._reloadTile(id, 'expired');
+                delete this$1._timers[id];
+            }, expiryTimeout);
+        }
+    };
+
+    SourceCache.prototype._setCacheInvalidationTimer = function _setCacheInvalidationTimer (id                 , tile      ) {
+        var this$1 = this;
+
+        var expiryTimeout = tile.getExpiryTimeout();
+        if (expiryTimeout) {
+            this._cacheTimers[id] = setTimeout(function () {
+                this$1._cache.remove((id     ));
+                delete this$1._cacheTimers[id];
+            }, expiryTimeout);
+        }
+    };
+
+    /**
+     * Remove a tile, given its id, from the pyramid
+     * @private
+     */
+    SourceCache.prototype._removeTile = function _removeTile (id                 ) {
+        var tile = this._tiles[id];
+        if (!tile)
+            { return; }
+
+        tile.uses--;
+        delete this._tiles[id];
+        if (this._timers[id]) {
+            clearTimeout(this._timers[id]);
+            delete this._timers[id];
+        }
+
+        if (tile.uses > 0)
+            { return; }
+
+        tile.stopPlacementThrottler();
+
+        if (tile.hasData()) {
+            var wrappedId = tile.coord.wrapped().id;
+            this._cache.add((wrappedId     ), tile);
+            this._setCacheInvalidationTimer(wrappedId, tile);
+        } else {
+            tile.aborted = true;
+            this._abortTile(tile);
+            this._unloadTile(tile);
+        }
+    };
+
+    /**
+     * Remove all tiles from this pyramid
+     */
+    SourceCache.prototype.clearTiles = function clearTiles () {
+        var this$1 = this;
+
+        this._shouldReloadOnResume = false;
+        this._paused = false;
+
+        for (var id in this$1._tiles)
+            { this$1._removeTile(id); }
+        this._cache.reset();
+    };
+
+    /**
+     * Search through our current tiles and attempt to find the tiles that
+     * cover the given bounds.
+     * @param queryGeometry coordinates of the corners of bounding rectangle
+     * @returns {Array<Object>} result items have {tile, minX, maxX, minY, maxY}, where min/max bounding values are the given bounds transformed in into the coordinate space of this tile.
+     */
+    SourceCache.prototype.tilesIn = function tilesIn (queryGeometry                   ) {
+        var this$1 = this;
+
+        var tileResults = [];
+        var ids = this.getIds();
+
+        var minX = Infinity;
+        var minY = Infinity;
+        var maxX = -Infinity;
+        var maxY = -Infinity;
+        var z = queryGeometry[0].zoom;
+
+        for (var k = 0; k < queryGeometry.length; k++) {
+            var p = queryGeometry[k];
+            minX = Math.min(minX, p.column);
+            minY = Math.min(minY, p.row);
+            maxX = Math.max(maxX, p.column);
+            maxY = Math.max(maxY, p.row);
+        }
+
+
+        for (var i = 0; i < ids.length; i++) {
+            var tile = this$1._tiles[ids[i]];
+            var coord = TileCoord.fromID(ids[i]);
+
+            var tileSpaceBounds = [
+                coordinateToTilePoint(coord, tile.sourceMaxZoom, new Coordinate(minX, minY, z)),
+                coordinateToTilePoint(coord, tile.sourceMaxZoom, new Coordinate(maxX, maxY, z))
+            ];
+
+            if (tileSpaceBounds[0].x < EXTENT && tileSpaceBounds[0].y < EXTENT &&
+                tileSpaceBounds[1].x >= 0 && tileSpaceBounds[1].y >= 0) {
+
+                var tileSpaceQueryGeometry = [];
+                for (var j = 0; j < queryGeometry.length; j++) {
+                    tileSpaceQueryGeometry.push(coordinateToTilePoint(coord, tile.sourceMaxZoom, queryGeometry[j]));
+                }
+
+                tileResults.push({
+                    tile: tile,
+                    coord: coord,
+                    queryGeometry: [tileSpaceQueryGeometry],
+                    scale: Math.pow(2, this$1.transform.zoom - tile.coord.z)
+                });
+            }
+        }
+
+        return tileResults;
+    };
+
+    SourceCache.prototype.redoPlacement = function redoPlacement () {
+        var this$1 = this;
+
+        var ids = this.getIds();
+        for (var i = 0; i < ids.length; i++) {
+            var tile = this$1.getTileByID(ids[i]);
+            tile.redoPlacement(this$1._source);
+        }
+    };
+
+    SourceCache.prototype.getVisibleCoordinates = function getVisibleCoordinates () {
+        var this$1 = this;
+
+        var coords = this.getRenderableIds().map(TileCoord.fromID);
+        for (var i = 0, list = coords; i < list.length; i += 1) {
+            var coord = list[i];
+
+            coord.posMatrix = this$1.transform.calculatePosMatrix(coord, this$1._source.maxzoom);
+        }
+        return coords;
+    };
+
+    return SourceCache;
+}(Evented));
+
+SourceCache.maxOverzooming = 10;
+SourceCache.maxUnderzooming = 3;
+
+/**
+ * Convert a coordinate to a point in a tile's coordinate space.
+ * @private
+ */
+function coordinateToTilePoint(tileCoord           , sourceMaxZoom        , coord            )        {
+    var zoomedCoord = coord.zoomTo(Math.min(tileCoord.z, sourceMaxZoom));
+    return new Point(
+        (zoomedCoord.column - (tileCoord.x + tileCoord.w * Math.pow(2, tileCoord.z))) * EXTENT,
+        (zoomedCoord.row - tileCoord.y) * EXTENT
+    );
+}
+
+function compareKeyZoom(a, b) {
+    return (a % 32) - (b % 32);
+}
+
+function isRasterType(type) {
+    return type === 'raster' || type === 'image' || type === 'video';
+}
+
+module.exports = SourceCache;
+
+},{"../data/extent":58,"../geo/coordinate":67,"../util/evented":211,"../util/lru_cache":217,"../util/util":224,"./source":107,"./tile":109,"./tile_coord":111,"@mapbox/point-geometry":2}],109:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var deserializeBucket = require('../data/bucket').deserialize;
+var SymbolBucket = require('../data/bucket/symbol_bucket');
+var FeatureIndex = require('../data/feature_index');
+var vt = require('@mapbox/vector-tile');
+var Protobuf = require('pbf');
+var GeoJSONFeature = require('../util/vectortile_to_geojson');
+var featureFilter = require('../style-spec/feature_filter');
+var CollisionTile = require('../symbol/collision_tile');
+var CollisionBoxArray = require('../symbol/collision_box');
+var Throttler = require('../util/throttler');
+var Texture = require('../render/texture');
+
+var CLOCK_SKEW_RETRY_TIMEOUT = 30000;
+
+                                           
+                                                   
+                                          
+                                                      
+                                                
+                                                         
+
+                       
+                                                            
+                                                                     
+                                                                                          
+                                                
+                                                                  
+                  /* Tile data was previously loaded, but has expired per its
+                   * HTTP headers and is in the process of refreshing. */
+
+/**
+ * A tile object is the combination of a Coordinate, which defines
+ * its place, as well as a unique ID and data tracking for its content
+ *
+ * @private
+ */
+var Tile = function Tile(coord       , size    , sourceMaxZoom    ) {
+    this.coord = coord;
+    this.uid = util.uniqueId();
+    this.uses = 0;
+    this.tileSize = size;
+    this.sourceMaxZoom = sourceMaxZoom;
+    this.buckets = {};
+    this.expirationTime = null;
+
+    // Counts the number of times a response was already expired when
+    // received. We're using this to add a delay when making a new request
+    // so we don't have to keep retrying immediately in case of a server
+    // serving expired tiles.
+    this.expiredRequestCount = 0;
+
+    this.state = 'loading';
+
+    this.placementThrottler = new Throttler(300, this._immediateRedoPlacement.bind(this));
+};
+
+Tile.prototype.registerFadeDuration = function registerFadeDuration (animationLoop , duration    ) {
+    var fadeEndTime = duration + this.timeAdded;
+    if (fadeEndTime < Date.now()) { return; }
+    if (this.fadeEndTime && fadeEndTime < this.fadeEndTime) { return; }
+
+    this.fadeEndTime = fadeEndTime;
+    animationLoop.set(this.fadeEndTime - Date.now());
+};
+
+Tile.prototype.wasRequested = function wasRequested () {
+    return this.state === 'errored' || this.state === 'loaded' || this.state === 'reloading';
+};
+
+/**
+ * Given a data object with a 'buffers' property, load it into
+ * this tile's elementGroups and buffers properties and set loaded
+ * to true. If the data is null, like in the case of an empty
+ * GeoJSON tile, no-op but still set loaded to true.
+ * @param {Object} data
+ * @param painter
+ * @returns {undefined}
+ * @private
+ */
+Tile.prototype.loadVectorData = function loadVectorData (data              , painter ) {
+    if (this.hasData()) {
+        this.unloadVectorData();
+    }
+
+    this.state = 'loaded';
+
+    // empty GeoJSON tile
+    if (!data) { return; }
+
+    // If we are redoing placement for the same tile, we will not recieve
+    // a new "rawTileData" object. If we are loading a new tile, we will
+    // recieve a new "rawTileData" object.
+    if (data.rawTileData) {
+        this.rawTileData = data.rawTileData;
+    }
+
+    this.collisionBoxArray = new CollisionBoxArray(data.collisionBoxArray);
+    this.collisionTile = CollisionTile.deserialize(data.collisionTile, this.collisionBoxArray);
+    this.featureIndex = FeatureIndex.deserialize(data.featureIndex, this.rawTileData, this.collisionTile);
+    this.buckets = deserializeBucket(data.buckets, painter.style);
+
+    if (data.iconAtlasImage) {
+        this.iconAtlasImage = data.iconAtlasImage;
+    }
+    if (data.glyphAtlasImage) {
+        this.glyphAtlasImage = data.glyphAtlasImage;
+    }
+};
+
+/**
+ * Replace this tile's symbol buckets with fresh data.
+ * @param {Object} data
+ * @param {Style} style
+ * @returns {undefined}
+ * @private
+ */
+Tile.prototype.reloadSymbolData = function reloadSymbolData (data              , style ) {
+        var this$1 = this;
+
+    if (this.state === 'unloaded') { return; }
+
+    this.collisionTile = CollisionTile.deserialize(data.collisionTile, this.collisionBoxArray);
+
+    if (this.featureIndex) {
+        this.featureIndex.setCollisionTile(this.collisionTile);
+    }
+
+    for (var id in this$1.buckets) {
+        var bucket = this$1.buckets[id];
+        if (bucket instanceof SymbolBucket) {
+            bucket.destroy();
+            delete this$1.buckets[id];
+        }
+    }
+
+    // Add new symbol buckets
+    util.extend(this.buckets, deserializeBucket(data.buckets, style));
+
+    if (data.iconAtlasImage) {
+        this.iconAtlasImage = data.iconAtlasImage;
+    }
+    if (data.glyphAtlasImage) {
+        this.glyphAtlasImage = data.glyphAtlasImage;
+    }
+};
+
+/**
+ * Release any data or WebGL resources referenced by this tile.
+ * @returns {undefined}
+ * @private
+ */
+Tile.prototype.unloadVectorData = function unloadVectorData () {
+        var this$1 = this;
+
+    for (var id in this$1.buckets) {
+        this$1.buckets[id].destroy();
+    }
+    this.buckets = {};
+
+    if (this.iconAtlasTexture) {
+        this.iconAtlasTexture.destroy();
+    }
+    if (this.glyphAtlasTexture) {
+        this.glyphAtlasTexture.destroy();
+    }
+
+    this.collisionBoxArray = null;
+    this.collisionTile = null;
+    this.featureIndex = null;
+    this.state = 'unloaded';
+};
+
+Tile.prototype.redoPlacement = function redoPlacement (source ) {
+    if (source.type !== 'vector' && source.type !== 'geojson') {
+        return;
+    }
+    if (this.state !== 'loaded') {
+        this.redoWhenDone = true;
+        return;
+    }
+    if (!this.collisionTile) { // empty tile
+        return;
+    }
+
+    var cameraToTileDistance = source.map.transform.cameraToTileDistance(this);
+    if (this.angle === source.map.transform.angle &&
+        this.pitch === source.map.transform.pitch &&
+        this.showCollisionBoxes === source.map.showCollisionBoxes) {
+        if (this.cameraToTileDistance === cameraToTileDistance &&
+            this.cameraToCenterDistance === source.map.transform.cameraToCenterDistance) {
+            return;
+        } else if (this.pitch < 25) {
+            // At low pitch tile distance doesn't affect placement very
+            // much, so we skip the cost of redoPlacement
+            // However, we might as well store the latest value of
+            // cameraToTileDistance and cameraToCenterDistance in case a redoPlacement request
+            // is already queued.
+            this.cameraToTileDistance = cameraToTileDistance;
+            this.cameraToCenterDistance = source.map.transform.cameraToCenterDistance;
+            return;
+        }
+    }
+
+    this.angle = source.map.transform.angle;
+    this.pitch = source.map.transform.pitch;
+    this.cameraToCenterDistance = source.map.transform.cameraToCenterDistance;
+    this.cameraToTileDistance = cameraToTileDistance;
+    this.showCollisionBoxes = source.map.showCollisionBoxes;
+    this.placementSource = source;
+
+    this.state = 'reloading';
+    this.placementThrottler.invoke();
+};
+
+Tile.prototype._immediateRedoPlacement = function _immediateRedoPlacement () {
+        var this$1 = this;
+
+    this.placementSource.dispatcher.send('redoPlacement', {
+        type: this.placementSource.type,
+        uid: this.uid,
+        source: this.placementSource.id,
+        angle: this.angle,
+        pitch: this.pitch,
+        cameraToCenterDistance: this.cameraToCenterDistance,
+        cameraToTileDistance: this.cameraToTileDistance,
+        showCollisionBoxes: this.showCollisionBoxes
+    }, function (_, data) {
+        if (this$1.state !== 'reloading') { return; }
+
+        this$1.state = 'loaded';
+        this$1.reloadSymbolData(data, this$1.placementSource.map.style);
+        this$1.placementSource.fire('data', {tile: this$1, coord: this$1.coord, dataType: 'source'});
+        // HACK this is nescessary to fix https://github.com/mapbox/mapbox-gl-js/issues/2986
+        if (this$1.placementSource.map) { this$1.placementSource.map.painter.tileExtentVAO.vao = null; }
+
+        if (this$1.redoWhenDone) {
+            this$1.state = 'reloading';
+            this$1.redoWhenDone = false;
+            this$1._immediateRedoPlacement();
+        }
+    }, this.workerID);
+};
+
+Tile.prototype.getBucket = function getBucket (layer        ) {
+    return this.buckets[layer.id];
+};
+
+Tile.prototype.upload = function upload (gl                   ) {
+        var this$1 = this;
+
+    for (var id in this$1.buckets) {
+        var bucket = this$1.buckets[id];
+        if (!bucket.uploaded) {
+            bucket.upload(gl);
+            bucket.uploaded = true;
+        }
+    }
+
+    if (this.iconAtlasImage) {
+        this.iconAtlasTexture = new Texture(gl, this.iconAtlasImage, gl.RGBA);
+        this.iconAtlasImage = null;
+    }
+
+    if (this.glyphAtlasImage) {
+        this.glyphAtlasTexture = new Texture(gl, this.glyphAtlasImage, gl.ALPHA);
+        this.glyphAtlasImage = null;
+    }
+};
+
+Tile.prototype.queryRenderedFeatures = function queryRenderedFeatures (layers                    ,
+                      queryGeometry                 ,
+                      scale    ,
+                      params                                                    ,
+                      bearing    )                                                                   {
+        var this$1 = this;
+
+    if (!this.featureIndex)
+        { return {}; }
+
+    // Determine the additional radius needed factoring in property functions
+    var additionalRadius = 0;
+    for (var id in layers) {
+        var bucket = this$1.getBucket(layers[id]);
+        if (bucket) {
+            additionalRadius = Math.max(additionalRadius, layers[id].queryRadius(bucket));
+        }
+    }
+
+    return this.featureIndex.query({
+        queryGeometry: queryGeometry,
+        bearing: bearing,
+        params: params,
+        scale: scale,
+        additionalRadius: additionalRadius,
+        tileSize: this.tileSize,
+    }, layers);
+};
+
+Tile.prototype.querySourceFeatures = function querySourceFeatures (result                   , params ) {
+        var this$1 = this;
+
+    if (!this.rawTileData) { return; }
+
+    if (!this.vtLayers) {
+        this.vtLayers = new vt.VectorTile(new Protobuf(this.rawTileData)).layers;
+    }
+
+    var sourceLayer = params ? params.sourceLayer : '';
+    var layer = this.vtLayers._geojsonTileLayer || this.vtLayers[sourceLayer];
+
+    if (!layer) { return; }
+
+    var filter = featureFilter(params && params.filter);
+    var coord = { z: this.coord.z, x: this.coord.x, y: this.coord.y };
+
+    for (var i = 0; i < layer.length; i++) {
+        var feature = layer.feature(i);
+        if (filter(feature)) {
+            var geojsonFeature = new GeoJSONFeature(feature, this$1.coord.z, this$1.coord.x, this$1.coord.y);
+            (geojsonFeature ).tile = coord;
+            result.push(geojsonFeature);
+        }
+    }
+};
+
+Tile.prototype.hasData = function hasData () {
+    return this.state === 'loaded' || this.state === 'reloading' || this.state === 'expired';
+};
+
+Tile.prototype.setExpiryData = function setExpiryData (data ) {
+    var prior = this.expirationTime;
+
+    if (data.cacheControl) {
+        var parsedCC = util.parseCacheControl(data.cacheControl);
+        if (parsedCC['max-age']) { this.expirationTime = Date.now() + parsedCC['max-age'] * 1000; }
+    } else if (data.expires) {
+        this.expirationTime = new Date(data.expires).getTime();
+    }
+
+    if (this.expirationTime) {
+        var now = Date.now();
+        var isExpired = false;
+
+        if (this.expirationTime > now) {
+            isExpired = false;
+        } else if (!prior) {
+            isExpired = true;
+        } else if (this.expirationTime < prior) {
+            // Expiring date is going backwards:
+            // fall back to exponential backoff
+            isExpired = true;
+
+        } else {
+            var delta = this.expirationTime - prior;
+
+            if (!delta) {
+                // Server is serving the same expired resource over and over: fall
+                // back to exponential backoff.
+                isExpired = true;
+
+            } else {
+                // Assume that either the client or the server clock is wrong and
+                // try to interpolate a valid expiration date (from the client POV)
+                // observing a minimum timeout.
+                this.expirationTime = now + Math.max(delta, CLOCK_SKEW_RETRY_TIMEOUT);
+
+            }
+        }
+
+        if (isExpired) {
+            this.expiredRequestCount++;
+            this.state = 'expired';
+        } else {
+            this.expiredRequestCount = 0;
+        }
+    }
+};
+
+Tile.prototype.getExpiryTimeout = function getExpiryTimeout () {
+    if (this.expirationTime) {
+        if (this.expiredRequestCount) {
+            return 1000 * (1 << Math.min(this.expiredRequestCount - 1, 31));
+        } else {
+            // Max value for `setTimeout` implementations is a 32 bit integer; cap this accordingly
+            return Math.min(this.expirationTime - new Date().getTime(), Math.pow(2, 31) - 1);
+        }
+    }
+};
+
+Tile.prototype.stopPlacementThrottler = function stopPlacementThrottler () {
+    this.placementThrottler.stop();
+    if (this.state === 'reloading') {
+        this.state = 'loaded';
+    }
+};
+
+module.exports = Tile;
+
+},{"../data/bucket":52,"../data/bucket/symbol_bucket":57,"../data/feature_index":59,"../render/texture":93,"../style-spec/feature_filter":120,"../symbol/collision_box":171,"../symbol/collision_tile":173,"../util/throttler":222,"../util/util":224,"../util/vectortile_to_geojson":225,"@mapbox/vector-tile":6,"pbf":39}],110:[function(require,module,exports){
+'use strict';//      
+
+var LngLatBounds = require('../geo/lng_lat_bounds');
+var clamp = require('../util/util').clamp;
+
+                                          
+
+var TileBounds = function TileBounds(bounds                              , minzoom     , maxzoom     ) {
+    this.bounds = LngLatBounds.convert(this.validateBounds(bounds));
+    this.minzoom = minzoom || 0;
+    this.maxzoom = maxzoom || 24;
+};
+
+TileBounds.prototype.validateBounds = function validateBounds (bounds                              ) {
+    // make sure the bounds property contains valid longitude and latitudes
+    if (!Array.isArray(bounds) || bounds.length !== 4) { return [-180, -90, 180, 90]; }
+    return [Math.max(-180, bounds[0]), Math.max(-90, bounds[1]), Math.min(180, bounds[2]), Math.min(90, bounds[3])];
+};
+
+TileBounds.prototype.contains = function contains (coord       , maxzoom    ) {
+    // TileCoord returns incorrect z for overscaled tiles, so we use this
+    // to make sure overzoomed tiles still get displayed.
+    var tileZ = maxzoom ? Math.min(coord.z, maxzoom) : coord.z;
+
+    var level = {
+        minX: Math.floor(this.lngX(this.bounds.getWest(), tileZ)),
+        minY: Math.floor(this.latY(this.bounds.getNorth(), tileZ)),
+        maxX: Math.ceil(this.lngX(this.bounds.getEast(), tileZ)),
+        maxY: Math.ceil(this.latY(this.bounds.getSouth(), tileZ))
+    };
+    var hit = coord.x >= level.minX && coord.x < level.maxX && coord.y >= level.minY && coord.y < level.maxY;
+    return hit;
+};
+
+TileBounds.prototype.lngX = function lngX (lng    , zoom    ) {
+    return (lng + 180) * (Math.pow(2, zoom) / 360);
+};
+
+TileBounds.prototype.latY = function latY (lat    , zoom    ) {
+    var f = clamp(Math.sin(Math.PI / 180 * lat), -0.9999, 0.9999);
+    var scale = Math.pow(2, zoom) / (2 * Math.PI);
+    return Math.pow(2, zoom - 1) + 0.5 * Math.log((1 + f) / (1 - f)) * -scale;
+};
+
+module.exports = TileBounds;
+
+},{"../geo/lng_lat_bounds":69,"../util/util":224}],111:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var WhooTS = require('@mapbox/whoots-js');
+var Coordinate = require('../geo/coordinate');
+
+var TileCoord = function TileCoord(z    , x    , y    , w           ) {
+    assert(!isNaN(z) && z >= 0 && z % 1 === 0);
+    assert(!isNaN(x) && x >= 0 && x % 1 === 0);
+    assert(!isNaN(y) && y >= 0 && y % 1 === 0);
+
+    if (w === undefined || isNaN(w)) { w = 0; }
+
+    this.z = +z;
+    this.x = +x;
+    this.y = +y;
+    this.w = +w;
+
+    // calculate id
+    w *= 2;
+    if (w < 0) { w = w * -1 - 1; }
+    var dim = 1 << this.z;
+    this.id = ((dim * dim * w + dim * this.y + this.x) * 32) + this.z;
+
+    // for caching pos matrix calculation when rendering
+    (this ).posMatrix = null;
+};
+
+TileCoord.prototype.toString = function toString () {
+    return ((this.z) + "/" + (this.x) + "/" + (this.y));
+};
+
+TileCoord.prototype.toCoordinate = function toCoordinate (sourceMaxZoom           ) {
+    var zoom = Math.min(this.z, sourceMaxZoom === undefined ? this.z : sourceMaxZoom);
+    var tileScale = Math.pow(2, zoom);
+    var row = this.y;
+    var column = this.x + tileScale * this.w;
+    return new Coordinate(column, row, zoom);
+};
+
+// given a list of urls, choose a url template and return a tile URL
+TileCoord.prototype.url = function url (urls           , sourceMaxZoom     , scheme     ) {
+    var bbox = WhooTS.getTileBBox(this.x, this.y, this.z);
+    var quadkey = getQuadkey(this.z, this.x, this.y);
+
+    return urls[(this.x + this.y) % urls.length]
+        .replace('{prefix}', (this.x % 16).toString(16) + (this.y % 16).toString(16))
+        .replace('{z}', String(Math.min(this.z, sourceMaxZoom || this.z)))
+        .replace('{x}', String(this.x))
+        .replace('{y}', String(scheme === 'tms' ? (Math.pow(2, this.z) - this.y - 1) : this.y))
+        .replace('{quadkey}', quadkey)
+        .replace('{bbox-epsg-3857}', bbox);
+};
+
+// Return the coordinate of the parent tile
+TileCoord.prototype.parent = function parent (sourceMaxZoom    ) {
+    if (this.z === 0) { return null; }
+
+    // the id represents an overscaled tile, return the same coordinates with a lower z
+    if (this.z > sourceMaxZoom) {
+        return new TileCoord(this.z - 1, this.x, this.y, this.w);
+    }
+
+    return new TileCoord(this.z - 1, Math.floor(this.x / 2), Math.floor(this.y / 2), this.w);
+};
+
+TileCoord.prototype.wrapped = function wrapped () {
+    return new TileCoord(this.z, this.x, this.y, 0);
+};
+
+// Return the coordinates of the tile's children
+TileCoord.prototype.children = function children (sourceMaxZoom    ) {
+
+    if (this.z >= sourceMaxZoom) {
+        // return a single tile coord representing a an overscaled tile
+        return [new TileCoord(this.z + 1, this.x, this.y, this.w)];
+    }
+
+    var z = this.z + 1;
+    var x = this.x * 2;
+    var y = this.y * 2;
+    return [
+        new TileCoord(z, x, y, this.w),
+        new TileCoord(z, x + 1, y, this.w),
+        new TileCoord(z, x, y + 1, this.w),
+        new TileCoord(z, x + 1, y + 1, this.w)
+    ];
+};
+
+TileCoord.prototype.scaledTo = function scaledTo (targetZ    , sourceMaxZoom    ) {
+    // the id represents an overscaled tile, return the same coordinates with a lower z
+    if (this.z > sourceMaxZoom) {
+        return new TileCoord(targetZ, this.x, this.y, this.w);
+    }
+
+    if (targetZ <= this.z) {
+        return new TileCoord(targetZ, this.x >> (this.z - targetZ), this.y >> (this.z - targetZ), this.w); // parent or same
+    } else {
+        return new TileCoord(targetZ, this.x << (targetZ - this.z), this.y << (targetZ - this.z), this.w); // child
+    }
+};
+
+TileCoord.cover = function cover (z    , bounds                                              ,
+             actualZ    , renderWorldCopies            ) {
+    if (renderWorldCopies === undefined) {
+        renderWorldCopies = true;
+    }
+    var tiles = 1 << z;
+    var t = {};
+
+    function scanLine(x0, x1, y) {
+        var x, w, wx, coord;
+        if (y >= 0 && y <= tiles) {
+            for (x = x0; x < x1; x++) {
+                w = Math.floor(x / tiles);
+                wx = (x % tiles + tiles) % tiles;
+                if (w === 0 || renderWorldCopies === true) {
+                    coord = new TileCoord(actualZ, wx, y, w);
+                    t[coord.id] = coord;
+                }
+            }
+        }
+    }
+
+    // Divide the screen up in two triangles and scan each of them:
+    // +---/
+    // | / |
+    // /---+
+    scanTriangle(bounds[0], bounds[1], bounds[2], 0, tiles, scanLine);
+    scanTriangle(bounds[2], bounds[3], bounds[0], 0, tiles, scanLine);
+
+    return Object.keys(t).map(function (id) {
+        return t[id];
+    });
+};
+
+// Parse a packed integer id into a TileCoord object
+TileCoord.fromID = function fromID (id    ) {
+    var z = id % 32, dim = 1 << z;
+    var xy = ((id - z) / 32);
+    var x = xy % dim, y = ((xy - x) / dim) % dim;
+    var w = Math.floor(xy / (dim * dim));
+    if (w % 2 !== 0) { w = w * -1 - 1; }
+    w /= 2;
+    return new TileCoord(z, x, y, w);
+};
+
+// Taken from polymaps src/Layer.js
+// https://github.com/simplegeo/polymaps/blob/master/src/Layer.js#L333-L383
+
+function edge(a            , b            ) {
+    if (a.row > b.row) { var t = a; a = b; b = t; }
+    return {
+        x0: a.column,
+        y0: a.row,
+        x1: b.column,
+        y1: b.row,
+        dx: b.column - a.column,
+        dy: b.row - a.row
+    };
+}
+
+function scanSpans(e0, e1, ymin, ymax, scanLine) {
+    var y0 = Math.max(ymin, Math.floor(e1.y0));
+    var y1 = Math.min(ymax, Math.ceil(e1.y1));
+
+    // sort edges by x-coordinate
+    if ((e0.x0 === e1.x0 && e0.y0 === e1.y0) ?
+        (e0.x0 + e1.dy / e0.dy * e0.dx < e1.x1) :
+        (e0.x1 - e1.dy / e0.dy * e0.dx < e1.x0)) {
+        var t = e0; e0 = e1; e1 = t;
+    }
+
+    // scan lines!
+    var m0 = e0.dx / e0.dy;
+    var m1 = e1.dx / e1.dy;
+    var d0 = e0.dx > 0; // use y + 1 to compute x0
+    var d1 = e1.dx < 0; // use y + 1 to compute x1
+    for (var y = y0; y < y1; y++) {
+        var x0 = m0 * Math.max(0, Math.min(e0.dy, y + d0 - e0.y0)) + e0.x0;
+        var x1 = m1 * Math.max(0, Math.min(e1.dy, y + d1 - e1.y0)) + e1.x0;
+        scanLine(Math.floor(x1), Math.ceil(x0), y);
+    }
+}
+
+function scanTriangle(a            , b            , c            , ymin, ymax, scanLine) {
+    var ab = edge(a, b),
+        bc = edge(b, c),
+        ca = edge(c, a);
+
+    var t;
+
+    // sort edges by y-length
+    if (ab.dy > bc.dy) { t = ab; ab = bc; bc = t; }
+    if (ab.dy > ca.dy) { t = ab; ab = ca; ca = t; }
+    if (bc.dy > ca.dy) { t = bc; bc = ca; ca = t; }
+
+    // scan span! scan span!
+    if (ab.dy) { scanSpans(ca, ab, ymin, ymax, scanLine); }
+    if (bc.dy) { scanSpans(ca, bc, ymin, ymax, scanLine); }
+}
+
+function getQuadkey(z, x, y) {
+    var quadkey = '', mask;
+    for (var i = z; i > 0; i--) {
+        mask = 1 << (i - 1);
+        quadkey += ((x & mask ? 1 : 0) + (y & mask ? 2 : 0));
+    }
+    return quadkey;
+}
+
+module.exports = TileCoord;
+
+},{"../geo/coordinate":67,"@mapbox/whoots-js":10,"assert":11}],112:[function(require,module,exports){
+'use strict';//      
+
+var Evented = require('../util/evented');
+var util = require('../util/util');
+var loadTileJSON = require('./load_tilejson');
+var normalizeURL = require('../util/mapbox').normalizeTileURL;
+var TileBounds = require('./tile_bounds');
+var ResourceType = require('../util/ajax').ResourceType;
+var browser = require('../util/browser');
+
+                                     
+                                          
+                                 
+                                                 
+                               
+
+var VectorTileSource = (function (Evented) {
+    function VectorTileSource(id        , options                         , dispatcher            , eventedParent         ) {
+        Evented.call(this);
+        this.id = id;
+        this.dispatcher = dispatcher;
+
+        this.type = 'vector';
+        this.minzoom = 0;
+        this.maxzoom = 22;
+        this.scheme = 'xyz';
+        this.tileSize = 512;
+        this.reparseOverscaled = true;
+        this.isTileClipped = true;
+
+        util.extend(this, util.pick(options, ['url', 'scheme', 'tileSize']));
+        this._options = util.extend({ type: 'vector' }, options);
+
+        if (this.tileSize !== 512) {
+            throw new Error('vector tile sources must have a tileSize of 512');
+        }
+
+        this.setEventedParent(eventedParent);
+    }
+
+    if ( Evented ) VectorTileSource.__proto__ = Evented;
+    VectorTileSource.prototype = Object.create( Evented && Evented.prototype );
+    VectorTileSource.prototype.constructor = VectorTileSource;
+
+    VectorTileSource.prototype.load = function load () {
+        var this$1 = this;
+
+        this.fire('dataloading', {dataType: 'source'});
+
+        loadTileJSON(this._options, this.map._transformRequest, function (err, tileJSON) {
+            if (err) {
+                this$1.fire('error', err);
+            } else if (tileJSON) {
+                util.extend(this$1, tileJSON);
+                if (tileJSON.bounds) { this$1.tileBounds = new TileBounds(tileJSON.bounds, this$1.minzoom, this$1.maxzoom); }
+
+                // `content` is included here to prevent a race condition where `Style#_updateSources` is called
+                // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives
+                // ref: https://github.com/mapbox/mapbox-gl-js/pull/4347#discussion_r104418088
+                this$1.fire('data', {dataType: 'source', sourceDataType: 'metadata'});
+                this$1.fire('data', {dataType: 'source', sourceDataType: 'content'});
+            }
+        });
+    };
+
+    VectorTileSource.prototype.hasTile = function hasTile (coord           ) {
+        return !this.tileBounds || this.tileBounds.contains(coord, this.maxzoom);
+    };
+
+    VectorTileSource.prototype.onAdd = function onAdd (map     ) {
+        this.map = map;
+        this.load();
+    };
+
+    VectorTileSource.prototype.serialize = function serialize () {
+        return util.extend({}, this._options);
+    };
+
+    VectorTileSource.prototype.loadTile = function loadTile (tile      , callback                ) {
+        var overscaling = tile.coord.z > this.maxzoom ? Math.pow(2, tile.coord.z - this.maxzoom) : 1;
+        var url = normalizeURL(tile.coord.url(this.tiles, this.maxzoom, this.scheme), this.url);
+        var params = {
+            request: this.map._transformRequest(url, ResourceType.Tile),
+            uid: tile.uid,
+            coord: tile.coord,
+            zoom: tile.coord.z,
+            tileSize: this.tileSize * overscaling,
+            type: this.type,
+            source: this.id,
+            pixelRatio: browser.devicePixelRatio,
+            overscaling: overscaling,
+            angle: this.map.transform.angle,
+            pitch: this.map.transform.pitch,
+            cameraToCenterDistance: this.map.transform.cameraToCenterDistance,
+            cameraToTileDistance: this.map.transform.cameraToTileDistance(tile),
+            showCollisionBoxes: this.map.showCollisionBoxes
+        };
+
+        if (!tile.workerID || tile.state === 'expired') {
+            tile.workerID = this.dispatcher.send('loadTile', params, done.bind(this));
+        } else if (tile.state === 'loading') {
+            // schedule tile reloading after it has been loaded
+            tile.reloadCallback = callback;
+        } else {
+            this.dispatcher.send('reloadTile', params, done.bind(this), tile.workerID);
+        }
+
+        function done(err, data) {
+            if (tile.aborted)
+                { return; }
+
+            if (err) {
+                return callback(err);
+            }
+
+            if (this.map._refreshExpiredTiles) { tile.setExpiryData(data); }
+            tile.loadVectorData(data, this.map.painter);
+
+            if (tile.redoWhenDone) {
+                tile.redoWhenDone = false;
+                tile.redoPlacement(this);
+            }
+
+            callback(null);
+
+            if (tile.reloadCallback) {
+                this.loadTile(tile, tile.reloadCallback);
+                tile.reloadCallback = null;
+            }
+        }
+    };
+
+    VectorTileSource.prototype.abortTile = function abortTile (tile      ) {
+        this.dispatcher.send('abortTile', { uid: tile.uid, type: this.type, source: this.id }, undefined, tile.workerID);
+    };
+
+    VectorTileSource.prototype.unloadTile = function unloadTile (tile      ) {
+        tile.unloadVectorData();
+        this.dispatcher.send('removeTile', { uid: tile.uid, type: this.type, source: this.id }, undefined, tile.workerID);
+    };
+
+    return VectorTileSource;
+}(Evented));
+
+module.exports = VectorTileSource;
+
+},{"../util/ajax":202,"../util/browser":203,"../util/evented":211,"../util/mapbox":218,"../util/util":224,"./load_tilejson":102,"./tile_bounds":110}],113:[function(require,module,exports){
+'use strict';//      
+
+var ajax = require('../util/ajax');
+var vt = require('@mapbox/vector-tile');
+var Protobuf = require('pbf');
+var WorkerTile = require('./worker_tile');
+var util = require('../util/util');
+
+             
+                 
+                         
+                       
+                   
+                            
+                          
+                                 
+
+                                       
+                                                              
+
+                                    
+                           
+                         
+                  
+                       
+  
+
+/**
+ * @callback LoadVectorDataCallback
+ * @param error
+ * @param vectorTile
+ * @private
+ */
+                                                                     
+
+                                         
+                                                                                                                  
+
+/**
+ * @private
+ */
+function loadVectorTile(params                      , callback                        ) {
+    var xhr = ajax.getArrayBuffer(params.request, function (err, response) {
+        if (err) {
+            callback(err);
+        } else if (response) {
+            callback(null, {
+                vectorTile: new vt.VectorTile(new Protobuf(response.data)),
+                rawData: response.data,
+                cacheControl: response.cacheControl,
+                expires: response.expires
+            });
+        }
+    });
+    return function () { xhr.abort(); };
+}
+
+/**
+ * The {@link WorkerSource} implementation that supports {@link VectorTileSource}.
+ * This class is designed to be easily reused to support custom source types
+ * for data formats that can be parsed/converted into an in-memory VectorTile
+ * representation.  To do so, create it with
+ * `new VectorTileWorkerSource(actor, styleLayers, customLoadVectorDataFunction)`.
+ *
+ * @private
+ */
+var VectorTileWorkerSource = function VectorTileWorkerSource(actor     , layerIndex               , loadVectorData               ) {
+      this.actor = actor;
+      this.layerIndex = layerIndex;
+      this.loadVectorData = loadVectorData || loadVectorTile;
+      this.loading = {};
+      this.loaded = {};
+  };
+
+  /**
+   * Implements {@link WorkerSource#loadTile}. Delegates to
+   * {@link VectorTileWorkerSource#loadVectorData} (which by default expects
+   * a `params.url` property) for fetching and producing a VectorTile object.
+   */
+  VectorTileWorkerSource.prototype.loadTile = function loadTile (params                    , callback                  ) {
+        var this$1 = this;
+
+      var source = params.source,
+          uid = params.uid;
+
+      if (!this.loading[source])
+          { this.loading[source] = {}; }
+
+      var workerTile = this.loading[source][uid] = new WorkerTile(params);
+      workerTile.abort = this.loadVectorData(params, function (err, response) {
+          delete this$1.loading[source][uid];
+
+          if (err || !response) {
+              return callback(err);
+          }
+
+          var rawTileData = response.rawData;
+          var cacheControl = {};
+          if (response.expires) { cacheControl.expires = response.expires; }
+          if (response.cacheControl) { cacheControl.cacheControl = response.cacheControl; }
+
+          workerTile.vectorTile = response.vectorTile;
+          workerTile.parse(response.vectorTile, this$1.layerIndex, this$1.actor, function (err, result, transferrables) {
+              if (err || !result) { return callback(err); }
+
+              // Not transferring rawTileData because the worker needs to retain its copy.
+              callback(null,
+                  util.extend({rawTileData: rawTileData}, result, cacheControl),
+                  transferrables);
+          });
+
+          this$1.loaded[source] = this$1.loaded[source] || {};
+          this$1.loaded[source][uid] = workerTile;
+      });
+  };
+
+  /**
+   * Implements {@link WorkerSource#reloadTile}.
+   */
+  VectorTileWorkerSource.prototype.reloadTile = function reloadTile (params                    , callback                  ) {
+      var loaded = this.loaded[params.source],
+          uid = params.uid,
+          vtSource = this;
+      if (loaded && loaded[uid]) {
+          var workerTile = loaded[uid];
+
+          if (workerTile.status === 'parsing') {
+              workerTile.reloadCallback = callback;
+          } else if (workerTile.status === 'done') {
+              workerTile.parse(workerTile.vectorTile, this.layerIndex, this.actor, done.bind(workerTile));
+          }
+
+      }
+
+      function done(err, data) {
+          if (this.reloadCallback) {
+              var reloadCallback = this.reloadCallback;
+              delete this.reloadCallback;
+              this.parse(this.vectorTile, vtSource.layerIndex, vtSource.actor, reloadCallback);
+          }
+
+          callback(err, data);
+      }
+  };
+
+  /**
+   * Implements {@link WorkerSource#abortTile}.
+   *
+   * @param params
+   * @param params.source The id of the source for which we're loading this tile.
+   * @param params.uid The UID for this tile.
+   */
+  VectorTileWorkerSource.prototype.abortTile = function abortTile (params              ) {
+      var loading = this.loading[params.source],
+          uid = params.uid;
+      if (loading && loading[uid] && loading[uid].abort) {
+          loading[uid].abort();
+          delete loading[uid];
+      }
+  };
+
+  /**
+   * Implements {@link WorkerSource#removeTile}.
+   *
+   * @param params
+   * @param params.source The id of the source for which we're loading this tile.
+   * @param params.uid The UID for this tile.
+   */
+  VectorTileWorkerSource.prototype.removeTile = function removeTile (params              ) {
+      var loaded = this.loaded[params.source],
+          uid = params.uid;
+      if (loaded && loaded[uid]) {
+          delete loaded[uid];
+      }
+  };
+
+  VectorTileWorkerSource.prototype.redoPlacement = function redoPlacement (params                       , callback                     ) {
+      var loaded = this.loaded[params.source],
+          loading = this.loading[params.source],
+          uid = params.uid;
+
+      if (loaded && loaded[uid]) {
+          var workerTile = loaded[uid];
+          var result = workerTile.redoPlacement(params.angle, params.pitch, params.cameraToCenterDistance, params.cameraToTileDistance, params.showCollisionBoxes);
+
+          if (result.result) {
+              callback(null, result.result, result.transferables);
+          }
+
+      } else if (loading && loading[uid]) {
+          loading[uid].angle = params.angle;
+      }
+  };
+
+module.exports = VectorTileWorkerSource;
+
+},{"../util/ajax":202,"../util/util":224,"./worker_tile":116,"@mapbox/vector-tile":6,"pbf":39}],114:[function(require,module,exports){
+'use strict';//      
+
+var ajax = require('../util/ajax');
+var ImageSource = require('./image_source');
+
+                                 
+                                                 
+                                           
+
+/**
+ * A data source containing video.
+ * (See the [Style Specification](https://www.mapbox.com/mapbox-gl-style-spec/#sources-video) for detailed documentation of options.)
+ * @interface VideoSource
+ * @example
+ * // add to map
+ * map.addSource('some id', {
+ *    type: 'video',
+ *    url: [
+ *        'https://www.mapbox.com/blog/assets/baltimore-smoke.mp4',
+ *        'https://www.mapbox.com/blog/assets/baltimore-smoke.webm'
+ *    ],
+ *    coordinates: [
+ *        [-76.54, 39.18],
+ *        [-76.52, 39.18],
+ *        [-76.52, 39.17],
+ *        [-76.54, 39.17]
+ *    ]
+ * });
+ *
+ * // update
+ * var mySource = map.getSource('some id');
+ * mySource.setCoordinates([
+ *     [-76.54335737228394, 39.18579907229748],
+ *     [-76.52803659439087, 39.1838364847587],
+ *     [-76.5295386314392, 39.17683392507606],
+ *     [-76.54520273208618, 39.17876344106642]
+ * ]);
+ *
+ * map.removeSource('some id');  // remove
+ * @see [Add a video](https://www.mapbox.com/mapbox-gl-js/example/video-on-a-map/)
+ */
+var VideoSource = (function (ImageSource) {
+    function VideoSource(id        , options                          , dispatcher            , eventedParent         ) {
+        ImageSource.call(this, id, options, dispatcher, eventedParent);
+        this.roundZoom = true;
+        this.type = 'video';
+        this.options = options;
+    }
+
+    if ( ImageSource ) VideoSource.__proto__ = ImageSource;
+    VideoSource.prototype = Object.create( ImageSource && ImageSource.prototype );
+    VideoSource.prototype.constructor = VideoSource;
+
+    VideoSource.prototype.load = function load () {
+        var this$1 = this;
+
+        var options = this.options;
+        this.urls = options.urls;
+
+        ajax.getVideo(options.urls, function (err, video) {
+            if (err) {
+                this$1.fire('error', {error: err});
+            } else if (video) {
+                this$1.video = video;
+                this$1.video.loop = true;
+
+                var loopID;
+
+                // start repainting when video starts playing
+                this$1.video.addEventListener('playing', function () {
+                    loopID = this$1.map.style.animationLoop.set(Infinity);
+                    this$1.map._rerender();
+                });
+
+                // stop repainting when video stops
+                this$1.video.addEventListener('pause', function () {
+                    this$1.map.style.animationLoop.cancel(loopID);
+                });
+
+                if (this$1.map) {
+                    this$1.video.play();
+                }
+
+                this$1._finishLoading();
+            }
+        });
+    };
+
+    /**
+     * Returns the HTML `video` element.
+     *
+     * @returns {HTMLVideoElement} The HTML `video` element.
+     */
+    VideoSource.prototype.getVideo = function getVideo () {
+        return this.video;
+    };
+
+    VideoSource.prototype.onAdd = function onAdd (map     ) {
+        if (this.map) { return; }
+        this.map = map;
+        this.load();
+        if (this.video) {
+            this.video.play();
+            this.setCoordinates(this.coordinates);
+        }
+    };
+
+    /**
+     * Sets the video's coordinates and re-renders the map.
+     *
+     * @method setCoordinates
+     * @param {Array<Array<number>>} coordinates Four geographical coordinates,
+     *   represented as arrays of longitude and latitude numbers, which define the corners of the video.
+     *   The coordinates start at the top left corner of the video and proceed in clockwise order.
+     *   They do not have to represent a rectangle.
+     * @returns {VideoSource} this
+     */
+    // setCoordinates inherited from ImageSource
+
+    VideoSource.prototype.prepare = function prepare () {
+        if (Object.keys(this.tiles).length === 0 || this.video.readyState < 2) { return; } // not enough data for current position
+        this._prepareImage(this.map.painter.gl, this.video);
+    };
+
+    VideoSource.prototype.serialize = function serialize () {
+        return {
+            type: 'video',
+            urls: this.urls,
+            coordinates: this.coordinates
+        };
+    };
+
+    return VideoSource;
+}(ImageSource));
+
+module.exports = VideoSource;
+
+},{"../util/ajax":202,"./image_source":101}],115:[function(require,module,exports){
+'use strict';//      
+
+var Actor = require('../util/actor');
+var StyleLayerIndex = require('../style/style_layer_index');
+
+var VectorTileWorkerSource = require('./vector_tile_worker_source');
+var GeoJSONWorkerSource = require('./geojson_worker_source');
+var assert = require('assert');
+
+var globalRTLTextPlugin = require('./rtl_text_plugin');
+
+             
+                 
+                         
+                       
+                   
+                            
+                         
+                                 
+
+                                                                   
+
+/**
+ * @private
+ */
+var Worker = function Worker(self                        ) {
+    var this$1 = this;
+
+    this.self = self;
+    this.actor = new Actor(self, this);
+
+    this.layerIndexes = {};
+
+    this.workerSourceTypes = {
+        vector: VectorTileWorkerSource,
+        geojson: GeoJSONWorkerSource
+    };
+
+    // [mapId][sourceType] => worker source instance
+    this.workerSources = {};
+
+    this.self.registerWorkerSource = function (name    , WorkerSource                 ) {
+        if (this$1.workerSourceTypes[name]) {
+            throw new Error(("Worker source with name \"" + name + "\" already registered."));
+        }
+        this$1.workerSourceTypes[name] = WorkerSource;
+    };
+
+    this.self.registerRTLTextPlugin = function (rtlTextPlugin                                                                ) {
+        if (globalRTLTextPlugin.applyArabicShaping || globalRTLTextPlugin.processBidirectionalText) {
+            throw new Error('RTL text plugin already registered.');
+        }
+        globalRTLTextPlugin['applyArabicShaping'] = rtlTextPlugin.applyArabicShaping;
+        globalRTLTextPlugin['processBidirectionalText'] = rtlTextPlugin.processBidirectionalText;
+    };
+};
+
+Worker.prototype.setLayers = function setLayers (mapId    , layers                       ) {
+    this.getLayerIndex(mapId).replace(layers);
+};
+
+Worker.prototype.updateLayers = function updateLayers (mapId    , params                                                                                         ) {
+    this.getLayerIndex(mapId).update(params.layers, params.removedIds, params.symbolOrder);
+};
+
+Worker.prototype.loadTile = function loadTile (mapId    , params                                   , callback                ) {
+    assert(params.type);
+    this.getWorkerSource(mapId, params.type).loadTile(params, callback);
+};
+
+Worker.prototype.reloadTile = function reloadTile (mapId    , params                                   , callback                ) {
+    assert(params.type);
+    this.getWorkerSource(mapId, params.type).reloadTile(params, callback);
+};
+
+Worker.prototype.abortTile = function abortTile (mapId    , params                             ) {
+    assert(params.type);
+    this.getWorkerSource(mapId, params.type).abortTile(params);
+};
+
+Worker.prototype.removeTile = function removeTile (mapId    , params                             ) {
+    assert(params.type);
+    this.getWorkerSource(mapId, params.type).removeTile(params);
+};
+
+Worker.prototype.removeSource = function removeSource (mapId    , params                               ) {
+    assert(params.type);
+    var worker = this.getWorkerSource(mapId, params.type);
+    if (worker.removeSource !== undefined) {
+        worker.removeSource(params);
+    }
+};
+
+Worker.prototype.redoPlacement = function redoPlacement (mapId    , params                                      , callback                   ) {
+    assert(params.type);
+    this.getWorkerSource(mapId, params.type).redoPlacement(params, callback);
+};
+
+/**
+ * Load a {@link WorkerSource} script at params.url.  The script is run
+ * (using importScripts) with `registerWorkerSource` in scope, which is a
+ * function taking `(name, workerSourceObject)`.
+ *  @private
+ */
+Worker.prototype.loadWorkerSource = function loadWorkerSource (map    , params             , callback            ) {
+    try {
+        this.self.importScripts(params.url);
+        callback();
+    } catch (e) {
+        callback(e);
+    }
+};
+
+Worker.prototype.loadRTLTextPlugin = function loadRTLTextPlugin (map    , pluginURL    , callback            ) {
+    try {
+        if (!globalRTLTextPlugin.applyArabicShaping && !globalRTLTextPlugin.processBidirectionalText) {
+            this.self.importScripts(pluginURL);
+            if (!globalRTLTextPlugin.applyArabicShaping || !globalRTLTextPlugin.processBidirectionalText) {
+                callback(new Error(("RTL Text Plugin failed to import scripts from " + pluginURL)));
+            }
+        }
+    } catch (e) {
+        callback(e);
+    }
+};
+
+Worker.prototype.getLayerIndex = function getLayerIndex (mapId    ) {
+    var layerIndexes = this.layerIndexes[mapId];
+    if (!layerIndexes) {
+        layerIndexes = this.layerIndexes[mapId] = new StyleLayerIndex();
+    }
+    return layerIndexes;
+};
+
+Worker.prototype.getWorkerSource = function getWorkerSource (mapId    , type    ) {
+        var this$1 = this;
+
+    if (!this.workerSources[mapId])
+        { this.workerSources[mapId] = {}; }
+    if (!this.workerSources[mapId][type]) {
+        // use a wrapped actor so that we can attach a target mapId param
+        // to any messages invoked by the WorkerSource
+        var actor = {
+            send: function (type, data, callback, buffers) {
+                this$1.actor.send(type, data, callback, buffers, mapId);
+            }
+        };
+
+        this.workerSources[mapId][type] = new this.workerSourceTypes[type]((actor ), this.getLayerIndex(mapId));
+    }
+
+    return this.workerSources[mapId][type];
+};
+
+module.exports = function createWorker(self                            ) {
+    return new Worker(self);
+};
+
+},{"../style/style_layer_index":165,"../util/actor":201,"./geojson_worker_source":99,"./rtl_text_plugin":106,"./vector_tile_worker_source":113,"assert":11}],116:[function(require,module,exports){
+'use strict';//      
+
+var FeatureIndex = require('../data/feature_index');
+var CollisionTile = require('../symbol/collision_tile');
+var CollisionBoxArray = require('../symbol/collision_box');
+var DictionaryCoder = require('../util/dictionary_coder');
+var SymbolBucket = require('../data/bucket/symbol_bucket');
+var util = require('../util/util');
+var assert = require('assert');
+var ref = require('../render/image_atlas');
+var makeImageAtlas = ref.makeImageAtlas;
+var ref$1 = require('../render/glyph_atlas');
+var makeGlyphAtlas = ref$1.makeGlyphAtlas;
+
+                                          
+                                           
+                                       
+                                                              
+                                                     
+                                                     
+             
+                         
+                       
+                                 
+
+var WorkerTile = function WorkerTile(params                  ) {
+    this.coord = params.coord;
+    this.uid = params.uid;
+    this.zoom = params.zoom;
+    this.pixelRatio = params.pixelRatio;
+    this.tileSize = params.tileSize;
+    this.source = params.source;
+    this.overscaling = params.overscaling;
+    this.angle = params.angle;
+    this.pitch = params.pitch;
+    this.cameraToCenterDistance = params.cameraToCenterDistance;
+    this.cameraToTileDistance = params.cameraToTileDistance;
+    this.showCollisionBoxes = params.showCollisionBoxes;
+};
+
+WorkerTile.prototype.parse = function parse (data        , layerIndex             , actor   , callback                ) {
+        var this$1 = this;
+
+    this.status = 'parsing';
+    this.data = data;
+
+    this.collisionBoxArray = new CollisionBoxArray();
+    var sourceLayerCoder = new DictionaryCoder(Object.keys(data.layers).sort());
+
+    var featureIndex = new FeatureIndex(this.coord, this.overscaling);
+    featureIndex.bucketLayerIDs = [];
+
+    var buckets                 = {};
+
+    var options = {
+        featureIndex: featureIndex,
+        iconDependencies: {},
+        glyphDependencies: {}
+    };
+
+    var layerFamilies = layerIndex.familiesBySource[this.source];
+    for (var sourceLayerId in layerFamilies) {
+        var sourceLayer = data.layers[sourceLayerId];
+        if (!sourceLayer) {
+            continue;
+        }
+
+        if (sourceLayer.version === 1) {
+            util.warnOnce("Vector tile source \"" + (this$1.source) + "\" layer \"" + sourceLayerId + "\" " +
+                "does not use vector tile spec v2 and therefore may have some rendering errors.");
+        }
+
+        var sourceLayerIndex = sourceLayerCoder.encode(sourceLayerId);
+        var features = [];
+        for (var index = 0; index < sourceLayer.length; index++) {
+            var feature = sourceLayer.feature(index);
+            features.push({ feature: feature, index: index, sourceLayerIndex: sourceLayerIndex });
+        }
+
+        for (var i$1 = 0, list = layerFamilies[sourceLayerId]; i$1 < list.length; i$1 += 1) {
+            var family = list[i$1];
+
+                var layer = family[0];
+
+            assert(layer.source === this$1.source);
+            if (layer.minzoom && this$1.zoom < Math.floor(layer.minzoom)) { continue; }
+            if (layer.maxzoom && this$1.zoom >= layer.maxzoom) { continue; }
+            if (layer.layout && layer.layout.visibility === 'none') { continue; }
+
+            for (var i$2 = 0, list$1 = family; i$2 < list$1.length; i$2 += 1) {
+                var layer$1 = list$1[i$2];
+
+                    layer$1.recalculate(this$1.zoom);
+            }
+
+            var bucket = buckets[layer.id] = layer.createBucket({
+                index: featureIndex.bucketLayerIDs.length,
+                layers: family,
+                zoom: this$1.zoom,
+                pixelRatio: this$1.pixelRatio,
+                overscaling: this$1.overscaling,
+                collisionBoxArray: this$1.collisionBoxArray
+            });
+
+            bucket.populate(features, options);
+            featureIndex.bucketLayerIDs.push(family.map(function (l) { return l.id; }));
+        }
+    }
+
+    // Symbol buckets must be placed in reverse order.
+    this.symbolBuckets = [];
+    for (var i = layerIndex.symbolOrder.length - 1; i >= 0; i--) {
+        var bucket$1 = buckets[layerIndex.symbolOrder[i]];
+        if (bucket$1) {
+            assert(bucket$1 instanceof SymbolBucket);
+            this$1.symbolBuckets.push(((bucket$1 )          ));
+        }
+    }
+
+    var error    ;
+    var glyphMap                                  ;
+    var imageMap                     ;
+
+    var stacks = util.mapObject(options.glyphDependencies, function (glyphs) { return Object.keys(glyphs).map(Number); });
+    if (Object.keys(stacks).length) {
+        actor.send('getGlyphs', {uid: this.uid, stacks: stacks}, function (err, result) {
+            if (!error) {
+                error = err;
+                glyphMap = result;
+                maybePrepare.call(this$1);
+            }
+        });
+    } else {
+        glyphMap = {};
+    }
+
+    var icons = Object.keys(options.iconDependencies);
+    if (icons.length) {
+        actor.send('getImages', {icons: icons}, function (err, result) {
+            if (!error) {
+                error = err;
+                imageMap = result;
+                maybePrepare.call(this$1);
+            }
+        });
+    } else {
+        imageMap = {};
+    }
+
+    maybePrepare.call(this);
+
+    function maybePrepare() {
+            var this$1 = this;
+
+        if (error) {
+            return callback(error);
+        } else if (glyphMap && imageMap) {
+            var collisionTile = new CollisionTile(
+                this.angle,
+                this.pitch,
+                this.cameraToCenterDistance,
+                this.cameraToTileDistance,
+                this.collisionBoxArray);
+
+            var glyphAtlas = makeGlyphAtlas(glyphMap);
+            var imageAtlas = makeImageAtlas(imageMap);
+
+            for (var i = 0, list = this$1.symbolBuckets; i < list.length; i += 1) {
+                var bucket = list[i];
+
+                    recalculateLayers(bucket, this$1.zoom);
+
+                bucket.prepare(glyphMap, glyphAtlas.positions,
+                               imageMap, imageAtlas.positions);
+
+                bucket.place(collisionTile, this$1.showCollisionBoxes);
+            }
+
+            this.status = 'done';
+
+            var transferables = [
+                glyphAtlas.image.data.buffer,
+                imageAtlas.image.data.buffer
+            ];
+
+            callback(null, {
+                buckets: serializeBuckets(util.values(buckets), transferables),
+                featureIndex: featureIndex.serialize(transferables),
+                collisionTile: collisionTile.serialize(transferables),
+                collisionBoxArray: this.collisionBoxArray.serialize(),
+                glyphAtlasImage: glyphAtlas.image,
+                iconAtlasImage: imageAtlas.image
+            }, transferables);
+        }
+    }
+};
+
+WorkerTile.prototype.redoPlacement = function redoPlacement (angle    , pitch    , cameraToCenterDistance    , cameraToTileDistance    , showCollisionBoxes     ) {
+        var this$1 = this;
+
+    this.angle = angle;
+    this.pitch = pitch;
+    this.cameraToCenterDistance = cameraToCenterDistance;
+    this.cameraToTileDistance = cameraToTileDistance;
+
+    if (this.status !== 'done') {
+        return {};
+    }
+
+    var collisionTile = new CollisionTile(
+        this.angle,
+        this.pitch,
+        this.cameraToCenterDistance,
+        this.cameraToTileDistance,
+        this.collisionBoxArray);
+
+    for (var i = 0, list = this$1.symbolBuckets; i < list.length; i += 1) {
+        var bucket = list[i];
+
+            recalculateLayers(bucket, this$1.zoom);
+
+        bucket.place(collisionTile, showCollisionBoxes);
+    }
+
+    var transferables = [];
+    return {
+        result: {
+            buckets: serializeBuckets(this.symbolBuckets, transferables),
+            collisionTile: collisionTile.serialize(transferables)
+        },
+        transferables: transferables
+    };
+};
+
+function recalculateLayers(bucket              , zoom        ) {
+    // Layers are shared and may have been used by a WorkerTile with a different zoom.
+    for (var i = 0, list = bucket.layers; i < list.length; i += 1) {
+        var layer = list[i];
+
+        layer.recalculate(zoom);
+    }
+}
+
+function serializeBuckets(buckets                        , transferables                     ) {
+    return buckets
+        .filter(function (b) { return !b.isEmpty(); })
+        .map(function (b) { return b.serialize(transferables); });
+}
+
+module.exports = WorkerTile;
+
+},{"../data/bucket/symbol_bucket":57,"../data/feature_index":59,"../render/glyph_atlas":84,"../render/image_atlas":86,"../symbol/collision_box":171,"../symbol/collision_tile":173,"../util/dictionary_coder":208,"../util/util":224,"assert":11}],117:[function(require,module,exports){
+'use strict';
+var refProperties = require('./util/ref_properties');
+
+function deref(layer, parent) {
+    var result = {};
+
+    for (var k in layer) {
+        if (k !== 'ref') {
+            result[k] = layer[k];
+        }
+    }
+
+    refProperties.forEach(function (k) {
+        if (k in parent) {
+            result[k] = parent[k];
+        }
+    });
+
+    return result;
+}
+
+module.exports = derefLayers;
+
+/**
+ * Given an array of layers, some of which may contain `ref` properties
+ * whose value is the `id` of another property, return a new array where
+ * such layers have been augmented with the 'type', 'source', etc. properties
+ * from the parent layer, and the `ref` property has been removed.
+ *
+ * The input is not modified. The output may contain references to portions
+ * of the input.
+ *
+ * @private
+ * @param {Array<Layer>} layers
+ * @returns {Array<Layer>}
+ */
+function derefLayers(layers) {
+    layers = layers.slice();
+
+    var map = Object.create(null);
+    for (var i = 0; i < layers.length; i++) {
+        map[layers[i].id] = layers[i];
+    }
+
+    for (var i$1 = 0; i$1 < layers.length; i$1++) {
+        if ('ref' in layers[i$1]) {
+            layers[i$1] = deref(layers[i$1], map[layers[i$1].ref]);
+        }
+    }
+
+    return layers;
+}
+
+},{"./util/ref_properties":130}],118:[function(require,module,exports){
+'use strict';
+var isEqual = require('lodash.isequal');
+
+var operations = {
+
+    /*
+     * { command: 'setStyle', args: [stylesheet] }
+     */
+    setStyle: 'setStyle',
+
+    /*
+     * { command: 'addLayer', args: [layer, 'beforeLayerId'] }
+     */
+    addLayer: 'addLayer',
+
+    /*
+     * { command: 'removeLayer', args: ['layerId'] }
+     */
+    removeLayer: 'removeLayer',
+
+    /*
+     * { command: 'setPaintProperty', args: ['layerId', 'prop', value] }
+     */
+    setPaintProperty: 'setPaintProperty',
+
+    /*
+     * { command: 'setLayoutProperty', args: ['layerId', 'prop', value] }
+     */
+    setLayoutProperty: 'setLayoutProperty',
+
+    /*
+     * { command: 'setFilter', args: ['layerId', filter] }
+     */
+    setFilter: 'setFilter',
+
+    /*
+     * { command: 'addSource', args: ['sourceId', source] }
+     */
+    addSource: 'addSource',
+
+    /*
+     * { command: 'removeSource', args: ['sourceId'] }
+     */
+    removeSource: 'removeSource',
+
+    /*
+     * { command: 'setLayerZoomRange', args: ['layerId', 0, 22] }
+     */
+    setLayerZoomRange: 'setLayerZoomRange',
+
+    /*
+     * { command: 'setLayerProperty', args: ['layerId', 'prop', value] }
+     */
+    setLayerProperty: 'setLayerProperty',
+
+    /*
+     * { command: 'setCenter', args: [[lon, lat]] }
+     */
+    setCenter: 'setCenter',
+
+    /*
+     * { command: 'setZoom', args: [zoom] }
+     */
+    setZoom: 'setZoom',
+
+    /*
+     * { command: 'setBearing', args: [bearing] }
+     */
+    setBearing: 'setBearing',
+
+    /*
+     * { command: 'setPitch', args: [pitch] }
+     */
+    setPitch: 'setPitch',
+
+    /*
+     * { command: 'setSprite', args: ['spriteUrl'] }
+     */
+    setSprite: 'setSprite',
+
+    /*
+     * { command: 'setGlyphs', args: ['glyphsUrl'] }
+     */
+    setGlyphs: 'setGlyphs',
+
+    /*
+     * { command: 'setTransition', args: [transition] }
+     */
+    setTransition: 'setTransition',
+
+    /*
+     * { command: 'setLighting', args: [lightProperties] }
+     */
+    setLight: 'setLight'
+
+};
+
+
+function diffSources(before, after, commands, sourcesRemoved) {
+    before = before || {};
+    after = after || {};
+
+    var sourceId;
+
+    // look for sources to remove
+    for (sourceId in before) {
+        if (!before.hasOwnProperty(sourceId)) { continue; }
+        if (!after.hasOwnProperty(sourceId)) {
+            commands.push({ command: operations.removeSource, args: [sourceId] });
+            sourcesRemoved[sourceId] = true;
+        }
+    }
+
+    // look for sources to add/update
+    for (sourceId in after) {
+        if (!after.hasOwnProperty(sourceId)) { continue; }
+        if (!before.hasOwnProperty(sourceId)) {
+            commands.push({ command: operations.addSource, args: [sourceId, after[sourceId]] });
+        } else if (!isEqual(before[sourceId], after[sourceId])) {
+            // no update command, must remove then add
+            commands.push({ command: operations.removeSource, args: [sourceId] });
+            commands.push({ command: operations.addSource, args: [sourceId, after[sourceId]] });
+            sourcesRemoved[sourceId] = true;
+        }
+    }
+}
+
+function diffLayerPropertyChanges(before, after, commands, layerId, klass, command) {
+    before = before || {};
+    after = after || {};
+
+    var prop;
+
+    for (prop in before) {
+        if (!before.hasOwnProperty(prop)) { continue; }
+        if (!isEqual(before[prop], after[prop])) {
+            commands.push({ command: command, args: [layerId, prop, after[prop], klass] });
+        }
+    }
+    for (prop in after) {
+        if (!after.hasOwnProperty(prop) || before.hasOwnProperty(prop)) { continue; }
+        if (!isEqual(before[prop], after[prop])) {
+            commands.push({ command: command, args: [layerId, prop, after[prop], klass] });
+        }
+    }
+}
+
+function pluckId(layer) {
+    return layer.id;
+}
+function indexById(group, layer) {
+    group[layer.id] = layer;
+    return group;
+}
+
+function diffLayers(before, after, commands) {
+    before = before || [];
+    after = after || [];
+
+    // order of layers by id
+    var beforeOrder = before.map(pluckId);
+    var afterOrder = after.map(pluckId);
+
+    // index of layer by id
+    var beforeIndex = before.reduce(indexById, {});
+    var afterIndex = after.reduce(indexById, {});
+
+    // track order of layers as if they have been mutated
+    var tracker = beforeOrder.slice();
+
+    // layers that have been added do not need to be diffed
+    var clean = Object.create(null);
+
+    var i, d, layerId, beforeLayer, afterLayer, insertBeforeLayerId, prop;
+
+    // remove layers
+    for (i = 0, d = 0; i < beforeOrder.length; i++) {
+        layerId = beforeOrder[i];
+        if (!afterIndex.hasOwnProperty(layerId)) {
+            commands.push({ command: operations.removeLayer, args: [layerId] });
+            tracker.splice(tracker.indexOf(layerId, d), 1);
+        } else {
+            // limit where in tracker we need to look for a match
+            d++;
+        }
+    }
+
+    // add/reorder layers
+    for (i = 0, d = 0; i < afterOrder.length; i++) {
+        // work backwards as insert is before an existing layer
+        layerId = afterOrder[afterOrder.length - 1 - i];
+
+        if (tracker[tracker.length - 1 - i] === layerId) { continue; }
+
+        if (beforeIndex.hasOwnProperty(layerId)) {
+            // remove the layer before we insert at the correct position
+            commands.push({ command: operations.removeLayer, args: [layerId] });
+            tracker.splice(tracker.lastIndexOf(layerId, tracker.length - d), 1);
+        } else {
+            // limit where in tracker we need to look for a match
+            d++;
+        }
+
+        // add layer at correct position
+        insertBeforeLayerId = tracker[tracker.length - i];
+        commands.push({ command: operations.addLayer, args: [afterIndex[layerId], insertBeforeLayerId] });
+        tracker.splice(tracker.length - i, 0, layerId);
+        clean[layerId] = true;
+    }
+
+    // update layers
+    for (i = 0; i < afterOrder.length; i++) {
+        layerId = afterOrder[i];
+        beforeLayer = beforeIndex[layerId];
+        afterLayer = afterIndex[layerId];
+
+        // no need to update if previously added (new or moved)
+        if (clean[layerId] || isEqual(beforeLayer, afterLayer)) { continue; }
+
+        // If source, source-layer, or type have changes, then remove the layer
+        // and add it back 'from scratch'.
+        if (!isEqual(beforeLayer.source, afterLayer.source) || !isEqual(beforeLayer['source-layer'], afterLayer['source-layer']) || !isEqual(beforeLayer.type, afterLayer.type)) {
+            commands.push({ command: operations.removeLayer, args: [layerId] });
+            // we add the layer back at the same position it was already in, so
+            // there's no need to update the `tracker`
+            insertBeforeLayerId = tracker[tracker.lastIndexOf(layerId) + 1];
+            commands.push({ command: operations.addLayer, args: [afterLayer, insertBeforeLayerId] });
+            continue;
+        }
+
+        // layout, paint, filter, minzoom, maxzoom
+        diffLayerPropertyChanges(beforeLayer.layout, afterLayer.layout, commands, layerId, null, operations.setLayoutProperty);
+        diffLayerPropertyChanges(beforeLayer.paint, afterLayer.paint, commands, layerId, null, operations.setPaintProperty);
+        if (!isEqual(beforeLayer.filter, afterLayer.filter)) {
+            commands.push({ command: operations.setFilter, args: [layerId, afterLayer.filter] });
+        }
+        if (!isEqual(beforeLayer.minzoom, afterLayer.minzoom) || !isEqual(beforeLayer.maxzoom, afterLayer.maxzoom)) {
+            commands.push({ command: operations.setLayerZoomRange, args: [layerId, afterLayer.minzoom, afterLayer.maxzoom] });
+        }
+
+        // handle all other layer props, including paint.*
+        for (prop in beforeLayer) {
+            if (!beforeLayer.hasOwnProperty(prop)) { continue; }
+            if (prop === 'layout' || prop === 'paint' || prop === 'filter' ||
+                prop === 'metadata' || prop === 'minzoom' || prop === 'maxzoom') { continue; }
+            if (prop.indexOf('paint.') === 0) {
+                diffLayerPropertyChanges(beforeLayer[prop], afterLayer[prop], commands, layerId, prop.slice(6), operations.setPaintProperty);
+            } else if (!isEqual(beforeLayer[prop], afterLayer[prop])) {
+                commands.push({ command: operations.setLayerProperty, args: [layerId, prop, afterLayer[prop]] });
+            }
+        }
+        for (prop in afterLayer) {
+            if (!afterLayer.hasOwnProperty(prop) || beforeLayer.hasOwnProperty(prop)) { continue; }
+            if (prop === 'layout' || prop === 'paint' || prop === 'filter' ||
+                prop === 'metadata' || prop === 'minzoom' || prop === 'maxzoom') { continue; }
+            if (prop.indexOf('paint.') === 0) {
+                diffLayerPropertyChanges(beforeLayer[prop], afterLayer[prop], commands, layerId, prop.slice(6), operations.setPaintProperty);
+            } else if (!isEqual(beforeLayer[prop], afterLayer[prop])) {
+                commands.push({ command: operations.setLayerProperty, args: [layerId, prop, afterLayer[prop]] });
+            }
+        }
+    }
+}
+
+/**
+ * Diff two stylesheet
+ *
+ * Creates semanticly aware diffs that can easily be applied at runtime.
+ * Operations produced by the diff closely resemble the mapbox-gl-js API. Any
+ * error creating the diff will fall back to the 'setStyle' operation.
+ *
+ * Example diff:
+ * [
+ *     { command: 'setConstant', args: ['@water', '#0000FF'] },
+ *     { command: 'setPaintProperty', args: ['background', 'background-color', 'black'] }
+ * ]
+ *
+ * @private
+ * @param {*} [before] stylesheet to compare from
+ * @param {*} after stylesheet to compare to
+ * @returns Array list of changes
+ */
+function diffStyles(before, after) {
+    if (!before) { return [{ command: operations.setStyle, args: [after] }]; }
+
+    var commands = [];
+
+    try {
+        // Handle changes to top-level properties
+        if (!isEqual(before.version, after.version)) {
+            return [{ command: operations.setStyle, args: [after] }];
+        }
+        if (!isEqual(before.center, after.center)) {
+            commands.push({ command: operations.setCenter, args: [after.center] });
+        }
+        if (!isEqual(before.zoom, after.zoom)) {
+            commands.push({ command: operations.setZoom, args: [after.zoom] });
+        }
+        if (!isEqual(before.bearing, after.bearing)) {
+            commands.push({ command: operations.setBearing, args: [after.bearing] });
+        }
+        if (!isEqual(before.pitch, after.pitch)) {
+            commands.push({ command: operations.setPitch, args: [after.pitch] });
+        }
+        if (!isEqual(before.sprite, after.sprite)) {
+            commands.push({ command: operations.setSprite, args: [after.sprite] });
+        }
+        if (!isEqual(before.glyphs, after.glyphs)) {
+            commands.push({ command: operations.setGlyphs, args: [after.glyphs] });
+        }
+        if (!isEqual(before.transition, after.transition)) {
+            commands.push({ command: operations.setTransition, args: [after.transition] });
+        }
+        if (!isEqual(before.light, after.light)) {
+            commands.push({ command: operations.setLight, args: [after.light] });
+        }
+
+        // Handle changes to `sources`
+        // If a source is to be removed, we also--before the removeSource
+        // command--need to remove all the style layers that depend on it.
+        var sourcesRemoved = {};
+
+        // First collect the {add,remove}Source commands
+        var removeOrAddSourceCommands = [];
+        diffSources(before.sources, after.sources, removeOrAddSourceCommands, sourcesRemoved);
+
+        // Push a removeLayer command for each style layer that depends on a
+        // source that's being removed.
+        // Also, exclude any such layers them from the input to `diffLayers`
+        // below, so that diffLayers produces the appropriate `addLayers`
+        // command
+        var beforeLayers = [];
+        if (before.layers) {
+            before.layers.forEach(function (layer) {
+                if (sourcesRemoved[layer.source]) {
+                    commands.push({ command: operations.removeLayer, args: [layer.id] });
+                } else {
+                    beforeLayers.push(layer);
+                }
+            });
+        }
+        commands = commands.concat(removeOrAddSourceCommands);
+
+        // Handle changes to `layers`
+        diffLayers(beforeLayers, after.layers, commands);
+
+    } catch (e) {
+        // fall back to setStyle
+        console.warn('Unable to compute style diff:', e);
+        commands = [{ command: operations.setStyle, args: [after] }];
+    }
+
+    return commands;
+}
+
+module.exports = diffStyles;
+module.exports.operations = operations;
+
+},{"lodash.isequal":35}],119:[function(require,module,exports){
+'use strict';
+var format = require('util').format;
+
+function ValidationError(key, value) {
+    var args = [], len = arguments.length - 2;
+    while ( len-- > 0 ) args[ len ] = arguments[ len + 2 ];
+
+    this.message = (key ? (key + ": ") : '') + format.apply(format, args);
+
+    if (value !== null && value !== undefined && value.__line__) {
+        this.line = value.__line__;
+    }
+}
+
+module.exports = ValidationError;
+
+},{"util":46}],120:[function(require,module,exports){
+'use strict';module.exports = createFilter;
+
+var types = ['Unknown', 'Point', 'LineString', 'Polygon'];
+
+/**
+ * Given a filter expressed as nested arrays, return a new function
+ * that evaluates whether a given feature (with a .properties or .tags property)
+ * passes its test.
+ *
+ * @private
+ * @param {Array} filter mapbox gl filter
+ * @returns {Function} filter-evaluating function
+ */
+function createFilter(filter) {
+    return new Function('f', ("var p = (f && f.properties || {}); return " + (compile(filter))));
+}
+
+function compile(filter) {
+    if (!filter) { return 'true'; }
+    var op = filter[0];
+    if (filter.length <= 1) { return op === 'any' ? 'false' : 'true'; }
+    var str =
+        op === '==' ? compileComparisonOp(filter[1], filter[2], '===', false) :
+        op === '!=' ? compileComparisonOp(filter[1], filter[2], '!==', false) :
+        op === '<' ||
+        op === '>' ||
+        op === '<=' ||
+        op === '>=' ? compileComparisonOp(filter[1], filter[2], op, true) :
+        op === 'any' ? compileLogicalOp(filter.slice(1), '||') :
+        op === 'all' ? compileLogicalOp(filter.slice(1), '&&') :
+        op === 'none' ? compileNegation(compileLogicalOp(filter.slice(1), '||')) :
+        op === 'in' ? compileInOp(filter[1], filter.slice(2)) :
+        op === '!in' ? compileNegation(compileInOp(filter[1], filter.slice(2))) :
+        op === 'has' ? compileHasOp(filter[1]) :
+        op === '!has' ? compileNegation(compileHasOp(filter[1])) :
+        'true';
+    return ("(" + str + ")");
+}
+
+function compilePropertyReference(property) {
+    var ref =
+        property === '$type' ? 'f.type' :
+        property === '$id' ? 'f.id' : ("p[" + (JSON.stringify(property)) + "]");
+    return ref;
+}
+
+function compileComparisonOp(property, value, op, checkType) {
+    var left = compilePropertyReference(property);
+    var right = property === '$type' ? types.indexOf(value) : JSON.stringify(value);
+    return (checkType ? ("typeof " + left + "=== typeof " + right + "&&") : '') + left + op + right;
+}
+
+function compileLogicalOp(expressions, op) {
+    return expressions.map(compile).join(op);
+}
+
+function compileInOp(property, values) {
+    if (property === '$type') { values = values.map(function (value) {
+        return types.indexOf(value);
+    }); }
+    var left = JSON.stringify(values.sort(compare));
+    var right = compilePropertyReference(property);
+
+    if (values.length <= 200) { return (left + ".indexOf(" + right + ") !== -1"); }
+
+    return ("" + ('function(v, a, i, j) {' +
+        'while (i <= j) { var m = (i + j) >> 1;' +
+        '    if (a[m] === v) return true; if (a[m] > v) j = m - 1; else i = m + 1;' +
+        '}' +
+    'return false; }(') + right + ", " + left + ",0," + (values.length - 1) + ")");
+}
+
+function compileHasOp(property) {
+    return property === '$id' ? '"id" in f' : ((JSON.stringify(property)) + " in p");
+}
+
+function compileNegation(expression) {
+    return ("!(" + expression + ")");
+}
+
+// Comparison function to sort numbers and strings
+function compare(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+},{}],121:[function(require,module,exports){
+'use strict';
+// Constants
+var Xn = 0.950470, // D65 standard referent
+    Yn = 1,
+    Zn = 1.088830,
+    t0 = 4 / 29,
+    t1 = 6 / 29,
+    t2 = 3 * t1 * t1,
+    t3 = t1 * t1 * t1,
+    deg2rad = Math.PI / 180,
+    rad2deg = 180 / Math.PI;
+
+// Utilities
+function xyz2lab(t) {
+    return t > t3 ? Math.pow(t, 1 / 3) : t / t2 + t0;
+}
+
+function lab2xyz(t) {
+    return t > t1 ? t * t * t : t2 * (t - t0);
+}
+
+function xyz2rgb(x) {
+    return 255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055);
+}
+
+function rgb2xyz(x) {
+    x /= 255;
+    return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+}
+
+// LAB
+function rgbToLab(rgbColor) {
+    var b = rgb2xyz(rgbColor[0]),
+        a = rgb2xyz(rgbColor[1]),
+        l = rgb2xyz(rgbColor[2]),
+        x = xyz2lab((0.4124564 * b + 0.3575761 * a + 0.1804375 * l) / Xn),
+        y = xyz2lab((0.2126729 * b + 0.7151522 * a + 0.0721750 * l) / Yn),
+        z = xyz2lab((0.0193339 * b + 0.1191920 * a + 0.9503041 * l) / Zn);
+
+    return [
+        116 * y - 16,
+        500 * (x - y),
+        200 * (y - z),
+        rgbColor[3]
+    ];
+}
+
+function labToRgb(labColor) {
+    var y = (labColor[0] + 16) / 116,
+        x = isNaN(labColor[1]) ? y : y + labColor[1] / 500,
+        z = isNaN(labColor[2]) ? y : y - labColor[2] / 200;
+    y = Yn * lab2xyz(y);
+    x = Xn * lab2xyz(x);
+    z = Zn * lab2xyz(z);
+    return [
+        xyz2rgb(3.2404542 * x - 1.5371385 * y - 0.4985314 * z), // D65 -> sRGB
+        xyz2rgb(-0.9692660 * x + 1.8760108 * y + 0.0415560 * z),
+        xyz2rgb(0.0556434 * x - 0.2040259 * y + 1.0572252 * z),
+        labColor[3]
+    ];
+}
+
+// HCL
+function rgbToHcl(rgbColor) {
+    var labColor = rgbToLab(rgbColor);
+    var l = labColor[0],
+        a = labColor[1],
+        b = labColor[2];
+    var h = Math.atan2(b, a) * rad2deg;
+    return [
+        h < 0 ? h + 360 : h,
+        Math.sqrt(a * a + b * b),
+        l,
+        rgbColor[3]
+    ];
+}
+
+function hclToRgb(hclColor) {
+    var h = hclColor[0] * deg2rad,
+        c = hclColor[1],
+        l = hclColor[2];
+    return labToRgb([
+        l,
+        Math.cos(h) * c,
+        Math.sin(h) * c,
+        hclColor[3]
+    ]);
+}
+
+module.exports = {
+    lab: {
+        forward: rgbToLab,
+        reverse: labToRgb
+    },
+    hcl: {
+        forward: rgbToHcl,
+        reverse: hclToRgb
+    }
+};
+
+},{}],122:[function(require,module,exports){
+'use strict';
+var colorSpaces = require('./color_spaces');
+var parseColor = require('../util/parse_color');
+var extend = require('../util/extend');
+var getType = require('../util/get_type');
+var interpolate = require('../util/interpolate');
+
+function identityFunction(x) {
+    return x;
+}
+
+function createFunction(parameters, propertySpec) {
+    var isColor = propertySpec.type === 'color';
+
+    var fun;
+
+    if (!isFunctionDefinition(parameters)) {
+        if (isColor && parameters) {
+            parameters = parseColor(parameters);
+        }
+        fun = function() {
+            return parameters;
+        };
+        fun.isFeatureConstant = true;
+        fun.isZoomConstant = true;
+
+    } else {
+        var zoomAndFeatureDependent = parameters.stops && typeof parameters.stops[0][0] === 'object';
+        var featureDependent = zoomAndFeatureDependent || parameters.property !== undefined;
+        var zoomDependent = zoomAndFeatureDependent || !featureDependent;
+        var type = parameters.type || (propertySpec.function === 'interpolated' ? 'exponential' : 'interval');
+
+        if (isColor) {
+            parameters = extend({}, parameters);
+
+            if (parameters.stops) {
+                parameters.stops = parameters.stops.map(function (stop) {
+                    return [stop[0], parseColor(stop[1])];
+                });
+            }
+
+            if (parameters.default) {
+                parameters.default = parseColor(parameters.default);
+            } else {
+                parameters.default = parseColor(propertySpec.default);
+            }
+        }
+
+        var innerFun;
+        var hashedStops;
+        var categoricalKeyType;
+        if (type === 'exponential') {
+            innerFun = evaluateExponentialFunction;
+        } else if (type === 'interval') {
+            innerFun = evaluateIntervalFunction;
+        } else if (type === 'categorical') {
+            innerFun = evaluateCategoricalFunction;
+
+            // For categorical functions, generate an Object as a hashmap of the stops for fast searching
+            hashedStops = Object.create(null);
+            for (var i = 0, list = parameters.stops; i < list.length; i += 1) {
+                var stop = list[i];
+
+                hashedStops[stop[0]] = stop[1];
+            }
+
+            // Infer key type based on first stop key-- used to encforce strict type checking later
+            categoricalKeyType = typeof parameters.stops[0][0];
+
+        } else if (type === 'identity') {
+            innerFun = evaluateIdentityFunction;
+        } else {
+            throw new Error(("Unknown function type \"" + type + "\""));
+        }
+
+        var outputFunction;
+
+        // If we're interpolating colors in a color system other than RGBA,
+        // first translate all stop values to that color system, then interpolate
+        // arrays as usual. The `outputFunction` option lets us then translate
+        // the result of that interpolation back into RGBA.
+        if (parameters.colorSpace && parameters.colorSpace !== 'rgb') {
+            if (colorSpaces[parameters.colorSpace]) {
+                var colorspace = colorSpaces[parameters.colorSpace];
+                // Avoid mutating the parameters value
+                parameters = JSON.parse(JSON.stringify(parameters));
+                for (var s = 0; s < parameters.stops.length; s++) {
+                    parameters.stops[s] = [
+                        parameters.stops[s][0],
+                        colorspace.forward(parameters.stops[s][1])
+                    ];
+                }
+                outputFunction = colorspace.reverse;
+            } else {
+                throw new Error(("Unknown color space: " + (parameters.colorSpace)));
+            }
+        } else {
+            outputFunction = identityFunction;
+        }
+
+        if (zoomAndFeatureDependent) {
+            var featureFunctions = {};
+            var zoomStops = [];
+            for (var s$1 = 0; s$1 < parameters.stops.length; s$1++) {
+                var stop$1 = parameters.stops[s$1];
+                var zoom = stop$1[0].zoom;
+                if (featureFunctions[zoom] === undefined) {
+                    featureFunctions[zoom] = {
+                        zoom: zoom,
+                        type: parameters.type,
+                        property: parameters.property,
+                        default: parameters.default,
+                        stops: []
+                    };
+                    zoomStops.push(zoom);
+                }
+                featureFunctions[zoom].stops.push([stop$1[0].value, stop$1[1]]);
+            }
+
+            var featureFunctionStops = [];
+            for (var i$1 = 0, list$1 = zoomStops; i$1 < list$1.length; i$1 += 1) {
+                var z = list$1[i$1];
+
+                featureFunctionStops.push([featureFunctions[z].zoom, createFunction(featureFunctions[z], propertySpec)]);
+            }
+            fun = function(zoom, feature) {
+                return outputFunction(evaluateExponentialFunction({
+                    stops: featureFunctionStops,
+                    base: parameters.base
+                }, propertySpec, zoom)(zoom, feature));
+            };
+            fun.isFeatureConstant = false;
+            fun.isZoomConstant = false;
+
+        } else if (zoomDependent) {
+            fun = function(zoom) {
+                return outputFunction(innerFun(parameters, propertySpec, zoom, hashedStops, categoricalKeyType));
+            };
+            fun.isFeatureConstant = true;
+            fun.isZoomConstant = false;
+        } else {
+            fun = function(zoom, feature) {
+                var value = feature[parameters.property];
+                if (value === undefined) {
+                    return coalesce(parameters.default, propertySpec.default);
+                }
+                return outputFunction(innerFun(parameters, propertySpec, value, hashedStops, categoricalKeyType));
+            };
+            fun.isFeatureConstant = false;
+            fun.isZoomConstant = true;
+        }
+    }
+
+    return fun;
+}
+
+function coalesce(a, b, c) {
+    if (a !== undefined) { return a; }
+    if (b !== undefined) { return b; }
+    if (c !== undefined) { return c; }
+}
+
+function evaluateCategoricalFunction(parameters, propertySpec, input, hashedStops, keyType) {
+    var evaluated = typeof input === keyType ? hashedStops[input] : undefined; // Enforce strict typing on input
+    return coalesce(evaluated, parameters.default, propertySpec.default);
+}
+
+function evaluateIntervalFunction(parameters, propertySpec, input) {
+    // Edge cases
+    if (getType(input) !== 'number') { return coalesce(parameters.default, propertySpec.default); }
+    var n = parameters.stops.length;
+    if (n === 1) { return parameters.stops[0][1]; }
+    if (input <= parameters.stops[0][0]) { return parameters.stops[0][1]; }
+    if (input >= parameters.stops[n - 1][0]) { return parameters.stops[n - 1][1]; }
+
+    var index = findStopLessThanOrEqualTo(parameters.stops, input);
+
+    return parameters.stops[index][1];
+}
+
+function evaluateExponentialFunction(parameters, propertySpec, input) {
+    var base = parameters.base !== undefined ? parameters.base : 1;
+
+    // Edge cases
+    if (getType(input) !== 'number') { return coalesce(parameters.default, propertySpec.default); }
+    var n = parameters.stops.length;
+    if (n === 1) { return parameters.stops[0][1]; }
+    if (input <= parameters.stops[0][0]) { return parameters.stops[0][1]; }
+    if (input >= parameters.stops[n - 1][0]) { return parameters.stops[n - 1][1]; }
+
+    var index = findStopLessThanOrEqualTo(parameters.stops, input);
+    var t = interpolationFactor(
+        input, base,
+        parameters.stops[index][0],
+        parameters.stops[index + 1][0]);
+
+    var outputLower = parameters.stops[index][1];
+    var outputUpper = parameters.stops[index + 1][1];
+    var interp = interpolate[propertySpec.type] || identityFunction;
+
+    if (typeof outputLower === 'function') {
+        return function() {
+            var args = [], len = arguments.length;
+            while ( len-- ) args[ len ] = arguments[ len ];
+
+            var evaluatedLower = outputLower.apply(undefined, args);
+            var evaluatedUpper = outputUpper.apply(undefined, args);
+            // Special case for fill-outline-color, which has no spec default.
+            if (evaluatedLower === undefined || evaluatedUpper === undefined) {
+                return undefined;
+            }
+            return interp(evaluatedLower, evaluatedUpper, t);
+        };
+    }
+
+    return interp(outputLower, outputUpper, t);
+}
+
+function evaluateIdentityFunction(parameters, propertySpec, input) {
+    if (propertySpec.type === 'color') {
+        input = parseColor(input);
+    } else if (getType(input) !== propertySpec.type && (propertySpec.type !== 'enum' || !propertySpec.values[input])) {
+        input = undefined;
+    }
+    return coalesce(input, parameters.default, propertySpec.default);
+}
+
+/**
+ * Returns the index of the last stop <= input, or 0 if it doesn't exist.
+ *
+ * @private
+ */
+function findStopLessThanOrEqualTo(stops, input) {
+    var n = stops.length;
+    var lowerIndex = 0;
+    var upperIndex = n - 1;
+    var currentIndex = 0;
+    var currentValue, upperValue;
+
+    while (lowerIndex <= upperIndex) {
+        currentIndex = Math.floor((lowerIndex + upperIndex) / 2);
+        currentValue = stops[currentIndex][0];
+        upperValue = stops[currentIndex + 1][0];
+        if (input === currentValue || input > currentValue && input < upperValue) { // Search complete
+            return currentIndex;
+        } else if (currentValue < input) {
+            lowerIndex = currentIndex + 1;
+        } else if (currentValue > input) {
+            upperIndex = currentIndex - 1;
+        }
+    }
+
+    return Math.max(currentIndex - 1, 0);
+}
+
+function isFunctionDefinition(value) {
+    return typeof value === 'object' && (value.stops || value.type === 'identity');
+}
+
+/**
+ * Returns a ratio that can be used to interpolate between exponential function
+ * stops.
+ *
+ * How it works:
+ * Two consecutive stop values define a (scaled and shifted) exponential
+ * function `f(x) = a * base^x + b`, where `base` is the user-specified base,
+ * and `a` and `b` are constants affording sufficient degrees of freedom to fit
+ * the function to the given stops.
+ *
+ * Here's a bit of algebra that lets us compute `f(x)` directly from the stop
+ * values without explicitly solving for `a` and `b`:
+ *
+ * First stop value: `f(x0) = y0 = a * base^x0 + b`
+ * Second stop value: `f(x1) = y1 = a * base^x1 + b`
+ * => `y1 - y0 = a(base^x1 - base^x0)`
+ * => `a = (y1 - y0)/(base^x1 - base^x0)`
+ *
+ * Desired value: `f(x) = y = a * base^x + b`
+ * => `f(x) = y0 + a * (base^x - base^x0)`
+ *
+ * From the above, we can replace the `a` in `a * (base^x - base^x0)` and do a
+ * little algebra:
+ * ```
+ * a * (base^x - base^x0) = (y1 - y0)/(base^x1 - base^x0) * (base^x - base^x0)
+ *                     = (y1 - y0) * (base^x - base^x0) / (base^x1 - base^x0)
+ * ```
+ *
+ * If we let `(base^x - base^x0) / (base^x1 base^x0)`, then we have
+ * `f(x) = y0 + (y1 - y0) * ratio`.  In other words, `ratio` may be treated as
+ * an interpolation factor between the two stops' output values.
+ *
+ * (Note: a slightly different form for `ratio`,
+ * `(base^(x-x0) - 1) / (base^(x1-x0) - 1) `, is equivalent, but requires fewer
+ * expensive `Math.pow()` operations.)
+ *
+ * @private
+*/
+function interpolationFactor(input, base, lowerValue, upperValue) {
+    var difference = upperValue - lowerValue;
+    var progress = input - lowerValue;
+
+    if (difference === 0) {
+        return 0;
+    } else if (base === 1) {
+        return progress / difference;
+    } else {
+        return (Math.pow(base, progress) - 1) / (Math.pow(base, difference) - 1);
+    }
+}
+
+module.exports = createFunction;
+module.exports.isFunctionDefinition = isFunctionDefinition;
+module.exports.interpolationFactor = interpolationFactor;
+module.exports.findStopLessThanOrEqualTo = findStopLessThanOrEqualTo;
+
+},{"../util/extend":126,"../util/get_type":127,"../util/interpolate":128,"../util/parse_color":129,"./color_spaces":121}],123:[function(require,module,exports){
+'use strict';
+var refProperties = require('./util/ref_properties');
+
+function stringify(obj) {
+    var type = typeof obj;
+    if (type === 'number' || type === 'boolean' || type === 'string' || obj === undefined || obj === null)
+        { return JSON.stringify(obj); }
+
+    if (Array.isArray(obj)) {
+        var str$1 = '[';
+        for (var i$1 = 0, list = obj; i$1 < list.length; i$1 += 1) {
+            var val = list[i$1];
+
+            str$1 += (stringify(val)) + ",";
+        }
+        return (str$1 + "]");
+    }
+
+    var keys = Object.keys(obj).sort();
+
+    var str = '{';
+    for (var i = 0; i < keys.length; i++) {
+        str += (JSON.stringify(keys[i])) + ":" + (stringify(obj[keys[i]])) + ",";
+    }
+    return (str + "}");
+}
+
+function getKey(layer) {
+    var key = '';
+    for (var i = 0, list = refProperties; i < list.length; i += 1) {
+        var k = list[i];
+
+        key += "/" + (stringify(layer[k]));
+    }
+    return key;
+}
+
+module.exports = groupByLayout;
+
+/**
+ * Given an array of layers, return an array of arrays of layers where all
+ * layers in each group have identical layout-affecting properties. These
+ * are the properties that were formerly used by explicit `ref` mechanism
+ * for layers: 'type', 'source', 'source-layer', 'minzoom', 'maxzoom',
+ * 'filter', and 'layout'.
+ *
+ * The input is not modified. The output layers are references to the
+ * input layers.
+ *
+ * @private
+ * @param {Array<Layer>} layers
+ * @returns {Array<Array<Layer>>}
+ */
+function groupByLayout(layers) {
+    var groups = {};
+
+    for (var i = 0; i < layers.length; i++) {
+        var k = getKey(layers[i]);
+        var group = groups[k];
+        if (!group) {
+            group = groups[k] = [];
+        }
+        group.push(layers[i]);
+    }
+
+    var result = [];
+
+    for (var k$1 in groups) {
+        result.push(groups[k$1]);
+    }
+
+    return result;
+}
+
+},{"./util/ref_properties":130}],124:[function(require,module,exports){
+'use strict';
+module.exports = require('./v8.json');
+
+},{"./v8.json":125}],125:[function(require,module,exports){
+module.exports={"$version":8,"$root":{"version":{"required":true,"type":"enum","values":[8]},"name":{"type":"string"},"metadata":{"type":"*"},"center":{"type":"array","value":"number"},"zoom":{"type":"number"},"bearing":{"type":"number","default":0,"period":360,"units":"degrees"},"pitch":{"type":"number","default":0,"units":"degrees"},"light":{"type":"light"},"sources":{"required":true,"type":"sources"},"sprite":{"type":"string"},"glyphs":{"type":"string"},"transition":{"type":"transition"},"layers":{"required":true,"type":"array","value":"layer"}},"sources":{"*":{"type":"source"}},"source":["source_tile","source_geojson","source_video","source_image","source_canvas"],"source_tile":{"type":{"required":true,"type":"enum","values":{"vector":{},"raster":{}}},"url":{"type":"string"},"tiles":{"type":"array","value":"string"},"bounds":{"type":"array","value":"number","length":4,"default":[-180,-85.0511,180,85.0511]},"minzoom":{"type":"number","default":0},"maxzoom":{"type":"number","default":22},"tileSize":{"type":"number","default":512,"units":"pixels"},"*":{"type":"*"}},"source_geojson":{"type":{"required":true,"type":"enum","values":{"geojson":{}}},"data":{"type":"*"},"maxzoom":{"type":"number","default":18},"buffer":{"type":"number","default":128,"maximum":512,"minimum":0},"tolerance":{"type":"number","default":0.375},"cluster":{"type":"boolean","default":false},"clusterRadius":{"type":"number","default":50,"minimum":0},"clusterMaxZoom":{"type":"number"}},"source_video":{"type":{"required":true,"type":"enum","values":{"video":{}}},"urls":{"required":true,"type":"array","value":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_image":{"type":{"required":true,"type":"enum","values":{"image":{}}},"url":{"required":true,"type":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_canvas":{"type":{"required":true,"type":"enum","values":{"canvas":{}}},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}},"animate":{"type":"boolean","default":"true"},"canvas":{"type":"string","required":true},"contextType":{"required":true,"type":"enum","values":{"2d":{},"webgl":{},"experimental-webgl":{},"webgl2":{}}}},"layer":{"id":{"type":"string","required":true},"type":{"type":"enum","values":{"fill":{},"line":{},"symbol":{},"circle":{},"fill-extrusion":{},"raster":{},"background":{}}},"metadata":{"type":"*"},"ref":{"type":"string"},"source":{"type":"string"},"source-layer":{"type":"string"},"minzoom":{"type":"number","minimum":0,"maximum":24},"maxzoom":{"type":"number","minimum":0,"maximum":24},"filter":{"type":"filter"},"layout":{"type":"layout"},"paint":{"type":"paint"},"paint.*":{"type":"paint"}},"layout":["layout_fill","layout_line","layout_circle","layout_fill-extrusion","layout_symbol","layout_raster","layout_background"],"layout_background":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_fill":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_circle":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_fill-extrusion":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_line":{"line-cap":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"butt":{},"round":{},"square":{}},"default":"butt"},"line-join":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"bevel":{},"round":{},"miter":{}},"default":"miter"},"line-miter-limit":{"type":"number","default":2,"function":"interpolated","zoom-function":true,"requires":[{"line-join":"miter"}]},"line-round-limit":{"type":"number","default":1.05,"function":"interpolated","zoom-function":true,"requires":[{"line-join":"round"}]},"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_symbol":{"symbol-placement":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"point":{},"line":{}},"default":"point"},"symbol-spacing":{"type":"number","default":250,"minimum":1,"function":"interpolated","zoom-function":true,"units":"pixels","requires":[{"symbol-placement":"line"}]},"symbol-avoid-edges":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false},"icon-allow-overlap":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image"]},"icon-ignore-placement":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image"]},"icon-optional":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image","text-field"]},"icon-rotation-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["icon-image"]},"icon-size":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"units":"factor of the original icon size","requires":["icon-image"]},"icon-text-fit":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"none":{},"width":{},"height":{},"both":{}},"default":"none","requires":["icon-image","text-field"]},"icon-text-fit-padding":{"type":"array","value":"number","length":4,"default":[0,0,0,0],"units":"pixels","function":"interpolated","zoom-function":true,"requires":["icon-image","text-field",{"icon-text-fit":["both","width","height"]}]},"icon-image":{"type":"string","function":"piecewise-constant","zoom-function":true,"property-function":true,"tokens":true},"icon-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","zoom-function":true,"property-function":true,"units":"degrees","requires":["icon-image"]},"icon-padding":{"type":"number","default":2,"minimum":0,"function":"interpolated","zoom-function":true,"units":"pixels","requires":["icon-image"]},"icon-keep-upright":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image",{"icon-rotation-alignment":"map"},{"symbol-placement":"line"}]},"icon-offset":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"property-function":true,"requires":["icon-image"]},"icon-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"center":{},"left":{},"right":{},"top":{},"bottom":{},"top-left":{},"top-right":{},"bottom-left":{},"bottom-right":{}},"default":"center","requires":["icon-image"]},"icon-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["icon-image"]},"text-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["text-field"]},"text-rotation-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["text-field"]},"text-field":{"type":"string","function":"piecewise-constant","zoom-function":true,"property-function":true,"default":"","tokens":true},"text-font":{"type":"array","value":"string","function":"piecewise-constant","zoom-function":true,"default":["Open Sans Regular","Arial Unicode MS Regular"],"requires":["text-field"]},"text-size":{"type":"number","default":16,"minimum":0,"units":"pixels","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-max-width":{"type":"number","default":10,"minimum":0,"units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-line-height":{"type":"number","default":1.2,"units":"ems","function":"interpolated","zoom-function":true,"requires":["text-field"]},"text-letter-spacing":{"type":"number","default":0,"units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-justify":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"left":{},"center":{},"right":{}},"default":"center","requires":["text-field"]},"text-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"center":{},"left":{},"right":{},"top":{},"bottom":{},"top-left":{},"top-right":{},"bottom-left":{},"bottom-right":{}},"default":"center","requires":["text-field"]},"text-max-angle":{"type":"number","default":45,"units":"degrees","function":"interpolated","zoom-function":true,"requires":["text-field",{"symbol-placement":"line"}]},"text-rotate":{"type":"number","default":0,"period":360,"units":"degrees","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-padding":{"type":"number","default":2,"minimum":0,"units":"pixels","function":"interpolated","zoom-function":true,"requires":["text-field"]},"text-keep-upright":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":true,"requires":["text-field",{"text-rotation-alignment":"map"},{"symbol-placement":"line"}]},"text-transform":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"none":{},"uppercase":{},"lowercase":{}},"default":"none","requires":["text-field"]},"text-offset":{"type":"array","value":"number","units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"length":2,"default":[0,0],"requires":["text-field"]},"text-allow-overlap":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field"]},"text-ignore-placement":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field"]},"text-optional":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field","icon-image"]},"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_raster":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"filter":{"type":"array","value":"*"},"filter_operator":{"type":"enum","values":{"==":{},"!=":{},">":{},">=":{},"<":{},"<=":{},"in":{},"!in":{},"all":{},"any":{},"none":{},"has":{},"!has":{}}},"geometry_type":{"type":"enum","values":{"Point":{},"LineString":{},"Polygon":{}}},"function":{"stops":{"type":"array","value":"function_stop"},"base":{"type":"number","default":1,"minimum":0},"property":{"type":"string","default":"$zoom"},"type":{"type":"enum","values":{"identity":{},"exponential":{},"interval":{},"categorical":{}},"default":"exponential"},"colorSpace":{"type":"enum","values":{"rgb":{},"lab":{},"hcl":{}},"default":"rgb"},"default":{"type":"*","required":false}},"function_stop":{"type":"array","minimum":0,"maximum":22,"value":["number","color"],"length":2},"light":{"anchor":{"type":"enum","default":"viewport","values":{"map":{},"viewport":{}},"transition":false,"zoom-function":true,"property-function":false,"function":"piecewise-constant"},"position":{"type":"array","default":[1.15,210,30],"length":3,"value":"number","transition":true,"function":"interpolated","zoom-function":true,"property-function":false},"color":{"type":"color","default":"#ffffff","function":"interpolated","zoom-function":true,"property-function":false,"transition":true},"intensity":{"type":"number","default":0.5,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":false,"transition":true}},"paint":["paint_fill","paint_line","paint_circle","paint_fill-extrusion","paint_symbol","paint_raster","paint_background"],"paint_fill":{"fill-antialias":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":true},"fill-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"fill-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-pattern"}]},"fill-outline-color":{"type":"color","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-pattern"},{"fill-antialias":true}]},"fill-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"fill-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["fill-translate"]},"fill-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true}},"paint_fill-extrusion":{"fill-extrusion-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":false,"default":1,"minimum":0,"maximum":1,"transition":true},"fill-extrusion-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-extrusion-pattern"}]},"fill-extrusion-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"fill-extrusion-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["fill-extrusion-translate"]},"fill-extrusion-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true},"fill-extrusion-height":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":0,"minimum":0,"units":"meters","transition":true},"fill-extrusion-base":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":0,"minimum":0,"maximum":65535,"units":"meters","transition":true,"requires":["fill-extrusion-height"]}},"paint_line":{"line-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"line-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"line-pattern"}]},"line-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"line-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["line-translate"]},"line-width":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-gap-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-offset":{"type":"number","default":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-dasharray":{"type":"array","value":"number","function":"piecewise-constant","zoom-function":true,"minimum":0,"transition":true,"units":"line widths","requires":[{"!":"line-pattern"}]},"line-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true}},"paint_circle":{"circle-radius":{"type":"number","default":5,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"circle-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-blur":{"type":"number","default":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"circle-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["circle-translate"]},"circle-pitch-scale":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map"},"circle-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"viewport"},"circle-stroke-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"circle-stroke-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-stroke-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true}},"paint_symbol":{"icon-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["icon-image","icon-translate"]},"text-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["text-field","text-translate"]}},"paint_raster":{"raster-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-hue-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","zoom-function":true,"transition":true,"units":"degrees"},"raster-brightness-min":{"type":"number","function":"interpolated","zoom-function":true,"default":0,"minimum":0,"maximum":1,"transition":true},"raster-brightness-max":{"type":"number","function":"interpolated","zoom-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"raster-saturation":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-contrast":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-fade-duration":{"type":"number","default":300,"minimum":0,"function":"interpolated","zoom-function":true,"transition":true,"units":"milliseconds"}},"paint_background":{"background-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"transition":true,"requires":[{"!":"background-pattern"}]},"background-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true},"background-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true}},"transition":{"duration":{"type":"number","default":300,"minimum":0,"units":"milliseconds"},"delay":{"type":"number","default":0,"minimum":0,"units":"milliseconds"}}}
+},{}],126:[function(require,module,exports){
+'use strict';
+module.exports = function (output) {
+    var inputs = [], len = arguments.length - 1;
+    while ( len-- > 0 ) inputs[ len ] = arguments[ len + 1 ];
+
+    for (var i = 0, list = inputs; i < list.length; i += 1) {
+        var input = list[i];
+
+        for (var k in input) {
+            output[k] = input[k];
+        }
+    }
+    return output;
+};
+
+},{}],127:[function(require,module,exports){
+'use strict';
+module.exports = function getType(val) {
+    if (val instanceof Number) {
+        return 'number';
+    } else if (val instanceof String) {
+        return 'string';
+    } else if (val instanceof Boolean) {
+        return 'boolean';
+    } else if (Array.isArray(val)) {
+        return 'array';
+    } else if (val === null) {
+        return 'null';
+    } else {
+        return typeof val;
+    }
+};
+
+},{}],128:[function(require,module,exports){
+'use strict';
+module.exports = interpolate;
+
+function interpolate(a, b, t) {
+    return (a * (1 - t)) + (b * t);
+}
+
+interpolate.number = interpolate;
+
+interpolate.vec2 = function(from, to, t) {
+    return [
+        interpolate(from[0], to[0], t),
+        interpolate(from[1], to[1], t)
+    ];
+};
+
+/*
+ * Interpolate between two colors given as 4-element arrays.
+ *
+ * @param {Color} from
+ * @param {Color} to
+ * @param {number} t interpolation factor between 0 and 1
+ * @returns {Color} interpolated color
+ */
+interpolate.color = function(from, to, t) {
+    return [
+        interpolate(from[0], to[0], t),
+        interpolate(from[1], to[1], t),
+        interpolate(from[2], to[2], t),
+        interpolate(from[3], to[3], t)
+    ];
+};
+
+interpolate.array = function(from, to, t) {
+    return from.map(function (d, i) {
+        return interpolate(d, to[i], t);
+    });
+};
+
+},{}],129:[function(require,module,exports){
+'use strict';
+var parseColorString = require('csscolorparser').parseCSSColor;
+
+module.exports = function parseColor(input) {
+    if (typeof input === 'string') {
+        var rgba = parseColorString(input);
+        if (!rgba) { return undefined; }
+
+        // GL expects all components to be in the range [0, 1] and to be
+        // multipled by the alpha value.
+        return [
+            rgba[0] / 255 * rgba[3],
+            rgba[1] / 255 * rgba[3],
+            rgba[2] / 255 * rgba[3],
+            rgba[3]
+        ];
+
+    } else if (Array.isArray(input)) {
+        return input;
+
+    } else {
+        return undefined;
+    }
+};
+
+},{"csscolorparser":12}],130:[function(require,module,exports){
+'use strict';
+module.exports = ['type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter', 'layout'];
+
+},{}],131:[function(require,module,exports){
+'use strict';
+// Turn jsonlint-lines-primitives objects into primitive objects
+module.exports = function unbundle(value) {
+    if (value instanceof Number || value instanceof String || value instanceof Boolean) {
+        return value.valueOf();
+    } else {
+        return value;
+    }
+};
+
+},{}],132:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+var extend = require('../util/extend');
+
+// Main recursive validation function. Tracks:
+//
+// - key: string representing location of validation in style tree. Used only
+//   for more informative error reporting.
+// - value: current value from style being evaluated. May be anything from a
+//   high level object that needs to be descended into deeper or a simple
+//   scalar value.
+// - valueSpec: current spec being evaluated. Tracks value.
+
+module.exports = function validate(options) {
+
+    var validateFunction = require('./validate_function');
+    var validateObject = require('./validate_object');
+    var VALIDATORS = {
+        '*': function() {
+            return [];
+        },
+        'array': require('./validate_array'),
+        'boolean': require('./validate_boolean'),
+        'number': require('./validate_number'),
+        'color': require('./validate_color'),
+        'constants': require('./validate_constants'),
+        'enum': require('./validate_enum'),
+        'filter': require('./validate_filter'),
+        'function': require('./validate_function'),
+        'layer': require('./validate_layer'),
+        'object': require('./validate_object'),
+        'source': require('./validate_source'),
+        'light': require('./validate_light'),
+        'string': require('./validate_string')
+    };
+
+    var value = options.value;
+    var valueSpec = options.valueSpec;
+    var key = options.key;
+    var styleSpec = options.styleSpec;
+    var style = options.style;
+
+    if (getType(value) === 'string' && value[0] === '@') {
+        if (styleSpec.$version > 7) {
+            return [new ValidationError(key, value, 'constants have been deprecated as of v8')];
+        }
+        if (!(value in style.constants)) {
+            return [new ValidationError(key, value, 'constant "%s" not found', value)];
+        }
+        options = extend({}, options, { value: style.constants[value] });
+    }
+
+    if (valueSpec.function && getType(value) === 'object') {
+        return validateFunction(options);
+
+    } else if (valueSpec.type && VALIDATORS[valueSpec.type]) {
+        return VALIDATORS[valueSpec.type](options);
+
+    } else {
+        return validateObject(extend({}, options, {
+            valueSpec: valueSpec.type ? styleSpec[valueSpec.type] : valueSpec
+        }));
+    }
+};
+
+},{"../error/validation_error":119,"../util/extend":126,"../util/get_type":127,"./validate_array":133,"./validate_boolean":134,"./validate_color":135,"./validate_constants":136,"./validate_enum":137,"./validate_filter":138,"./validate_function":139,"./validate_layer":141,"./validate_light":143,"./validate_number":144,"./validate_object":145,"./validate_source":148,"./validate_string":149}],133:[function(require,module,exports){
+'use strict';
+var getType = require('../util/get_type');
+var validate = require('./validate');
+var ValidationError = require('../error/validation_error');
+
+module.exports = function validateArray(options) {
+    var array = options.value;
+    var arraySpec = options.valueSpec;
+    var style = options.style;
+    var styleSpec = options.styleSpec;
+    var key = options.key;
+    var validateArrayElement = options.arrayElementValidator || validate;
+
+    if (getType(array) !== 'array') {
+        return [new ValidationError(key, array, 'array expected, %s found', getType(array))];
+    }
+
+    if (arraySpec.length && array.length !== arraySpec.length) {
+        return [new ValidationError(key, array, 'array length %d expected, length %d found', arraySpec.length, array.length)];
+    }
+
+    if (arraySpec['min-length'] && array.length < arraySpec['min-length']) {
+        return [new ValidationError(key, array, 'array length at least %d expected, length %d found', arraySpec['min-length'], array.length)];
+    }
+
+    var arrayElementSpec = {
+        "type": arraySpec.value
+    };
+
+    if (styleSpec.$version < 7) {
+        arrayElementSpec.function = arraySpec.function;
+    }
+
+    if (getType(arraySpec.value) === 'object') {
+        arrayElementSpec = arraySpec.value;
+    }
+
+    var errors = [];
+    for (var i = 0; i < array.length; i++) {
+        errors = errors.concat(validateArrayElement({
+            array: array,
+            arrayIndex: i,
+            value: array[i],
+            valueSpec: arrayElementSpec,
+            style: style,
+            styleSpec: styleSpec,
+            key: (key + "[" + i + "]")
+        }));
+    }
+    return errors;
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],134:[function(require,module,exports){
+'use strict';
+var getType = require('../util/get_type');
+var ValidationError = require('../error/validation_error');
+
+module.exports = function validateBoolean(options) {
+    var value = options.value;
+    var key = options.key;
+    var type = getType(value);
+
+    if (type !== 'boolean') {
+        return [new ValidationError(key, value, 'boolean expected, %s found', type)];
+    }
+
+    return [];
+};
+
+},{"../error/validation_error":119,"../util/get_type":127}],135:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+var parseCSSColor = require('csscolorparser').parseCSSColor;
+
+module.exports = function validateColor(options) {
+    var key = options.key;
+    var value = options.value;
+    var type = getType(value);
+
+    if (type !== 'string') {
+        return [new ValidationError(key, value, 'color expected, %s found', type)];
+    }
+
+    if (parseCSSColor(value) === null) {
+        return [new ValidationError(key, value, 'color expected, "%s" found', value)];
+    }
+
+    return [];
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"csscolorparser":12}],136:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+
+module.exports = function validateConstants(options) {
+    var key = options.key;
+    var constants = options.value;
+    var styleSpec = options.styleSpec;
+
+    if (styleSpec.$version > 7) {
+        if (constants) {
+            return [new ValidationError(key, constants, 'constants have been deprecated as of v8')];
+        } else {
+            return [];
+        }
+    } else {
+        var type = getType(constants);
+        if (type !== 'object') {
+            return [new ValidationError(key, constants, 'object expected, %s found', type)];
+        }
+
+        var errors = [];
+        for (var constantName in constants) {
+            if (constantName[0] !== '@') {
+                errors.push(new ValidationError((key + "." + constantName), constants[constantName], 'constants must start with "@"'));
+            }
+        }
+        return errors;
+    }
+
+};
+
+},{"../error/validation_error":119,"../util/get_type":127}],137:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var unbundle = require('../util/unbundle_jsonlint');
+
+module.exports = function validateEnum(options) {
+    var key = options.key;
+    var value = options.value;
+    var valueSpec = options.valueSpec;
+    var errors = [];
+
+    if (Array.isArray(valueSpec.values)) { // <=v7
+        if (valueSpec.values.indexOf(unbundle(value)) === -1) {
+            errors.push(new ValidationError(key, value, 'expected one of [%s], %s found', valueSpec.values.join(', '), value));
+        }
+    } else { // >=v8
+        if (Object.keys(valueSpec.values).indexOf(unbundle(value)) === -1) {
+            errors.push(new ValidationError(key, value, 'expected one of [%s], %s found', Object.keys(valueSpec.values).join(', '), value));
+        }
+    }
+    return errors;
+};
+
+},{"../error/validation_error":119,"../util/unbundle_jsonlint":131}],138:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var validateEnum = require('./validate_enum');
+var getType = require('../util/get_type');
+var unbundle = require('../util/unbundle_jsonlint');
+
+module.exports = function validateFilter(options) {
+    var value = options.value;
+    var key = options.key;
+    var styleSpec = options.styleSpec;
+    var type;
+
+    var errors = [];
+
+    if (getType(value) !== 'array') {
+        return [new ValidationError(key, value, 'array expected, %s found', getType(value))];
+    }
+
+    if (value.length < 1) {
+        return [new ValidationError(key, value, 'filter array must have at least 1 element')];
+    }
+
+    errors = errors.concat(validateEnum({
+        key: (key + "[0]"),
+        value: value[0],
+        valueSpec: styleSpec.filter_operator,
+        style: options.style,
+        styleSpec: options.styleSpec
+    }));
+
+    switch (unbundle(value[0])) {
+    case '<':
+    case '<=':
+    case '>':
+    case '>=':
+        if (value.length >= 2 && unbundle(value[1]) === '$type') {
+            errors.push(new ValidationError(key, value, '"$type" cannot be use with operator "%s"', value[0]));
+        }
+        /* falls through */
+    case '==':
+    case '!=':
+        if (value.length !== 3) {
+            errors.push(new ValidationError(key, value, 'filter array for operator "%s" must have 3 elements', value[0]));
+        }
+        /* falls through */
+    case 'in':
+    case '!in':
+        if (value.length >= 2) {
+            type = getType(value[1]);
+            if (type !== 'string') {
+                errors.push(new ValidationError((key + "[1]"), value[1], 'string expected, %s found', type));
+            }
+        }
+        for (var i = 2; i < value.length; i++) {
+            type = getType(value[i]);
+            if (unbundle(value[1]) === '$type') {
+                errors = errors.concat(validateEnum({
+                    key: (key + "[" + i + "]"),
+                    value: value[i],
+                    valueSpec: styleSpec.geometry_type,
+                    style: options.style,
+                    styleSpec: options.styleSpec
+                }));
+            } else if (type !== 'string' && type !== 'number' && type !== 'boolean') {
+                errors.push(new ValidationError((key + "[" + i + "]"), value[i], 'string, number, or boolean expected, %s found', type));
+            }
+        }
+        break;
+
+    case 'any':
+    case 'all':
+    case 'none':
+        for (var i$1 = 1; i$1 < value.length; i$1++) {
+            errors = errors.concat(validateFilter({
+                key: (key + "[" + i$1 + "]"),
+                value: value[i$1],
+                style: options.style,
+                styleSpec: options.styleSpec
+            }));
+        }
+        break;
+
+    case 'has':
+    case '!has':
+        type = getType(value[1]);
+        if (value.length !== 2) {
+            errors.push(new ValidationError(key, value, 'filter array for "%s" operator must have 2 elements', value[0]));
+        } else if (type !== 'string') {
+            errors.push(new ValidationError((key + "[1]"), value[1], 'string expected, %s found', type));
+        }
+        break;
+
+    }
+
+    return errors;
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"../util/unbundle_jsonlint":131,"./validate_enum":137}],139:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+var validate = require('./validate');
+var validateObject = require('./validate_object');
+var validateArray = require('./validate_array');
+var validateNumber = require('./validate_number');
+var unbundle = require('../util/unbundle_jsonlint');
+
+module.exports = function validateFunction(options) {
+    var functionValueSpec = options.valueSpec;
+    var functionType = unbundle(options.value.type);
+    var stopKeyType;
+    var stopDomainValues = {};
+    var previousStopDomainValue;
+    var previousStopDomainZoom;
+
+    var isZoomFunction = functionType !== 'categorical' && options.value.property === undefined;
+    var isPropertyFunction = !isZoomFunction;
+    var isZoomAndPropertyFunction =
+        getType(options.value.stops) === 'array' &&
+        getType(options.value.stops[0]) === 'array' &&
+        getType(options.value.stops[0][0]) === 'object';
+
+    var errors = validateObject({
+        key: options.key,
+        value: options.value,
+        valueSpec: options.styleSpec.function,
+        style: options.style,
+        styleSpec: options.styleSpec,
+        objectElementValidators: {
+            stops: validateFunctionStops,
+            default: validateFunctionDefault
+        }
+    });
+
+    if (functionType === 'identity' && isZoomFunction) {
+        errors.push(new ValidationError(options.key, options.value, 'missing required property "property"'));
+    }
+
+    if (functionType !== 'identity' && !options.value.stops) {
+        errors.push(new ValidationError(options.key, options.value, 'missing required property "stops"'));
+    }
+
+    if (functionType === 'exponential' && options.valueSpec['function'] === 'piecewise-constant') {
+        errors.push(new ValidationError(options.key, options.value, 'exponential functions not supported'));
+    }
+
+    if (options.styleSpec.$version >= 8) {
+        if (isPropertyFunction && !options.valueSpec['property-function']) {
+            errors.push(new ValidationError(options.key, options.value, 'property functions not supported'));
+        } else if (isZoomFunction && !options.valueSpec['zoom-function']) {
+            errors.push(new ValidationError(options.key, options.value, 'zoom functions not supported'));
+        }
+    }
+
+    if ((functionType === 'categorical' || isZoomAndPropertyFunction) && options.value.property === undefined) {
+        errors.push(new ValidationError(options.key, options.value, '"property" property is required'));
+    }
+
+    return errors;
+
+    function validateFunctionStops(options) {
+        if (functionType === 'identity') {
+            return [new ValidationError(options.key, options.value, 'identity function may not have a "stops" property')];
+        }
+
+        var errors = [];
+        var value = options.value;
+
+        errors = errors.concat(validateArray({
+            key: options.key,
+            value: value,
+            valueSpec: options.valueSpec,
+            style: options.style,
+            styleSpec: options.styleSpec,
+            arrayElementValidator: validateFunctionStop
+        }));
+
+        if (getType(value) === 'array' && value.length === 0) {
+            errors.push(new ValidationError(options.key, value, 'array must have at least one stop'));
+        }
+
+        return errors;
+    }
+
+    function validateFunctionStop(options) {
+        var errors = [];
+        var value = options.value;
+        var key = options.key;
+
+        if (getType(value) !== 'array') {
+            return [new ValidationError(key, value, 'array expected, %s found', getType(value))];
+        }
+
+        if (value.length !== 2) {
+            return [new ValidationError(key, value, 'array length %d expected, length %d found', 2, value.length)];
+        }
+
+        if (isZoomAndPropertyFunction) {
+            if (getType(value[0]) !== 'object') {
+                return [new ValidationError(key, value, 'object expected, %s found', getType(value[0]))];
+            }
+            if (value[0].zoom === undefined) {
+                return [new ValidationError(key, value, 'object stop key must have zoom')];
+            }
+            if (value[0].value === undefined) {
+                return [new ValidationError(key, value, 'object stop key must have value')];
+            }
+            if (previousStopDomainZoom && previousStopDomainZoom > unbundle(value[0].zoom)) {
+                return [new ValidationError(key, value[0].zoom, 'stop zoom values must appear in ascending order')];
+            }
+            if (unbundle(value[0].zoom) !== previousStopDomainZoom) {
+                previousStopDomainZoom = unbundle(value[0].zoom);
+                previousStopDomainValue = undefined;
+                stopDomainValues = {};
+            }
+            errors = errors.concat(validateObject({
+                key: (key + "[0]"),
+                value: value[0],
+                valueSpec: { zoom: {} },
+                style: options.style,
+                styleSpec: options.styleSpec,
+                objectElementValidators: { zoom: validateNumber, value: validateStopDomainValue }
+            }));
+        } else {
+            errors = errors.concat(validateStopDomainValue({
+                key: (key + "[0]"),
+                value: value[0],
+                valueSpec: {},
+                style: options.style,
+                styleSpec: options.styleSpec
+            }));
+        }
+
+        return errors.concat(validate({
+            key: (key + "[1]"),
+            value: value[1],
+            valueSpec: functionValueSpec,
+            style: options.style,
+            styleSpec: options.styleSpec
+        }));
+    }
+
+    function validateStopDomainValue(options) {
+        var type = getType(options.value);
+        var value = unbundle(options.value);
+
+        if (!stopKeyType) {
+            stopKeyType = type;
+        } else if (type !== stopKeyType) {
+            return [new ValidationError(options.key, options.value, '%s stop domain type must match previous stop domain type %s', type, stopKeyType)];
+        }
+
+        if (type !== 'number' && type !== 'string' && type !== 'boolean') {
+            return [new ValidationError(options.key, options.value, 'stop domain value must be a number, string, or boolean')];
+        }
+
+        if (type !== 'number' && functionType !== 'categorical') {
+            var message = 'number expected, %s found';
+            if (functionValueSpec['property-function'] && functionType === undefined) {
+                message += '\nIf you intended to use a categorical function, specify `"type": "categorical"`.';
+            }
+            return [new ValidationError(options.key, options.value, message, type)];
+        }
+
+        if (functionType === 'categorical' && type === 'number' && (!isFinite(value) || Math.floor(value) !== value)) {
+            return [new ValidationError(options.key, options.value, 'integer expected, found %s', value)];
+        }
+
+        if (functionType !== 'categorical' && type === 'number' && previousStopDomainValue !== undefined && value < previousStopDomainValue) {
+            return [new ValidationError(options.key, options.value, 'stop domain values must appear in ascending order')];
+        } else {
+            previousStopDomainValue = value;
+        }
+
+        if (functionType === 'categorical' && value in stopDomainValues) {
+            return [new ValidationError(options.key, options.value, 'stop domain values must be unique')];
+        } else {
+            stopDomainValues[value] = true;
+        }
+
+        return [];
+    }
+
+    function validateFunctionDefault(options) {
+        return validate({
+            key: options.key,
+            value: options.value,
+            valueSpec: functionValueSpec,
+            style: options.style,
+            styleSpec: options.styleSpec
+        });
+    }
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"../util/unbundle_jsonlint":131,"./validate":132,"./validate_array":133,"./validate_number":144,"./validate_object":145}],140:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var validateString = require('./validate_string');
+
+module.exports = function(options) {
+    var value = options.value;
+    var key = options.key;
+
+    var errors = validateString(options);
+    if (errors.length) { return errors; }
+
+    if (value.indexOf('{fontstack}') === -1) {
+        errors.push(new ValidationError(key, value, '"glyphs" url must include a "{fontstack}" token'));
+    }
+
+    if (value.indexOf('{range}') === -1) {
+        errors.push(new ValidationError(key, value, '"glyphs" url must include a "{range}" token'));
+    }
+
+    return errors;
+};
+
+},{"../error/validation_error":119,"./validate_string":149}],141:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var unbundle = require('../util/unbundle_jsonlint');
+var validateObject = require('./validate_object');
+var validateFilter = require('./validate_filter');
+var validatePaintProperty = require('./validate_paint_property');
+var validateLayoutProperty = require('./validate_layout_property');
+var extend = require('../util/extend');
+
+module.exports = function validateLayer(options) {
+    var errors = [];
+
+    var layer = options.value;
+    var key = options.key;
+    var style = options.style;
+    var styleSpec = options.styleSpec;
+
+    if (!layer.type && !layer.ref) {
+        errors.push(new ValidationError(key, layer, 'either "type" or "ref" is required'));
+    }
+    var type = unbundle(layer.type);
+    var ref = unbundle(layer.ref);
+
+    if (layer.id) {
+        var layerId = unbundle(layer.id);
+        for (var i = 0; i < options.arrayIndex; i++) {
+            var otherLayer = style.layers[i];
+            if (unbundle(otherLayer.id) === layerId) {
+                errors.push(new ValidationError(key, layer.id, 'duplicate layer id "%s", previously used at line %d', layer.id, otherLayer.id.__line__));
+            }
+        }
+    }
+
+    if ('ref' in layer) {
+        ['type', 'source', 'source-layer', 'filter', 'layout'].forEach(function (p) {
+            if (p in layer) {
+                errors.push(new ValidationError(key, layer[p], '"%s" is prohibited for ref layers', p));
+            }
+        });
+
+        var parent;
+
+        style.layers.forEach(function (layer) {
+            if (unbundle(layer.id) === ref) { parent = layer; }
+        });
+
+        if (!parent) {
+            errors.push(new ValidationError(key, layer.ref, 'ref layer "%s" not found', ref));
+        } else if (parent.ref) {
+            errors.push(new ValidationError(key, layer.ref, 'ref cannot reference another ref layer'));
+        } else {
+            type = unbundle(parent.type);
+        }
+    } else if (type !== 'background') {
+        if (!layer.source) {
+            errors.push(new ValidationError(key, layer, 'missing required property "source"'));
+        } else {
+            var source = style.sources && style.sources[layer.source];
+            var sourceType = source && unbundle(source.type);
+            if (!source) {
+                errors.push(new ValidationError(key, layer.source, 'source "%s" not found', layer.source));
+            } else if (sourceType === 'vector' && type === 'raster') {
+                errors.push(new ValidationError(key, layer.source, 'layer "%s" requires a raster source', layer.id));
+            } else if (sourceType === 'raster' && type !== 'raster') {
+                errors.push(new ValidationError(key, layer.source, 'layer "%s" requires a vector source', layer.id));
+            } else if (sourceType === 'vector' && !layer['source-layer']) {
+                errors.push(new ValidationError(key, layer, 'layer "%s" must specify a "source-layer"', layer.id));
+            }
+        }
+    }
+
+    errors = errors.concat(validateObject({
+        key: key,
+        value: layer,
+        valueSpec: styleSpec.layer,
+        style: options.style,
+        styleSpec: options.styleSpec,
+        objectElementValidators: {
+            '*': function() {
+                return [];
+            },
+            filter: validateFilter,
+            layout: function(options) {
+                return validateObject({
+                    layer: layer,
+                    key: options.key,
+                    value: options.value,
+                    style: options.style,
+                    styleSpec: options.styleSpec,
+                    objectElementValidators: {
+                        '*': function(options) {
+                            return validateLayoutProperty(extend({layerType: type}, options));
+                        }
+                    }
+                });
+            },
+            paint: function(options) {
+                return validateObject({
+                    layer: layer,
+                    key: options.key,
+                    value: options.value,
+                    style: options.style,
+                    styleSpec: options.styleSpec,
+                    objectElementValidators: {
+                        '*': function(options) {
+                            return validatePaintProperty(extend({layerType: type}, options));
+                        }
+                    }
+                });
+            }
+        }
+    }));
+
+    return errors;
+};
+
+},{"../error/validation_error":119,"../util/extend":126,"../util/unbundle_jsonlint":131,"./validate_filter":138,"./validate_layout_property":142,"./validate_object":145,"./validate_paint_property":146}],142:[function(require,module,exports){
+'use strict';
+var validateProperty = require('./validate_property');
+
+module.exports = function validateLayoutProperty(options) {
+    return validateProperty(options, 'layout');
+};
+
+},{"./validate_property":147}],143:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+var validate = require('./validate');
+
+module.exports = function validateLight(options) {
+    var light = options.value;
+    var styleSpec = options.styleSpec;
+    var lightSpec = styleSpec.light;
+    var style = options.style;
+
+    var errors = [];
+
+    var rootType = getType(light);
+    if (light === undefined) {
+        return errors;
+    } else if (rootType !== 'object') {
+        errors = errors.concat([new ValidationError('light', light, 'object expected, %s found', rootType)]);
+        return errors;
+    }
+
+    for (var key in light) {
+        var transitionMatch = key.match(/^(.*)-transition$/);
+
+        if (transitionMatch && lightSpec[transitionMatch[1]] && lightSpec[transitionMatch[1]].transition) {
+            errors = errors.concat(validate({
+                key: key,
+                value: light[key],
+                valueSpec: styleSpec.transition,
+                style: style,
+                styleSpec: styleSpec
+            }));
+        } else if (lightSpec[key]) {
+            errors = errors.concat(validate({
+                key: key,
+                value: light[key],
+                valueSpec: lightSpec[key],
+                style: style,
+                styleSpec: styleSpec
+            }));
+        } else {
+            errors = errors.concat([new ValidationError(key, light[key], 'unknown property "%s"', key)]);
+        }
+    }
+
+    return errors;
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],144:[function(require,module,exports){
+'use strict';
+var getType = require('../util/get_type');
+var ValidationError = require('../error/validation_error');
+
+module.exports = function validateNumber(options) {
+    var key = options.key;
+    var value = options.value;
+    var valueSpec = options.valueSpec;
+    var type = getType(value);
+
+    if (type !== 'number') {
+        return [new ValidationError(key, value, 'number expected, %s found', type)];
+    }
+
+    if ('minimum' in valueSpec && value < valueSpec.minimum) {
+        return [new ValidationError(key, value, '%s is less than the minimum value %s', value, valueSpec.minimum)];
+    }
+
+    if ('maximum' in valueSpec && value > valueSpec.maximum) {
+        return [new ValidationError(key, value, '%s is greater than the maximum value %s', value, valueSpec.maximum)];
+    }
+
+    return [];
+};
+
+},{"../error/validation_error":119,"../util/get_type":127}],145:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+var validateSpec = require('./validate');
+
+module.exports = function validateObject(options) {
+    var key = options.key;
+    var object = options.value;
+    var elementSpecs = options.valueSpec || {};
+    var elementValidators = options.objectElementValidators || {};
+    var style = options.style;
+    var styleSpec = options.styleSpec;
+    var errors = [];
+
+    var type = getType(object);
+    if (type !== 'object') {
+        return [new ValidationError(key, object, 'object expected, %s found', type)];
+    }
+
+    for (var objectKey in object) {
+        var elementSpecKey = objectKey.split('.')[0]; // treat 'paint.*' as 'paint'
+        var elementSpec = elementSpecs[elementSpecKey] || elementSpecs['*'];
+
+        var validateElement = (void 0);
+        if (elementValidators[elementSpecKey]) {
+            validateElement = elementValidators[elementSpecKey];
+        } else if (elementSpecs[elementSpecKey]) {
+            validateElement = validateSpec;
+        } else if (elementValidators['*']) {
+            validateElement = elementValidators['*'];
+        } else if (elementSpecs['*']) {
+            validateElement = validateSpec;
+        } else {
+            errors.push(new ValidationError(key, object[objectKey], 'unknown property "%s"', objectKey));
+            continue;
+        }
+
+        errors = errors.concat(validateElement({
+            key: (key ? (key + ".") : key) + objectKey,
+            value: object[objectKey],
+            valueSpec: elementSpec,
+            style: style,
+            styleSpec: styleSpec,
+            object: object,
+            objectKey: objectKey
+        }));
+    }
+
+    for (var elementSpecKey$1 in elementSpecs) {
+        if (elementSpecs[elementSpecKey$1].required && elementSpecs[elementSpecKey$1]['default'] === undefined && object[elementSpecKey$1] === undefined) {
+            errors.push(new ValidationError(key, object, 'missing required property "%s"', elementSpecKey$1));
+        }
+    }
+
+    return errors;
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],146:[function(require,module,exports){
+'use strict';
+var validateProperty = require('./validate_property');
+
+module.exports = function validatePaintProperty(options) {
+    return validateProperty(options, 'paint');
+};
+
+},{"./validate_property":147}],147:[function(require,module,exports){
+'use strict';
+var validate = require('./validate');
+var ValidationError = require('../error/validation_error');
+var getType = require('../util/get_type');
+
+module.exports = function validateProperty(options, propertyType) {
+    var key = options.key;
+    var style = options.style;
+    var styleSpec = options.styleSpec;
+    var value = options.value;
+    var propertyKey = options.objectKey;
+    var layerSpec = styleSpec[(propertyType + "_" + (options.layerType))];
+
+    if (!layerSpec) { return []; }
+
+    var transitionMatch = propertyKey.match(/^(.*)-transition$/);
+    if (propertyType === 'paint' && transitionMatch && layerSpec[transitionMatch[1]] && layerSpec[transitionMatch[1]].transition) {
+        return validate({
+            key: key,
+            value: value,
+            valueSpec: styleSpec.transition,
+            style: style,
+            styleSpec: styleSpec
+        });
+    }
+
+    var valueSpec = options.valueSpec || layerSpec[propertyKey];
+    if (!valueSpec) {
+        return [new ValidationError(key, value, 'unknown property "%s"', propertyKey)];
+    }
+
+    var tokenMatch;
+    if (getType(value) === 'string' && valueSpec['property-function'] && !valueSpec.tokens && (tokenMatch = /^{([^}]+)}$/.exec(value))) {
+        return [new ValidationError(
+            key, value,
+            '"%s" does not support interpolation syntax\n' +
+                'Use an identity property function instead: `{ "type": "identity", "property": %s` }`.',
+            propertyKey, JSON.stringify(tokenMatch[1])
+        )];
+    }
+
+    var errors = [];
+
+    if (options.layerType === 'symbol') {
+        if (propertyKey === 'text-field' && style && !style.glyphs) {
+            errors.push(new ValidationError(key, value, 'use of "text-field" requires a style "glyphs" property'));
+        }
+    }
+
+    return errors.concat(validate({
+        key: options.key,
+        value: value,
+        valueSpec: valueSpec,
+        style: style,
+        styleSpec: styleSpec
+    }));
+};
+
+},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],148:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var unbundle = require('../util/unbundle_jsonlint');
+var validateObject = require('./validate_object');
+var validateEnum = require('./validate_enum');
+
+module.exports = function validateSource(options) {
+    var value = options.value;
+    var key = options.key;
+    var styleSpec = options.styleSpec;
+    var style = options.style;
+
+    if (!value.type) {
+        return [new ValidationError(key, value, '"type" is required')];
+    }
+
+    var type = unbundle(value.type);
+    var errors = [];
+
+    switch (type) {
+    case 'vector':
+    case 'raster':
+        errors = errors.concat(validateObject({
+            key: key,
+            value: value,
+            valueSpec: styleSpec.source_tile,
+            style: options.style,
+            styleSpec: styleSpec
+        }));
+        if ('url' in value) {
+            for (var prop in value) {
+                if (['type', 'url', 'tileSize'].indexOf(prop) < 0) {
+                    errors.push(new ValidationError((key + "." + prop), value[prop], 'a source with a "url" property may not include a "%s" property', prop));
+                }
+            }
+        }
+        return errors;
+
+    case 'geojson':
+        return validateObject({
+            key: key,
+            value: value,
+            valueSpec: styleSpec.source_geojson,
+            style: style,
+            styleSpec: styleSpec
+        });
+
+    case 'video':
+        return validateObject({
+            key: key,
+            value: value,
+            valueSpec: styleSpec.source_video,
+            style: style,
+            styleSpec: styleSpec
+        });
+
+    case 'image':
+        return validateObject({
+            key: key,
+            value: value,
+            valueSpec: styleSpec.source_image,
+            style: style,
+            styleSpec: styleSpec
+        });
+
+    case 'canvas':
+        return validateObject({
+            key: key,
+            value: value,
+            valueSpec: styleSpec.source_canvas,
+            style: style,
+            styleSpec: styleSpec
+        });
+
+    default:
+        return validateEnum({
+            key: (key + ".type"),
+            value: value.type,
+            valueSpec: {values: ['vector', 'raster', 'geojson', 'video', 'image', 'canvas']},
+            style: style,
+            styleSpec: styleSpec
+        });
+    }
+};
+
+},{"../error/validation_error":119,"../util/unbundle_jsonlint":131,"./validate_enum":137,"./validate_object":145}],149:[function(require,module,exports){
+'use strict';
+var getType = require('../util/get_type');
+var ValidationError = require('../error/validation_error');
+
+module.exports = function validateString(options) {
+    var value = options.value;
+    var key = options.key;
+    var type = getType(value);
+
+    if (type !== 'string') {
+        return [new ValidationError(key, value, 'string expected, %s found', type)];
+    }
+
+    return [];
+};
+
+},{"../error/validation_error":119,"../util/get_type":127}],150:[function(require,module,exports){
+'use strict';
+var validateConstants = require('./validate/validate_constants');
+var validate = require('./validate/validate');
+var latestStyleSpec = require('./reference/latest');
+var validateGlyphsURL = require('./validate/validate_glyphs_url');
+
+/**
+ * Validate a Mapbox GL style against the style specification. This entrypoint,
+ * `mapbox-gl-style-spec/lib/validate_style.min`, is designed to produce as
+ * small a browserify bundle as possible by omitting unnecessary functionality
+ * and legacy style specifications.
+ *
+ * @private
+ * @param {Object} style The style to be validated.
+ * @param {Object} [styleSpec] The style specification to validate against.
+ *     If omitted, the latest style spec is used.
+ * @returns {Array<ValidationError>}
+ * @example
+ *   var validate = require('mapbox-gl-style-spec/lib/validate_style.min');
+ *   var errors = validate(style);
+ */
+function validateStyleMin(style, styleSpec) {
+    styleSpec = styleSpec || latestStyleSpec;
+
+    var errors = [];
+
+    errors = errors.concat(validate({
+        key: '',
+        value: style,
+        valueSpec: styleSpec.$root,
+        styleSpec: styleSpec,
+        style: style,
+        objectElementValidators: {
+            glyphs: validateGlyphsURL,
+            '*': function() {
+                return [];
+            }
+        }
+    }));
+
+    if (styleSpec.$version > 7 && style.constants) {
+        errors = errors.concat(validateConstants({
+            key: 'constants',
+            value: style.constants,
+            style: style,
+            styleSpec: styleSpec
+        }));
+    }
+
+    return sortErrors(errors);
+}
+
+validateStyleMin.source = wrapCleanErrors(require('./validate/validate_source'));
+validateStyleMin.light = wrapCleanErrors(require('./validate/validate_light'));
+validateStyleMin.layer = wrapCleanErrors(require('./validate/validate_layer'));
+validateStyleMin.filter = wrapCleanErrors(require('./validate/validate_filter'));
+validateStyleMin.paintProperty = wrapCleanErrors(require('./validate/validate_paint_property'));
+validateStyleMin.layoutProperty = wrapCleanErrors(require('./validate/validate_layout_property'));
+
+function sortErrors(errors) {
+    return [].concat(errors).sort(function (a, b) {
+        return a.line - b.line;
+    });
+}
+
+function wrapCleanErrors(inner) {
+    return function() {
+        return sortErrors(inner.apply(this, arguments));
+    };
+}
+
+module.exports = validateStyleMin;
+
+},{"./reference/latest":124,"./validate/validate":132,"./validate/validate_constants":136,"./validate/validate_filter":138,"./validate/validate_glyphs_url":140,"./validate/validate_layer":141,"./validate/validate_layout_property":142,"./validate/validate_light":143,"./validate/validate_paint_property":146,"./validate/validate_source":148}],151:[function(require,module,exports){
+'use strict';//      
+
+var AnimationLoop = function AnimationLoop() {
+    this.n = 0;
+    this.times = [];
+};
+
+// Are all animations done?
+AnimationLoop.prototype.stopped = function stopped () {
+    this.times = this.times.filter(function (t) {
+        return t.time >= (new Date()).getTime();
+    });
+    return !this.times.length;
+};
+
+// Add a new animation that will run t milliseconds
+// Returns an id that can be used to cancel it layer
+AnimationLoop.prototype.set = function set (t    ) {
+    this.times.push({ id: this.n, time: t + (new Date()).getTime() });
+    return this.n++;
+};
+
+// Cancel an animation
+AnimationLoop.prototype.cancel = function cancel (n    ) {
+    this.times = this.times.filter(function (t) {
+        return t.id !== n;
+    });
+};
+
+module.exports = AnimationLoop;
+
+},{}],152:[function(require,module,exports){
+'use strict';//      
+
+var styleSpec = require('../style-spec/reference/latest');
+var util = require('../util/util');
+var Evented = require('../util/evented');
+var validateStyle = require('./validate_style');
+var StyleDeclaration = require('./style_declaration');
+var StyleTransition = require('./style_transition');
+
+                                                  
+
+var TRANSITION_SUFFIX = '-transition';
+var properties = ['anchor', 'color', 'position', 'intensity'];
+var specifications = styleSpec.light;
+
+/*
+ * Represents the light used to light extruded features.
+ */
+var Light = (function (Evented) {
+    function Light(lightOptions                     ) {
+        Evented.call(this);
+        this.set(lightOptions);
+    }
+
+    if ( Evented ) Light.__proto__ = Evented;
+    Light.prototype = Object.create( Evented && Evented.prototype );
+    Light.prototype.constructor = Light;
+
+    Light.prototype.set = function set (lightOpts) {
+        var this$1 = this;
+
+        if (this._validate(validateStyle.light, lightOpts)) { return; }
+        this._declarations = {};
+        this._transitions = {};
+        this._transitionOptions = {};
+        this.calculated = {};
+
+        lightOpts = util.extend({
+            anchor: specifications.anchor.default,
+            color: specifications.color.default,
+            position: specifications.position.default,
+            intensity: specifications.intensity.default
+        }, lightOpts);
+
+        for (var i = 0, list = properties; i < list.length; i += 1) {
+            var prop = list[i];
+
+            this$1._declarations[prop] = new StyleDeclaration(specifications[prop], lightOpts[prop]);
+        }
+
+        return this;
+    };
+
+    Light.prototype.getLight = function getLight () {
+        return {
+            anchor: this.getLightProperty('anchor'),
+            color: this.getLightProperty('color'),
+            position: this.getLightProperty('position'),
+            intensity: this.getLightProperty('intensity')
+        };
+    };
+
+    Light.prototype.getLightProperty = function getLightProperty (property        ) {
+        if (util.endsWith(property, TRANSITION_SUFFIX)) {
+            return (
+                this._transitionOptions[property]
+            );
+        } else {
+            return (
+                this._declarations[property] &&
+                this._declarations[property].value
+            );
+        }
+    };
+
+    Light.prototype.getLightValue = function getLightValue (property        , globalProperties                ) {
+        if (property === 'position') {
+            var calculated      = this._transitions[property].calculate(globalProperties),
+                cartesian = util.sphericalToCartesian(calculated);
+            return {
+                x: cartesian[0],
+                y: cartesian[1],
+                z: cartesian[2]
+            };
+        }
+
+        return this._transitions[property].calculate(globalProperties);
+    };
+
+    Light.prototype.setLight = function setLight (options                     ) {
+        var this$1 = this;
+
+        if (this._validate(validateStyle.light, options)) { return; }
+
+        for (var key in options) {
+            var value = options[key];
+
+            if (util.endsWith(key, TRANSITION_SUFFIX)) {
+                this$1._transitionOptions[key] = value;
+            } else if (value === null || value === undefined) {
+                delete this$1._declarations[key];
+            } else {
+                this$1._declarations[key] = new StyleDeclaration(specifications[key], value);
+            }
+        }
+    };
+
+    Light.prototype.recalculate = function recalculate (zoom        ) {
+        var this$1 = this;
+
+        for (var property in this$1._declarations) {
+            this$1.calculated[property] = this$1.getLightValue(property, {zoom: zoom});
+        }
+    };
+
+    Light.prototype._applyLightDeclaration = function _applyLightDeclaration (property        , declaration                  , options    , globalOptions    , animationLoop               ) {
+        var oldTransition = options.transition ? this._transitions[property] : undefined;
+        var spec = specifications[property];
+
+        if (declaration === null || declaration === undefined) {
+            declaration = new StyleDeclaration(spec, spec.default);
+        }
+
+        if (oldTransition && oldTransition.declaration.json === declaration.json) { return; }
+
+        var transitionOptions = util.extend({
+            duration: 300,
+            delay: 0
+        }, globalOptions, this.getLightProperty(property + TRANSITION_SUFFIX));
+        var newTransition = this._transitions[property] =
+            new StyleTransition(spec, declaration, oldTransition, transitionOptions);
+        if (!newTransition.instant()) {
+            newTransition.loopID = animationLoop.set(newTransition.endTime - Date.now());
+        }
+
+        if (oldTransition) {
+            animationLoop.cancel(oldTransition.loopID);
+        }
+    };
+
+    Light.prototype.updateLightTransitions = function updateLightTransitions (options    , globalOptions    , animationLoop               ) {
+        var this$1 = this;
+
+        var property;
+        for (property in this$1._declarations) {
+            this$1._applyLightDeclaration(property, this$1._declarations[property], options, globalOptions, animationLoop);
+        }
+    };
+
+    Light.prototype._validate = function _validate (validate, value) {
+        return validateStyle.emitErrors(this, validate.call(validateStyle, util.extend({
+            value: value,
+            // Workaround for https://github.com/mapbox/mapbox-gl-js/issues/2407
+            style: {glyphs: true, sprite: true},
+            styleSpec: styleSpec
+        })));
+    };
+
+    return Light;
+}(Evented));
+
+module.exports = Light;
+
+},{"../style-spec/reference/latest":124,"../util/evented":211,"../util/util":224,"./style_declaration":158,"./style_transition":166,"./validate_style":167}],153:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../util/mapbox');
+var normalizeGlyphsURL = ref.normalizeGlyphsURL;
+var ajax = require('../util/ajax');
+var parseGlyphPBF = require('./parse_glyph_pbf');
+
+                                              
+                                                        
+
+module.exports = function (fontstack        ,
+                           range        ,
+                           urlTemplate        ,
+                           requestTransform                          ,
+                           callback                                         ) {
+    var begin = range * 256;
+    var end = begin + 255;
+
+    var request = requestTransform(
+        normalizeGlyphsURL(urlTemplate)
+            .replace('{fontstack}', fontstack)
+            .replace('{range}', (begin + "-" + end)),
+        ajax.ResourceType.Glyphs);
+
+    ajax.getArrayBuffer(request, function (err, response) {
+        if (err) {
+            callback(err);
+        } else if (response) {
+            var glyphs = {};
+
+            for (var i = 0, list = parseGlyphPBF(response.data); i < list.length; i += 1) {
+                var glyph = list[i];
+
+                glyphs[glyph.id] = glyph;
+            }
+
+            callback(null, glyphs);
+        }
+    });
+};
+
+},{"../util/ajax":202,"../util/mapbox":218,"./parse_glyph_pbf":155}],154:[function(require,module,exports){
+'use strict';//      
+
+var ajax = require('../util/ajax');
+var browser = require('../util/browser');
+var ref = require('../util/mapbox');
+var normalizeSpriteURL = ref.normalizeSpriteURL;
+var ref$1 = require('../util/image');
+var RGBAImage = ref$1.RGBAImage;
+
+                                              
+                                                        
+
+module.exports = function(baseURL         ,
+                          transformRequestCallback                          ,
+                          callback                                  ) {
+    if (!baseURL) {
+        callback(null, {});
+        return;
+    }
+
+    var json     , image, error;
+    var format = browser.devicePixelRatio > 1 ? '@2x' : '';
+
+    ajax.getJSON(transformRequestCallback(normalizeSpriteURL(baseURL, format, '.json'), ajax.ResourceType.SpriteJSON), function (err, data) {
+        if (!error) {
+            error = err;
+            json = data;
+            maybeComplete();
+        }
+    });
+
+    ajax.getImage(transformRequestCallback(normalizeSpriteURL(baseURL, format, '.png'), ajax.ResourceType.SpriteImage), function (err, img) {
+        if (!error) {
+            error = err;
+            image = img;
+            maybeComplete();
+        }
+    });
+
+    function maybeComplete() {
+        if (error) {
+            callback(error);
+        } else if (json && image) {
+            var imageData = browser.getImageData(image);
+            var result = {};
+
+            for (var id in json) {
+                var ref = json[id];
+                var width = ref.width;
+                var height = ref.height;
+                var x = ref.x;
+                var y = ref.y;
+                var sdf = ref.sdf;
+                var pixelRatio = ref.pixelRatio;
+                var data = RGBAImage.create({width: width, height: height});
+                RGBAImage.copy(imageData, data, {x: x, y: y}, {x: 0, y: 0}, {width: width, height: height});
+                result[id] = {data: data, pixelRatio: pixelRatio, sdf: sdf};
+            }
+
+            callback(null, result);
+        }
+    }
+};
+
+},{"../util/ajax":202,"../util/browser":203,"../util/image":214,"../util/mapbox":218}],155:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../util/image');
+var AlphaImage = ref.AlphaImage;
+var Protobuf = require('pbf');
+var border = 3;
+
+                                              
+
+function readFontstacks(tag        , glyphs                   , pbf          ) {
+    if (tag === 1) {
+        pbf.readMessage(readFontstack, glyphs);
+    }
+}
+
+function readFontstack(tag        , glyphs                   , pbf          ) {
+    if (tag === 3) {
+        var ref = pbf.readMessage(readGlyph, {});
+        var id = ref.id;
+        var bitmap = ref.bitmap;
+        var width = ref.width;
+        var height = ref.height;
+        var left = ref.left;
+        var top = ref.top;
+        var advance = ref.advance;
+        glyphs.push({
+            id: id,
+            bitmap: AlphaImage.create({
+                width: width + 2 * border,
+                height: height + 2 * border
+            }, bitmap),
+            metrics: {width: width, height: height, left: left, top: top, advance: advance}
+        });
+    }
+}
+
+function readGlyph(tag        , glyph        , pbf          ) {
+    if (tag === 1) { glyph.id = pbf.readVarint(); }
+    else if (tag === 2) { glyph.bitmap = pbf.readBytes(); }
+    else if (tag === 3) { glyph.width = pbf.readVarint(); }
+    else if (tag === 4) { glyph.height = pbf.readVarint(); }
+    else if (tag === 5) { glyph.left = pbf.readSVarint(); }
+    else if (tag === 6) { glyph.top = pbf.readSVarint(); }
+    else if (tag === 7) { glyph.advance = pbf.readVarint(); }
+}
+
+module.exports = function (data                          )                    {
+    return new Protobuf(data).readFields(readFontstacks, []);
+};
+
+module.exports.GLYPH_PBF_BORDER = border;
+
+},{"../util/image":214,"pbf":39}],156:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+
+                                            
+
+function getMaximumPaintValue(property        , layer            , bucket   ) {
+    if (layer.isPaintValueFeatureConstant(property)) {
+        return layer.paint[property];
+    } else {
+        return bucket.programConfigurations.get(layer.id)
+            .paintPropertyStatistics[property].max;
+    }
+}
+
+function translateDistance(translate                  ) {
+    return Math.sqrt(translate[0] * translate[0] + translate[1] * translate[1]);
+}
+
+function translate(queryGeometry                     ,
+                   translate                  ,
+                   translateAnchor                    ,
+                   bearing        ,
+                   pixelsToTileUnits        ) {
+    if (!translate[0] && !translate[1]) {
+        return queryGeometry;
+    }
+
+    var pt = Point.convert(translate);
+
+    if (translateAnchor === "viewport") {
+        pt._rotate(-bearing);
+    }
+
+    var translated = [];
+    for (var i = 0; i < queryGeometry.length; i++) {
+        var ring = queryGeometry[i];
+        var translatedRing = [];
+        for (var k = 0; k < ring.length; k++) {
+            translatedRing.push(ring[k].sub(pt._mult(pixelsToTileUnits)));
+        }
+        translated.push(translatedRing);
+    }
+    return translated;
+}
+
+module.exports = {
+    getMaximumPaintValue: getMaximumPaintValue,
+    translateDistance: translateDistance,
+    translate: translate
+};
+
+},{"@mapbox/point-geometry":2}],157:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var Evented = require('../util/evented');
+var StyleLayer = require('./style_layer');
+var loadSprite = require('./load_sprite');
+var ImageManager = require('../render/image_manager');
+var GlyphManager = require('../render/glyph_manager');
+var Light = require('./light');
+var LineAtlas = require('../render/line_atlas');
+var util = require('../util/util');
+var ajax = require('../util/ajax');
+var mapbox = require('../util/mapbox');
+var browser = require('../util/browser');
+var Dispatcher = require('../util/dispatcher');
+var AnimationLoop = require('./animation_loop');
+var validateStyle = require('./validate_style');
+var getSourceType = require('../source/source').getType;
+var setSourceType = require('../source/source').setType;
+var QueryFeatures = require('../source/query_features');
+var SourceCache = require('../source/source_cache');
+var styleSpec = require('../style-spec/reference/latest');
