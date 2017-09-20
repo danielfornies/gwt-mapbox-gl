@@ -40,6 +40,8 @@ public final class LayoutProperties {
     public static final String TEXT_FONT = "text-font";
     public static final String TEXT_SIZE = "text-size";
     public static final String TEXT_ANCHOR = "text-anchor";
+    public static final String TEXT_PADDING = "text-padding";
+    public static final String TEXT_OPTIONAL = "text-optional";
     public static final String TEXT_OFFSET = "text-offset";
     public static final String TEXT_ALLOW_OVERLAP = "text-allow-overlap";
     
