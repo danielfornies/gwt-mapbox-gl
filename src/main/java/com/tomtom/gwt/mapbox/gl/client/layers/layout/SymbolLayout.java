@@ -26,6 +26,8 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEX
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FIELD;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FONT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OFFSET;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OPTIONAL;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_PADDING;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_PITCH_ALIGNMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_ROTATION_ALIGNMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_SIZE;
@@ -495,6 +497,54 @@ public class SymbolLayout extends BaseLayout {
         @JsOverlay
         public Builder withTextAnchor(StyleFunction propertyFunction) {
             JSUtils.setObject(this, TEXT_ANCHOR, propertyFunction);
+            return this;
+        }
+        
+        /**
+         * Size of the additional area around the text bounding box used for detecting symbol collisions.
+         * @param paddingPixels Units in pixels. Defaults to 2. Requires text-field.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-padding
+         */
+        @JsOverlay
+        public Builder withTextPadding(int paddingPixels) {
+            JSUtils.setInt(this, TEXT_PADDING, paddingPixels);
+            return this;
+        }
+        
+        /**
+         * Size of the additional area around the text bounding box used for detecting symbol collisions.
+         * @param propertyFunction (Interpolated) function determining the padding depending on property and/or zoom levels.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-padding
+         */
+        @JsOverlay
+        public Builder withTextPadding(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, TEXT_PADDING, propertyFunction);
+            return this;
+        }
+        
+        /**
+         * If true, icons will display without their corresponding text when the text collides with other symbols and the icon does not.
+         * @param optional Defaults to false. Requires text-field. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-optional
+         */
+        @JsOverlay
+        public Builder withTextOptional(boolean optional) {
+            JSUtils.setBoolean(this, TEXT_OPTIONAL, optional);
+            return this;
+        }
+        
+        /**
+         * If true, icons will display without their corresponding text when the text collides with other symbols and the icon does not.
+         * @param propertyFunction (Piecewise constant) Property function to determine the optional flag depending on property-zoom levels.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-optional
+         */
+        @JsOverlay
+        public Builder withTextOptional(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, TEXT_OPTIONAL, propertyFunction);
             return this;
         }
     }
