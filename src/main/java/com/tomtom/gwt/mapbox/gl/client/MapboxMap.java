@@ -11,6 +11,7 @@ import com.google.gwt.dom.client.ImageElement;
 import com.google.gwt.resources.client.ImageResource;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
+import com.tomtom.gwt.mapbox.gl.client.events.BaseEvent;
 import com.tomtom.gwt.mapbox.gl.client.events.Evented;
 import com.tomtom.gwt.mapbox.gl.client.events.MapboxEventListener;
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
@@ -1032,7 +1033,7 @@ public class MapboxMap extends AbstractEvented {
     }
     
     @JsOverlay
-    public final <E> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
         return on(eventType.name(), listener);
     }
     
@@ -1050,7 +1051,7 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
      */
     @JsOverlay
-    public final <E> MapboxMap on(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
         return on(eventType.name(), layer.getId(), listener);
     }
     
@@ -1068,7 +1069,7 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
      */
     @JsOverlay
-    public final <E> MapboxMap on(MapEventType eventType, String layerID, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, String layerID, MapboxEventListener<E> listener) {
         return on(eventType.name(), layerID, listener);
     }
 
@@ -1086,10 +1087,10 @@ public class MapboxMap extends AbstractEvented {
      * @return This.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
      */
-    public native <T extends Evented, E> T  on(String type, String layer, MapboxEventListener<E> listener);
+    public native <T extends Evented, E extends BaseEvent> T  on(String type, String layer, MapboxEventListener<E> listener);
 
     @JsOverlay
-    public final <E> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
     
@@ -1103,7 +1104,7 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
      */
     @JsOverlay
-    public final <E> MapboxMap off(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap off(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
     
@@ -1117,10 +1118,10 @@ public class MapboxMap extends AbstractEvented {
      * @return This.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
      */
-    public native <T extends Evented, E> T  off(String type, String layer, MapboxEventListener<E> listener);
+    public native <T extends Evented, E extends BaseEvent> T  off(String type, String layer, MapboxEventListener<E> listener);
     
     @JsOverlay
-    public final <E> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
         return once(eventType.name(), listener);
     }
 
