@@ -8461,7 +8461,7 @@ module.exports.POLAR_RADIUS = 6356752.3142;
 
 },{}],51:[function(require,module,exports){
 module.exports={
-  "version": "0.40.1"
+  "version": "0.41.0"
 }
 },{}],52:[function(require,module,exports){
 'use strict';//      
@@ -8571,7 +8571,7 @@ module.exports = {
     }
 };
 
-},{"../util/util":224}],53:[function(require,module,exports){
+},{"../util/util":253}],53:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../segment');
@@ -8632,8 +8632,9 @@ var CircleBucket = function CircleBucket(options ) {
 
     this.layoutVertexArray = new LayoutVertexArrayType(options.layoutVertexArray);
     this.indexArray = new TriangleIndexArray(options.indexArray);
-    this.programConfigurations = new ProgramConfigurationSet(circleInterface, options.layers, options.zoom, options.programConfigurations);
     this.segments = new SegmentVector(options.segments);
+    this.programConfigurations = new ProgramConfigurationSet(
+        this.constructor.programInterface, options.layers, options.zoom, options.programConfigurations);
 };
 
 CircleBucket.prototype.populate = function populate (features                   , options                ) {
@@ -8645,7 +8646,7 @@ CircleBucket.prototype.populate = function populate (features                   
             var index = ref.index;
             var sourceLayerIndex = ref.sourceLayerIndex;
 
-            if (this$1.layers[0].filter(feature)) {
+            if (this$1.layers[0]._featureFilter({zoom: this$1.zoom}, feature)) {
             var geometry = loadGeometry(feature);
             this$1.addFeature(feature, geometry);
             options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this$1.index);
@@ -8722,14 +8723,14 @@ CircleBucket.prototype.addFeature = function addFeature (feature               ,
         }
     }
 
-    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature.properties);
+    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature);
 };
 
 CircleBucket.programInterface = circleInterface;
 
 module.exports = CircleBucket;
 
-},{"../../gl/index_buffer":71,"../../gl/vertex_buffer":72,"../extent":58,"../index_array_type":60,"../load_geometry":61,"../program_configuration":63,"../segment":65,"../vertex_array_type":66}],54:[function(require,module,exports){
+},{"../../gl/index_buffer":72,"../../gl/vertex_buffer":73,"../extent":59,"../index_array_type":61,"../load_geometry":62,"../program_configuration":64,"../segment":66,"../vertex_array_type":67}],54:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../segment');
@@ -8793,7 +8794,7 @@ FillBucket.prototype.populate = function populate (features                   , 
             var index = ref.index;
             var sourceLayerIndex = ref.sourceLayerIndex;
 
-            if (this$1.layers[0].filter(feature)) {
+            if (this$1.layers[0]._featureFilter({zoom: this$1.zoom}, feature)) {
             var geometry = loadGeometry(feature);
             this$1.addFeature(feature, geometry);
             options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this$1.index);
@@ -8898,14 +8899,14 @@ FillBucket.prototype.addFeature = function addFeature (feature               , g
         triangleSegment.primitiveLength += indices.length / 3;
     }
 
-    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature.properties);
+    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature);
 };
 
 FillBucket.programInterface = fillInterface;
 
 module.exports = FillBucket;
 
-},{"../../gl/index_buffer":71,"../../gl/vertex_buffer":72,"../../util/classify_rings":206,"../index_array_type":60,"../load_geometry":61,"../program_configuration":63,"../segment":65,"../vertex_array_type":66,"assert":11,"earcut":13}],55:[function(require,module,exports){
+},{"../../gl/index_buffer":72,"../../gl/vertex_buffer":73,"../../util/classify_rings":235,"../index_array_type":61,"../load_geometry":62,"../program_configuration":64,"../segment":66,"../vertex_array_type":67,"assert":11,"earcut":13}],55:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../segment');
@@ -8986,7 +8987,7 @@ FillExtrusionBucket.prototype.populate = function populate (features            
             var index = ref.index;
             var sourceLayerIndex = ref.sourceLayerIndex;
 
-            if (this$1.layers[0].filter(feature)) {
+            if (this$1.layers[0]._featureFilter({zoom: this$1.zoom}, feature)) {
             var geometry = loadGeometry(feature);
             this$1.addFeature(feature, geometry);
             options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this$1.index);
@@ -9123,7 +9124,7 @@ FillExtrusionBucket.prototype.addFeature = function addFeature (feature         
         segment.vertexLength += numVertices;
     }
 
-    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature.properties);
+    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature);
 };
 
 FillExtrusionBucket.programInterface = fillExtrusionInterface;
@@ -9135,7 +9136,37 @@ function isBoundaryEdge(p1, p2) {
         (p1.y === p2.y && (p1.y < 0 || p1.y > EXTENT));
 }
 
-},{"../../gl/index_buffer":71,"../../gl/vertex_buffer":72,"../../util/classify_rings":206,"../extent":58,"../index_array_type":60,"../load_geometry":61,"../program_configuration":63,"../segment":65,"../vertex_array_type":66,"assert":11,"earcut":13}],56:[function(require,module,exports){
+},{"../../gl/index_buffer":72,"../../gl/vertex_buffer":73,"../../util/classify_rings":235,"../extent":59,"../index_array_type":61,"../load_geometry":62,"../program_configuration":64,"../segment":66,"../vertex_array_type":67,"assert":11,"earcut":13}],56:[function(require,module,exports){
+'use strict';//      
+
+var CircleBucket = require('./circle_bucket');
+
+var heatmapInterface = {
+    layoutAttributes: CircleBucket.programInterface.layoutAttributes,
+    indexArrayType: CircleBucket.programInterface.indexArrayType,
+
+    paintAttributes: [
+        {property: 'heatmap-weight'}
+    ]
+};
+
+var HeatmapBucket = (function (CircleBucket) {
+    function HeatmapBucket () {
+        CircleBucket.apply(this, arguments);
+    }if ( CircleBucket ) HeatmapBucket.__proto__ = CircleBucket;
+    HeatmapBucket.prototype = Object.create( CircleBucket && CircleBucket.prototype );
+    HeatmapBucket.prototype.constructor = HeatmapBucket;
+
+    
+
+    return HeatmapBucket;
+}(CircleBucket));
+
+HeatmapBucket.programInterface = heatmapInterface;
+
+module.exports = HeatmapBucket;
+
+},{"./circle_bucket":53}],57:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../segment');
@@ -9253,7 +9284,7 @@ LineBucket.prototype.populate = function populate (features                   , 
             var index = ref.index;
             var sourceLayerIndex = ref.sourceLayerIndex;
 
-            if (this$1.layers[0].filter(feature)) {
+            if (this$1.layers[0]._featureFilter({zoom: this$1.zoom}, feature)) {
             var geometry = loadGeometry(feature);
             this$1.addFeature(feature, geometry);
             options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this$1.index);
@@ -9294,7 +9325,7 @@ LineBucket.prototype.addFeature = function addFeature (feature               , g
         var this$1 = this;
 
     var layout = this.layers[0].layout;
-    var join = this.layers[0].getLayoutValue('line-join', {zoom: this.zoom}, feature.properties);
+    var join = this.layers[0].getLayoutValue('line-join', {zoom: this.zoom}, feature);
     var cap = layout['line-cap'];
     var miterLimit = layout['line-miter-limit'];
     var roundLimit = layout['line-round-limit'];
@@ -9309,7 +9340,6 @@ LineBucket.prototype.addFeature = function addFeature (feature               , g
 LineBucket.prototype.addLine = function addLine (vertices          , feature               , join    , cap    , miterLimit    , roundLimit    ) {
         var this$1 = this;
 
-    var featureProperties = feature.properties;
     var isPolygon = vectorTileFeatureTypes[feature.type] === 'Polygon';
 
     // If the line has duplicate vertices at the ends, adjust start/length to remove them.
@@ -9572,7 +9602,7 @@ LineBucket.prototype.addLine = function addLine (vertices          , feature    
         startOfLine = false;
     }
 
-    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, featureProperties);
+    this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature);
 };
 
 /**
@@ -9665,7 +9695,7 @@ LineBucket.programInterface = lineInterface;
 
 module.exports = LineBucket;
 
-},{"../../gl/index_buffer":71,"../../gl/vertex_buffer":72,"../extent":58,"../index_array_type":60,"../load_geometry":61,"../program_configuration":63,"../segment":65,"../vertex_array_type":66,"@mapbox/vector-tile":6}],57:[function(require,module,exports){
+},{"../../gl/index_buffer":72,"../../gl/vertex_buffer":73,"../extent":59,"../index_array_type":61,"../load_geometry":62,"../program_configuration":64,"../segment":66,"../vertex_array_type":67,"@mapbox/vector-tile":6}],58:[function(require,module,exports){
 'use strict';//      
 
 var Point = require('@mapbox/point-geometry');
@@ -9704,7 +9734,10 @@ var classifyRings = require('../../util/classify_rings');
 var vectorTileFeatureTypes = require('@mapbox/vector-tile').VectorTileFeature.types;
 var createStructArrayType = require('../../util/struct_array');
 var verticalizePunctuation = require('../../util/verticalize_punctuation');
+var ref$6 = require('../../symbol/symbol_size');
+var getSizeData = ref$6.getSizeData;
 
+                                                                              
                                                                                             
                                                                                                
                                                                                 
@@ -9713,9 +9746,10 @@ var verticalizePunctuation = require('../../util/verticalize_punctuation');
                 
                          
                                  
-                                                      
+                                                                               
                                                                   
                                                    
+                                                       
                                                         
                                                         
                                                             
@@ -9745,21 +9779,22 @@ var verticalizePunctuation = require('../../util/verticalize_punctuation');
                    
                        
                          
-                              
+                               
                          
                                                                         
                                                                        
   
 
-                             
+                              
                         
                         
                   
                              
                                   
                        
-                                            
-  
+                                             
+            
+   
 
                                
                   
@@ -9892,7 +9927,7 @@ function addCollisionBoxVertex(layoutVertexArray, point, anchor, extrude, maxZoo
                             
   
 
-var SymbolBuffers = function SymbolBuffers(programInterface                , layers                 , zoom      , arrays                       ) {
+var SymbolBuffers = function SymbolBuffers(programInterface                , layers                       , zoom      , arrays                       ) {
       this.programInterface = programInterface;
 
       var LayoutVertexArrayType = createVertexArrayType(programInterface.layoutAttributes);
@@ -10004,7 +10039,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
   SymbolBucket.prototype.populate = function populate (features                     , options                  ) {
         var this$1 = this;
 
-      var layer = this.layers[0];
+      var layer                 = this.layers[0];
       var layout = layer.layout;
       var textFont = layout['text-font'];
 
@@ -10028,22 +10063,22 @@ var SymbolBucket = function SymbolBucket(options                      ) {
           var index = ref.index;
           var sourceLayerIndex = ref.sourceLayerIndex;
 
-          if (!layer.filter(feature)) {
+          if (!layer._featureFilter(globalProperties, feature)) {
               continue;
           }
 
           var text = (void 0);
           if (hasText) {
-              text = layer.getLayoutValue('text-field', globalProperties, feature.properties);
+              text = layer.getLayoutValue('text-field', globalProperties, feature);
               if (layer.isLayoutValueFeatureConstant('text-field')) {
                   text = resolveTokens(feature.properties, text);
               }
-              text = transformText(text, layer, globalProperties, feature.properties);
+              text = transformText(text, layer, globalProperties, feature);
           }
 
           var icon = (void 0);
           if (hasIcon) {
-              icon = layer.getLayoutValue('icon-image', globalProperties, feature.properties);
+              icon = layer.getLayoutValue('icon-image', globalProperties, feature);
               if (layer.isLayoutValueFeatureConstant('icon-image')) {
                   icon = resolveTokens(feature.properties, icon);
               }
@@ -10053,7 +10088,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
               continue;
           }
 
-          this$1.features.push({
+          var symbolFeature              = {
               text: text,
               icon: icon,
               index: index,
@@ -10061,7 +10096,11 @@ var SymbolBucket = function SymbolBucket(options                      ) {
               geometry: loadGeometry(feature),
               properties: feature.properties,
               type: vectorTileFeatureTypes[feature.type]
-          });
+          };
+          if (typeof feature.id !== 'undefined') {
+              symbolFeature.id = feature.id;
+          }
+          this$1.features.push(symbolFeature);
 
           if (icon) {
               icons[icon] = true;
@@ -10155,13 +10194,13 @@ var SymbolBucket = function SymbolBucket(options                      ) {
           var shapedTextOrientations = {};
           var text = feature.text;
           if (text) {
-              var textOffset = this$1.layers[0].getLayoutValue('text-offset', {zoom: this$1.zoom}, feature.properties).map(function (t){ return t * oneEm; });
-              var spacing = this$1.layers[0].getLayoutValue('text-letter-spacing', {zoom: this$1.zoom}, feature.properties) * oneEm;
+              var textOffset = this$1.layers[0].getLayoutValue('text-offset', {zoom: this$1.zoom}, feature).map(function (t){ return t * oneEm; });
+              var spacing = this$1.layers[0].getLayoutValue('text-letter-spacing', {zoom: this$1.zoom}, feature) * oneEm;
               var spacingIfAllowed = scriptDetection.allowsLetterSpacing(text) ? spacing : 0;
-              var textAnchor = this$1.layers[0].getLayoutValue('text-anchor', {zoom: this$1.zoom}, feature.properties);
-              var textJustify = this$1.layers[0].getLayoutValue('text-justify', {zoom: this$1.zoom}, feature.properties);
+              var textAnchor = this$1.layers[0].getLayoutValue('text-anchor', {zoom: this$1.zoom}, feature);
+              var textJustify = this$1.layers[0].getLayoutValue('text-justify', {zoom: this$1.zoom}, feature);
               var maxWidth = layout['symbol-placement'] !== 'line' ?
-                  this$1.layers[0].getLayoutValue('text-max-width', {zoom: this$1.zoom}, feature.properties) * oneEm :
+                  this$1.layers[0].getLayoutValue('text-max-width', {zoom: this$1.zoom}, feature) * oneEm :
                   0;
 
               var applyShaping = function (text      , writingMode     ) {
@@ -10183,8 +10222,8 @@ var SymbolBucket = function SymbolBucket(options                      ) {
               if (image) {
                   shapedIcon = shapeIcon(
                       imagePositions[feature.icon],
-                      this$1.layers[0].getLayoutValue('icon-offset', {zoom: this$1.zoom}, feature.properties),
-                      this$1.layers[0].getLayoutValue('icon-anchor', {zoom: this$1.zoom}, feature.properties));
+                      this$1.layers[0].getLayoutValue('icon-offset', {zoom: this$1.zoom}, feature),
+                      this$1.layers[0].getLayoutValue('icon-anchor', {zoom: this$1.zoom}, feature));
                   if (this$1.sdfIcons === undefined) {
                       this$1.sdfIcons = image.sdf;
                   } else if (this$1.sdfIcons !== image.sdf) {
@@ -10218,17 +10257,17 @@ var SymbolBucket = function SymbolBucket(options                      ) {
              glyphPositionMap                         ) {
         var this$1 = this;
 
-      var layoutTextSize = this.layers[0].getLayoutValue('text-size', {zoom: this.zoom + 1}, feature.properties);
-      var layoutIconSize = this.layers[0].getLayoutValue('icon-size', {zoom: this.zoom + 1}, feature.properties);
+      var layoutTextSize = this.layers[0].getLayoutValue('text-size', {zoom: this.zoom + 1}, feature);
+      var layoutIconSize = this.layers[0].getLayoutValue('icon-size', {zoom: this.zoom + 1}, feature);
 
-      var textOffset = this.layers[0].getLayoutValue('text-offset', {zoom: this.zoom }, feature.properties);
-      var iconOffset = this.layers[0].getLayoutValue('icon-offset', {zoom: this.zoom }, feature.properties);
+      var textOffset = this.layers[0].getLayoutValue('text-offset', {zoom: this.zoom }, feature);
+      var iconOffset = this.layers[0].getLayoutValue('icon-offset', {zoom: this.zoom }, feature);
 
       // To reduce the number of labels that jump around when zooming we need
       // to use a text-size value that is the same for all zoom levels.
       // This calculates text-size at a high zoom level so that all tiles can
       // use the same value when calculating anchor positions.
-      var textMaxSize = this.layers[0].getLayoutValue('text-size', {zoom: 18}, feature.properties);
+      var textMaxSize = this.layers[0].getLayoutValue('text-size', {zoom: 18}, feature);
       if (textMaxSize === undefined) {
           textMaxSize = layoutTextSize;
       }
@@ -10270,7 +10309,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
               addToBuffers, this$1.collisionBoxArray, feature.index, feature.sourceLayerIndex, this$1.index,
               textBoxScale, textPadding, textAlongLine, textOffset,
               iconBoxScale, iconPadding, iconAlongLine, iconOffset,
-              {zoom: this$1.zoom}, feature.properties, glyphPositionMap);
+              {zoom: this$1.zoom}, feature, glyphPositionMap);
       };
 
       if (symbolPlacement === 'line') {
@@ -10448,9 +10487,9 @@ var SymbolBucket = function SymbolBucket(options                      ) {
               if (glyphScale <= maxScale) {
                   var textSizeData = getSizeVertexData(layer,
                       this$1.zoom,
-                      this$1.textSizeData.coveringZoomRange,
+                      this$1.textSizeData,
                       'text-size',
-                      symbolInstance.featureProperties);
+                      symbolInstance.feature);
                   this$1.addSymbols(
                       this$1.text,
                       symbolInstance.glyphQuads,
@@ -10460,7 +10499,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
                       symbolInstance.textOffset,
                       textAlongLine,
                       collisionTile.angle,
-                      symbolInstance.featureProperties,
+                      symbolInstance.feature,
                       symbolInstance.writingModes,
                       symbolInstance.anchor,
                       lineStartIndex,
@@ -10475,9 +10514,9 @@ var SymbolBucket = function SymbolBucket(options                      ) {
                   var iconSizeData = getSizeVertexData(
                       layer,
                       this$1.zoom,
-                      this$1.iconSizeData.coveringZoomRange,
+                      this$1.iconSizeData,
                       'icon-size',
-                      symbolInstance.featureProperties);
+                      symbolInstance.feature);
                   this$1.addSymbols(
                       this$1.icon,
                       symbolInstance.iconQuads,
@@ -10487,7 +10526,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
                       symbolInstance.iconOffset,
                       iconAlongLine,
                       collisionTile.angle,
-                      symbolInstance.featureProperties,
+                      symbolInstance.feature,
                       0,
                       symbolInstance.anchor,
                       lineStartIndex,
@@ -10510,7 +10549,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
              lineOffset                ,
              alongLine       ,
              placementAngle      ,
-             featureProperties      ,
+             feature                 ,
              writingModes      ,
              labelAnchor      ,
              lineStartIndex      ,
@@ -10575,7 +10614,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
           lineOffset[0], lineOffset[1],
           placementZoom, useVerticalMode);
 
-      arrays.programConfigurations.populatePaintArrays(arrays.layoutVertexArray.length, featureProperties);
+      arrays.programConfigurations.populatePaintArrays(arrays.layoutVertexArray.length, feature);
   };
 
   SymbolBucket.prototype.addToDebugBuffers = function addToDebugBuffers (collisionTile             ) {
@@ -10655,7 +10694,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
                     line            ,
                     shapedTextOrientations                      ,
                     shapedIcon                     ,
-                    layer          ,
+                    layer                ,
                     addToBuffers       ,
                     collisionBoxArray                 ,
                     featureIndex      ,
@@ -10670,7 +10709,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
                     iconAlongLine       ,
                     iconOffset                ,
                     globalProperties      ,
-                    featureProperties      ,
+                    feature             ,
                     glyphPositionMap                         ) {
 
       var textCollisionFeature, iconCollisionFeature;
@@ -10681,7 +10720,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
           if (!shapedTextOrientations[writingMode]) { continue; }
           glyphQuads = glyphQuads.concat(addToBuffers ?
               getGlyphQuads(anchor, shapedTextOrientations[writingMode],
-                  layer, textAlongLine, globalProperties, featureProperties, glyphPositionMap) :
+                  layer, textAlongLine, globalProperties, feature, glyphPositionMap) :
               []);
           textCollisionFeature = new CollisionFeature(collisionBoxArray,
               line,
@@ -10703,7 +10742,7 @@ var SymbolBucket = function SymbolBucket(options                      ) {
           iconQuads = addToBuffers ?
               getIconQuads(anchor, shapedIcon, layer,
                   iconAlongLine, shapedTextOrientations[WritingMode.horizontal],
-                  globalProperties, featureProperties) :
+                  globalProperties, feature) :
               [];
           iconCollisionFeature = new CollisionFeature(collisionBoxArray,
               line,
@@ -10745,76 +10784,23 @@ var SymbolBucket = function SymbolBucket(options                      ) {
           anchor: anchor,
           line: line,
           featureIndex: featureIndex,
-          featureProperties: featureProperties,
+          feature: feature,
           writingModes: writingModes
       });
   };
 
-// For {text,icon}-size, get the bucket-level data that will be needed by
-// the painter to set symbol-size-related uniforms
-function getSizeData(tileZoom, layer, sizeProperty) {
-    var sizeData = {};
-
-    sizeData.isFeatureConstant = layer.isLayoutValueFeatureConstant(sizeProperty);
-    sizeData.isZoomConstant = layer.isLayoutValueZoomConstant(sizeProperty);
-
-    if (sizeData.isFeatureConstant) {
-        sizeData.layoutSize = layer.getLayoutValue(sizeProperty, {zoom: tileZoom + 1});
-    }
-
-    // calculate covering zoom stops for zoom-dependent values
-    if (!sizeData.isZoomConstant) {
-        var levels = layer.getLayoutValueStopZoomLevels(sizeProperty);
-        var lower = 0;
-        while (lower < levels.length && levels[lower] <= tileZoom) { lower++; }
-        lower = Math.max(0, lower - 1);
-        var upper = lower;
-        while (upper < levels.length && levels[upper] < tileZoom + 1) { upper++; }
-        upper = Math.min(levels.length - 1, upper);
-
-        sizeData.coveringZoomRange = [levels[lower], levels[upper]];
-        if (layer.isLayoutValueFeatureConstant(sizeProperty)) {
-            // for camera functions, also save off the function values
-            // evaluated at the covering zoom levels
-            sizeData.coveringStopValues = [
-                layer.getLayoutValue(sizeProperty, {zoom: levels[lower]}),
-                layer.getLayoutValue(sizeProperty, {zoom: levels[upper]})
-            ];
-        }
-
-        // also store the function's base for use in calculating the
-        // interpolation factor each frame
-        sizeData.functionBase = layer.getLayoutProperty(sizeProperty).base;
-        if (typeof sizeData.functionBase === 'undefined') {
-            sizeData.functionBase = 1;
-        }
-        sizeData.functionType = layer.getLayoutProperty(sizeProperty).type ||
-            'exponential';
-    }
-
-    return sizeData;
-}
-
-function getSizeVertexData(layer, tileZoom, stopZoomLevels, sizeProperty, featureProperties) {
-    if (
-        layer.isLayoutValueZoomConstant(sizeProperty) &&
-        !layer.isLayoutValueFeatureConstant(sizeProperty)
-    ) {
-        // source function
+function getSizeVertexData(layer                  , tileZoom        , sizeData          , sizeProperty, feature) {
+    if (sizeData.functionType === 'source') {
         return [
-            10 * layer.getLayoutValue(sizeProperty, ({}     ), featureProperties)
+            10 * layer.getLayoutValue(sizeProperty, ({}     ), feature)
         ];
-    } else if (
-        !layer.isLayoutValueZoomConstant(sizeProperty) &&
-        !layer.isLayoutValueFeatureConstant(sizeProperty)
-    ) {
-        // composite function
+    } else if (sizeData.functionType === 'composite') {
+        var zoomRange = sizeData.coveringZoomRange;
         return [
-            10 * layer.getLayoutValue(sizeProperty, {zoom: stopZoomLevels[0]}, featureProperties),
-            10 * layer.getLayoutValue(sizeProperty, {zoom: stopZoomLevels[1]}, featureProperties)
+            10 * layer.getLayoutValue(sizeProperty, {zoom: zoomRange[0]}, feature),
+            10 * layer.getLayoutValue(sizeProperty, {zoom: zoomRange[1]}, feature)
         ];
     }
-    // camera function or constant
     return null;
 }
 
@@ -10829,7 +10815,7 @@ SymbolBucket.addDynamicAttributes = addDynamicAttributes;
 
 module.exports = SymbolBucket;
 
-},{"../../gl/index_buffer":71,"../../gl/vertex_buffer":72,"../../shaders/encode_attribute":95,"../../symbol/anchor":168,"../../symbol/clip_line":170,"../../symbol/collision_feature":172,"../../symbol/get_anchors":174,"../../symbol/mergelines":175,"../../symbol/quads":177,"../../symbol/shaping":178,"../../symbol/transform_text":180,"../../util/classify_rings":206,"../../util/find_pole_of_inaccessibility":212,"../../util/script_detection":219,"../../util/struct_array":221,"../../util/token":223,"../../util/util":224,"../../util/verticalize_punctuation":226,"../extent":58,"../index_array_type":60,"../load_geometry":61,"../program_configuration":63,"../segment":65,"../vertex_array_type":66,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6}],58:[function(require,module,exports){
+},{"../../gl/index_buffer":72,"../../gl/vertex_buffer":73,"../../shaders/encode_attribute":98,"../../symbol/anchor":197,"../../symbol/clip_line":199,"../../symbol/collision_feature":201,"../../symbol/get_anchors":203,"../../symbol/mergelines":204,"../../symbol/quads":206,"../../symbol/shaping":207,"../../symbol/symbol_size":208,"../../symbol/transform_text":209,"../../util/classify_rings":235,"../../util/find_pole_of_inaccessibility":241,"../../util/script_detection":248,"../../util/struct_array":250,"../../util/token":252,"../../util/util":253,"../../util/verticalize_punctuation":255,"../extent":59,"../index_array_type":61,"../load_geometry":62,"../program_configuration":64,"../segment":66,"../vertex_array_type":67,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6}],59:[function(require,module,exports){
 'use strict';//      
 
 /**
@@ -10850,7 +10836,7 @@ module.exports = SymbolBucket;
  */
 module.exports = 8192;
 
-},{}],59:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 'use strict';//      
 
 var Point = require('@mapbox/point-geometry');
@@ -10868,6 +10854,7 @@ var arraysIntersect = require('../util/util').arraysIntersect;
                                                           
                                                   
                                                    
+                                                                
                                                                 
 
 var FeatureIndexArray = createStructArrayType({
@@ -11017,7 +11004,7 @@ FeatureIndex.prototype.filterMatching = function filterMatching (
     matching        ,
     array ,
     queryGeometry                 ,
-    filter ,
+    filter           ,
     filterLayerIDs           ,
     styleLayers                    ,
     bearing    ,
@@ -11042,7 +11029,7 @@ FeatureIndex.prototype.filterMatching = function filterMatching (
         var sourceLayer = this$1.vtLayers[sourceLayerName];
         var feature = sourceLayer.feature(match.featureIndex);
 
-        if (!filter(feature)) { continue; }
+        if (!filter({zoom: this$1.coord.z}, feature)) { continue; }
 
         var geometry = null;
 
@@ -11099,7 +11086,7 @@ function topDownFeatureComparator(a, b) {
     return b - a;
 }
 
-},{"../style-spec/feature_filter":120,"../util/dictionary_coder":208,"../util/struct_array":221,"../util/util":224,"../util/vectortile_to_geojson":225,"./extent":58,"./load_geometry":61,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6,"grid-index":24,"pbf":39}],60:[function(require,module,exports){
+},{"../style-spec/feature_filter":145,"../util/dictionary_coder":237,"../util/struct_array":250,"../util/util":253,"../util/vectortile_to_geojson":254,"./extent":59,"./load_geometry":62,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6,"grid-index":24,"pbf":39}],61:[function(require,module,exports){
 'use strict';//      
 
 var createStructArrayType = require('../util/struct_array');
@@ -11126,7 +11113,7 @@ module.exports = {
     TriangleIndexArray: createIndexArrayType(3)
 };
 
-},{"../util/struct_array":221}],61:[function(require,module,exports){
+},{"../util/struct_array":250}],62:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -11173,7 +11160,7 @@ module.exports = function loadGeometry(feature                   )              
     return geometry;
 };
 
-},{"../util/util":224,"./extent":58}],62:[function(require,module,exports){
+},{"../util/util":253,"./extent":59}],63:[function(require,module,exports){
 'use strict';//      
 
 var createStructArrayType = require('../util/struct_array');
@@ -11184,17 +11171,17 @@ var PosArray = createStructArrayType({
 
 module.exports = PosArray;
 
-},{"../util/struct_array":221}],63:[function(require,module,exports){
+},{"../util/struct_array":250}],64:[function(require,module,exports){
 'use strict';//      
 
 var createVertexArrayType = require('./vertex_array_type');
-var interpolationFactor = require('../style-spec/function').interpolationFactor;
 var packUint8ToFloat = require('../shaders/encode_attribute').packUint8ToFloat;
 var VertexBuffer = require('../gl/vertex_buffer');
 
                                                    
                                                                                                                   
                                              
+                                                      
 
                         
                  
@@ -11235,7 +11222,7 @@ function packColor(color                                  )                   {
                                                            
                                      
                                       
-                                                        
+                                               
 
                              
 
@@ -11284,10 +11271,10 @@ var SourceFunctionBinder = function SourceFunctionBinder(name      , type      ,
                      statistics                       ,
                      start      ,
                      length      ,
-                     featureProperties      ) {
+                     feature       ) {
         var this$1 = this;
 
-      var value = layer.getPaintValue(this.property, undefined, featureProperties);
+      var value = layer.getPaintValue(this.property, {zoom: 0}, feature);
 
       if (this.type === 'color') {
           var color = packColor(value);
@@ -11328,11 +11315,11 @@ var CompositeFunctionBinder = function CompositeFunctionBinder(name      , type 
                      statistics                       ,
                      start      ,
                      length      ,
-                     featureProperties      ) {
+                     feature       ) {
         var this$1 = this;
 
-      var min = layer.getPaintValue(this.property, {zoom: this.zoom  }, featureProperties);
-      var max = layer.getPaintValue(this.property, {zoom: this.zoom + 1}, featureProperties);
+      var min = layer.getPaintValue(this.property, {zoom: this.zoom  }, feature);
+      var max = layer.getPaintValue(this.property, {zoom: this.zoom + 1}, feature);
 
       if (this.type === 'color') {
           var minColor = packColor(min);
@@ -11359,7 +11346,7 @@ var CompositeFunctionBinder = function CompositeFunctionBinder(name      , type 
   CompositeFunctionBinder.prototype.setUniforms = function setUniforms (gl                     , program       , layer          , ref                ) {
         var zoom = ref.zoom;
 
-      var f = interpolationFactor(this.useIntegerZoom ? Math.floor(zoom) : zoom, 1, this.zoom, this.zoom + 1);
+      var f = layer.getPaintInterpolationFactor(this.property, this.useIntegerZoom ? Math.floor(zoom) : zoom, this.zoom, this.zoom + 1);
       gl.uniform1f(program.uniforms[("a_" + (this.name) + "_t")], f);
   };
 
@@ -11462,7 +11449,7 @@ var ProgramConfiguration = function ProgramConfiguration() {
       return paintPropertyStatistics;
   };
 
-  ProgramConfiguration.prototype.populatePaintArray = function populatePaintArray (length      , featureProperties      ) {
+  ProgramConfiguration.prototype.populatePaintArray = function populatePaintArray (length      , feature       ) {
         var this$1 = this;
 
       var paintArray = this.paintVertexArray;
@@ -11476,7 +11463,7 @@ var ProgramConfiguration = function ProgramConfiguration() {
               this$1.layer, paintArray,
               this$1.paintPropertyStatistics,
               start, length,
-              featureProperties);
+              feature);
       }
   };
 
@@ -11531,7 +11518,7 @@ var ProgramConfiguration = function ProgramConfiguration() {
       }
   };
 
-var ProgramConfigurationSet = function ProgramConfigurationSet(programInterface                , layers                 , zoom      , arrays                                             ) {
+var ProgramConfigurationSet = function ProgramConfigurationSet(programInterface                , layers                          , zoom      , arrays                                             ) {
       var this$1 = this;
 
       this.programConfigurations = {};
@@ -11553,11 +11540,11 @@ var ProgramConfigurationSet = function ProgramConfigurationSet(programInterface 
       }
   };
 
-  ProgramConfigurationSet.prototype.populatePaintArrays = function populatePaintArrays (length      , featureProperties      ) {
+  ProgramConfigurationSet.prototype.populatePaintArrays = function populatePaintArrays (length      , feature       ) {
         var this$1 = this;
 
       for (var key in this$1.programConfigurations) {
-          this$1.programConfigurations[key].populatePaintArray(length, featureProperties);
+          this$1.programConfigurations[key].populatePaintArray(length, feature);
       }
   };
 
@@ -11598,7 +11585,7 @@ module.exports = {
     ProgramConfigurationSet: ProgramConfigurationSet
 };
 
-},{"../gl/vertex_buffer":72,"../shaders/encode_attribute":95,"../style-spec/function":122,"./vertex_array_type":66}],64:[function(require,module,exports){
+},{"../gl/vertex_buffer":73,"../shaders/encode_attribute":98,"./vertex_array_type":67}],65:[function(require,module,exports){
 'use strict';//      
 
 var createStructArrayType = require('../util/struct_array');
@@ -11612,7 +11599,7 @@ var RasterBoundsArray = createStructArrayType({
 
 module.exports = RasterBoundsArray;
 
-},{"../util/struct_array":221}],65:[function(require,module,exports){
+},{"../util/struct_array":250}],66:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../util/util');
@@ -11680,7 +11667,7 @@ module.exports = {
     MAX_VERTEX_ARRAY_LENGTH: MAX_VERTEX_ARRAY_LENGTH
 };
 
-},{"../util/util":224}],66:[function(require,module,exports){
+},{"../util/util":253}],67:[function(require,module,exports){
 'use strict';//      
 
 var createStructArrayType = require('../util/struct_array');
@@ -11705,7 +11692,7 @@ function createVertexArrayType(members
     });
 }
 
-},{"../util/struct_array":221}],67:[function(require,module,exports){
+},{"../util/struct_array":250}],68:[function(require,module,exports){
 'use strict';//      
 
 /**
@@ -11781,7 +11768,7 @@ Coordinate.prototype._sub = function _sub (c        ) {
 
 module.exports = Coordinate;
 
-},{}],68:[function(require,module,exports){
+},{}],69:[function(require,module,exports){
 'use strict';//      
 
 var wrap = require('../util/util').wrap;
@@ -11909,7 +11896,7 @@ LngLat.convert = function convert (input        )     {
 
 module.exports = LngLat;
 
-},{"../util/util":224,"./lng_lat_bounds":69}],69:[function(require,module,exports){
+},{"../util/util":253,"./lng_lat_bounds":70}],70:[function(require,module,exports){
 'use strict';//      
 
 var LngLat = require('./lng_lat');
@@ -12143,7 +12130,7 @@ LngLatBounds.convert = function convert (input              )           {
 
 module.exports = LngLatBounds;
 
-},{"./lng_lat":68}],70:[function(require,module,exports){
+},{"./lng_lat":69}],71:[function(require,module,exports){
 'use strict';//      
 
 var LngLat = require('./lng_lat'),
@@ -12650,7 +12637,7 @@ Object.defineProperties( Transform.prototype, prototypeAccessors );
 
 module.exports = Transform;
 
-},{"../data/extent":58,"../source/tile_coord":111,"../style-spec/util/interpolate":128,"../util/util":224,"./coordinate":67,"./lng_lat":68,"@mapbox/gl-matrix":1,"@mapbox/point-geometry":2}],71:[function(require,module,exports){
+},{"../data/extent":59,"../source/tile_coord":114,"../style-spec/util/interpolate":153,"../util/util":253,"./coordinate":68,"./lng_lat":69,"@mapbox/gl-matrix":1,"@mapbox/point-geometry":2}],72:[function(require,module,exports){
 'use strict';//      
 
                                                                                  
@@ -12687,7 +12674,7 @@ IndexBuffer.prototype.destroy = function destroy () {
 
 module.exports = IndexBuffer;
 
-},{}],72:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 'use strict';//      
 
              
@@ -12793,7 +12780,7 @@ VertexBuffer.prototype.destroy = function destroy () {
 
 module.exports = VertexBuffer;
 
-},{}],73:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 'use strict';//      
 
 var supported = require('mapbox-gl-supported');
@@ -12887,18 +12874,20 @@ module.exports = {
  * @see [Add support for right-to-left scripts](https://www.mapbox.com/mapbox-gl-js/example/mapbox-gl-rtl-text/)
  */
 
-},{"../package.json":51,"./geo/lng_lat":68,"./geo/lng_lat_bounds":69,"./source/rtl_text_plugin":106,"./style/style":157,"./ui/control/attribution_control":183,"./ui/control/fullscreen_control":184,"./ui/control/geolocate_control":185,"./ui/control/navigation_control":187,"./ui/control/scale_control":188,"./ui/map":198,"./ui/marker":199,"./ui/popup":200,"./util/browser":203,"./util/config":207,"./util/evented":211,"@mapbox/point-geometry":2,"mapbox-gl-supported":38}],74:[function(require,module,exports){
+},{"../package.json":51,"./geo/lng_lat":69,"./geo/lng_lat_bounds":70,"./source/rtl_text_plugin":109,"./style/style":183,"./ui/control/attribution_control":212,"./ui/control/fullscreen_control":213,"./ui/control/geolocate_control":214,"./ui/control/navigation_control":216,"./ui/control/scale_control":217,"./ui/map":227,"./ui/marker":228,"./ui/popup":229,"./util/browser":232,"./util/config":236,"./util/evented":240,"@mapbox/point-geometry":2,"mapbox-gl-supported":38}],75:[function(require,module,exports){
 'use strict';//      
 
 var pattern = require('./pattern');
 
                                      
                                                       
-                                                   
+                                                                                    
 
 module.exports = drawBackground;
 
-function drawBackground(painter         , sourceCache             , layer            ) {
+function drawBackground(painter         , sourceCache             , layer                      ) {
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
+
     var gl = painter.gl;
     var transform = painter.transform;
     var tileSize = transform.tileSize;
@@ -12940,10 +12929,9 @@ function drawBackground(painter         , sourceCache             , layer       
     }
 }
 
-},{"./pattern":90}],75:[function(require,module,exports){
+},{"./pattern":92}],76:[function(require,module,exports){
 'use strict';//      
 
-var browser = require('../util/browser');
 var pixelsToTileUnits = require('../source/pixels_to_tile_units');
 
                                      
@@ -12956,6 +12944,7 @@ module.exports = drawCircles;
 
 function drawCircles(painter         , sourceCache             , layer                  , coords                  ) {
     if (painter.renderPass !== 'translucent') { return; }
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
 
     var gl = painter.gl;
 
@@ -12988,8 +12977,6 @@ function drawCircles(painter         , sourceCache             , layer          
             gl.uniform2fv(program.uniforms.u_extrude_scale, painter.transform.pixelsToGLUnits);
         }
 
-        gl.uniform1f(program.uniforms.u_devicepixelratio, browser.devicePixelRatio);
-
         gl.uniformMatrix4fv(program.uniforms.u_matrix, false, painter.translatePosMatrix(
             coord.posMatrix,
             tile,
@@ -13008,7 +12995,7 @@ function drawCircles(painter         , sourceCache             , layer          
     }
 }
 
-},{"../source/pixels_to_tile_units":103,"../util/browser":203}],76:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":106}],77:[function(require,module,exports){
 'use strict';//      
 
                                      
@@ -13058,7 +13045,7 @@ function drawCollisionDebug(painter         , sourceCache             , layer   
     }
 }
 
-},{}],77:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 'use strict';//      
 
 var browser = require('../util/browser');
@@ -13250,7 +13237,7 @@ function createTextVerticies(text, left, baseline, scale) {
     return strokes;
 }
 
-},{"../data/extent":58,"../data/pos_array":62,"../gl/vertex_buffer":72,"../util/browser":203,"./vertex_array_object":94,"@mapbox/gl-matrix":1}],78:[function(require,module,exports){
+},{"../data/extent":59,"../data/pos_array":63,"../gl/vertex_buffer":73,"../util/browser":232,"./vertex_array_object":97,"@mapbox/gl-matrix":1}],79:[function(require,module,exports){
 'use strict';//      
 
 var pattern = require('./pattern');
@@ -13264,6 +13251,8 @@ var pattern = require('./pattern');
 module.exports = drawFill;
 
 function drawFill(painter         , sourceCache             , layer                , coords                  ) {
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
+
     var gl = painter.gl;
     gl.enable(gl.STENCIL_TEST);
 
@@ -13375,7 +13364,7 @@ function setFillProgram(programId, usePattern, painter, programConfiguration, la
     return program;
 }
 
-},{"./pattern":90}],79:[function(require,module,exports){
+},{"./pattern":92}],80:[function(require,module,exports){
 'use strict';//      
 
 var glMatrix = require('@mapbox/gl-matrix');
@@ -13393,6 +13382,8 @@ var vec3 = glMatrix.vec3;
 module.exports = draw;
 
 function draw(painter         , source             , layer                         , coords                  ) {
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
+
     if (painter.renderPass === '3d') {
         var gl = painter.gl;
 
@@ -13411,7 +13402,7 @@ function draw(painter         , source             , layer                      
 }
 
 function drawExtrusionTexture(painter, layer) {
-    var renderedTexture = painter.prerenderedFrames[layer.id];
+    var renderedTexture = layer.viewportFrame;
     if (!renderedTexture) { return; }
 
     var gl = painter.gl;
@@ -13432,12 +13423,8 @@ function drawExtrusionTexture(painter, layer) {
 
     gl.uniform2f(program.uniforms.u_world, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
-    renderedTexture.vao.bind(gl, program, renderedTexture.buffer);
+    painter.viewportVAO.bind(gl, program, painter.viewportBuffer);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-    // Since this texture has been rendered, make it available for reuse in the next frame.
-    painter.viewportFrames.push(renderedTexture);
-    delete painter.prerenderedFrames[layer.id];
 }
 
 function drawExtrusion(painter, source, layer, coord) {
@@ -13494,7 +13481,160 @@ function setLight(program, painter) {
     gl.uniform3fv(program.uniforms.u_lightcolor, light.calculated.color.slice(0, 3));
 }
 
-},{"./pattern":90,"@mapbox/gl-matrix":1}],80:[function(require,module,exports){
+},{"./pattern":92,"@mapbox/gl-matrix":1}],81:[function(require,module,exports){
+'use strict';//      
+
+var mat4 = require('@mapbox/gl-matrix').mat4;
+var Texture = require('./texture');
+var pixelsToTileUnits = require('../source/pixels_to_tile_units');
+
+                                     
+                                                      
+                                                                              
+                                                               
+                                                  
+
+module.exports = drawHeatmap;
+
+function drawHeatmap(painter         , sourceCache             , layer                   , coords                  ) {
+    if (painter.isOpaquePass) { return; }
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
+
+    var gl = painter.gl;
+
+    painter.setDepthSublayer(0);
+    painter.depthMask(false);
+
+    // Allow kernels to be drawn across boundaries, so that
+    // large kernels are not clipped to tiles
+    gl.disable(gl.STENCIL_TEST);
+
+    renderToTexture(gl, painter, layer);
+
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
+    gl.blendFunc(gl.ONE, gl.ONE);
+
+    for (var i = 0; i < coords.length; i++) {
+        var coord = coords[i];
+
+        // Skip tiles that have uncovered parents to avoid flickering; we don't need
+        // to use complex tile masking here because the change between zoom levels is subtle,
+        // so it's fine to simply render the parent until all its 4 children are loaded
+        if (sourceCache.hasRenderableParent(coord)) { continue; }
+
+        var tile = sourceCache.getTile(coord);
+        var bucket                 = (tile.getBucket(layer)     );
+        if (!bucket) { continue; }
+
+        var programConfiguration = bucket.programConfigurations.get(layer.id);
+        var program = painter.useProgram('heatmap', programConfiguration);
+        var ref = painter.transform;
+        var zoom = ref.zoom;
+        programConfiguration.setUniforms(gl, program, layer, {zoom: zoom});
+        gl.uniform1f(program.uniforms.u_radius, layer.getPaintValue('heatmap-radius', {zoom: zoom}));
+
+        gl.uniform1f(program.uniforms.u_extrude_scale, pixelsToTileUnits(tile, 1, zoom));
+
+        gl.uniform1f(program.uniforms.u_intensity, layer.getPaintValue('heatmap-intensity', {zoom: zoom}));
+        gl.uniformMatrix4fv(program.uniforms.u_matrix, false, coord.posMatrix);
+
+        program.draw(
+            gl,
+            gl.TRIANGLES,
+            layer.id,
+            bucket.layoutVertexBuffer,
+            bucket.indexBuffer,
+            bucket.segments,
+            programConfiguration);
+    }
+
+    renderTextureToMap(gl, painter, layer);
+}
+
+function renderToTexture(gl, painter, layer) {
+    gl.activeTexture(gl.TEXTURE1);
+
+    // Use a 4x downscaled screen texture for better performance
+    gl.viewport(0, 0, painter.width / 4, painter.height / 4);
+
+    var texture = layer.heatmapTexture;
+    var fbo = layer.heatmapFbo;
+
+    if (!texture) {
+        texture = layer.heatmapTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        fbo = layer.heatmapFbo = gl.createFramebuffer();
+
+        bindTextureFramebuffer(gl, painter, texture, fbo);
+
+    } else {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    }
+}
+
+function bindTextureFramebuffer(gl, painter, texture, fbo) {
+    // Use the higher precision half-float texture where available (producing much smoother looking heatmaps);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, painter.width / 4, painter.height / 4, 0, gl.RGBA,
+        painter.extTextureHalfFloat ? painter.extTextureHalfFloat.HALF_FLOAT_OES : gl.UNSIGNED_BYTE, null);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    // If using half-float texture as a render target is not supported, fall back to a low precision texture
+    if (painter.extTextureHalfFloat && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+        painter.extTextureHalfFloat = null;
+        bindTextureFramebuffer(gl, painter, texture, fbo);
+    }
+}
+
+function renderTextureToMap(gl, painter, layer) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    gl.activeTexture(gl.TEXTURE2);
+    var colorRampTexture = layer.colorRampTexture;
+    if (!colorRampTexture) {
+        colorRampTexture = layer.colorRampTexture = new Texture(gl, layer.colorRamp, gl.RGBA);
+    }
+    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+    var program = painter.useProgram('heatmapTexture');
+
+    gl.viewport(0, 0, painter.width, painter.height);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, layer.heatmapTexture);
+
+    var opacity = layer.getPaintValue('heatmap-opacity', {zoom: painter.transform.zoom});
+    gl.uniform1f(program.uniforms.u_opacity, opacity);
+    gl.uniform1i(program.uniforms.u_image, 1);
+    gl.uniform1i(program.uniforms.u_color_ramp, 2);
+
+    var matrix = mat4.create();
+    mat4.ortho(matrix, 0, painter.width, painter.height, 0, 0, 1);
+    gl.uniformMatrix4fv(program.uniforms.u_matrix, false, matrix);
+
+    gl.disable(gl.DEPTH_TEST);
+
+    gl.uniform2f(program.uniforms.u_world, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+    painter.viewportVAO.bind(gl, program, painter.viewportBuffer);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    gl.enable(gl.DEPTH_TEST);
+}
+
+},{"../source/pixels_to_tile_units":106,"./texture":95,"@mapbox/gl-matrix":1}],82:[function(require,module,exports){
 'use strict';//      
 
 var browser = require('../util/browser');
@@ -13508,6 +13648,7 @@ var pixelsToTileUnits = require('../source/pixels_to_tile_units');
 
 module.exports = function drawLine(painter         , sourceCache             , layer                , coords                  ) {
     if (painter.renderPass !== 'translucent') { return; }
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
     painter.setDepthSublayer(0);
     painter.depthMask(false);
 
@@ -13625,7 +13766,7 @@ function drawLineTile(program, painter, tile, bucket, layer, coord, programConfi
         programConfiguration);
 }
 
-},{"../source/pixels_to_tile_units":103,"../util/browser":203}],81:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":106,"../util/browser":232}],83:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -13633,23 +13774,22 @@ var ImageSource = require('../source/image_source');
 
                                      
                                                       
-                                                   
+                                                                            
                                                   
 
 module.exports = drawRaster;
 
-function drawRaster(painter         , sourceCache             , layer            , coords                  ) {
+function drawRaster(painter         , sourceCache             , layer                  , coords                  ) {
     if (painter.renderPass !== 'translucent') { return; }
+    if (layer.isOpacityZero(painter.transform.zoom)) { return; }
 
     var gl = painter.gl;
     var source = sourceCache.getSource();
     var program = painter.useProgram('raster');
 
-    gl.enable(gl.DEPTH_TEST);
-    painter.depthMask(true);
+    gl.disable(gl.DEPTH_TEST);
+    painter.depthMask(false);
 
-    // Change depth function to prevent double drawing in areas where tiles overlap.
-    gl.depthFunc(gl.LESS);
     gl.disable(gl.STENCIL_TEST);
 
     // Constant parameters.
@@ -13683,17 +13823,17 @@ function drawRaster(painter         , sourceCache             , layer           
         var parentScaleBy = (void 0), parentTL = (void 0);
 
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+        tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
 
         gl.activeTexture(gl.TEXTURE1);
 
         if (parentTile) {
-            gl.bindTexture(gl.TEXTURE_2D, parentTile.texture);
+            parentTile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
             parentScaleBy = Math.pow(2, parentTile.coord.z - tile.coord.z);
             parentTL = [tile.coord.x * parentScaleBy % 1, tile.coord.y * parentScaleBy % 1];
 
         } else {
-            gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+            tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
         }
 
         // cross-fade parameters
@@ -13702,11 +13842,21 @@ function drawRaster(painter         , sourceCache             , layer           
         gl.uniform1f(program.uniforms.u_fade_t, fade.mix);
         gl.uniform1f(program.uniforms.u_opacity, fade.opacity * layer.paint['raster-opacity']);
 
+
         if (source instanceof ImageSource) {
             var buffer = source.boundsBuffer;
             var vao = source.boundsVAO;
             vao.bind(gl, program, buffer);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
+        } else if (tile.maskedBoundsBuffer && tile.maskedIndexBuffer && tile.segments) {
+            program.draw(
+                gl,
+                gl.TRIANGLES,
+                layer.id,
+                tile.maskedBoundsBuffer,
+                tile.maskedIndexBuffer,
+                tile.segments
+            );
         } else {
             var buffer$1 = painter.rasterBoundsBuffer;
             var vao$1 = painter.rasterBoundsVAO;
@@ -13785,7 +13935,7 @@ function getFadeValues(tile, parentTile, sourceCache, layer, transform) {
     }
 }
 
-},{"../source/image_source":101,"../util/util":224}],82:[function(require,module,exports){
+},{"../source/image_source":104,"../util/util":253}],84:[function(require,module,exports){
 'use strict';//      
 
 var drawCollisionDebug = require('./draw_collision_debug');
@@ -13828,21 +13978,25 @@ function drawSymbols(painter         , sourceCache             , layer          
     painter.setDepthSublayer(0);
     painter.depthMask(false);
 
-    drawLayerSymbols(painter, sourceCache, layer, coords, false,
-        layer.paint['icon-translate'],
-        layer.paint['icon-translate-anchor'],
-        layer.layout['icon-rotation-alignment'],
-        layer.layout['icon-pitch-alignment'],
-        layer.layout['icon-keep-upright']
-    );
+    if (!layer.isOpacityZero(painter.transform.zoom, 'icon-opacity')) {
+        drawLayerSymbols(painter, sourceCache, layer, coords, false,
+            layer.paint['icon-translate'],
+            layer.paint['icon-translate-anchor'],
+            layer.layout['icon-rotation-alignment'],
+            layer.layout['icon-pitch-alignment'],
+            layer.layout['icon-keep-upright']
+        );
+    }
 
-    drawLayerSymbols(painter, sourceCache, layer, coords, true,
-        layer.paint['text-translate'],
-        layer.paint['text-translate-anchor'],
-        layer.layout['text-rotation-alignment'],
-        layer.layout['text-pitch-alignment'],
-        layer.layout['text-keep-upright']
-    );
+    if (!layer.isOpacityZero(painter.transform.zoom, 'text-opacity')) {
+        drawLayerSymbols(painter, sourceCache, layer, coords, true,
+            layer.paint['text-translate'],
+            layer.paint['text-translate-anchor'],
+            layer.layout['text-rotation-alignment'],
+            layer.layout['text-pitch-alignment'],
+            layer.layout['text-keep-upright']
+        );
+    }
 
     if (sourceCache.map.showCollisionBoxes) {
         drawCollisionDebug(painter, sourceCache, layer, coords);
@@ -13951,8 +14105,10 @@ function setSymbolDrawState(program, painter, layer, isText, rotateInShader, pit
 
     gl.uniform1f(program.uniforms.u_pitch, tr.pitch / 360 * 2 * Math.PI);
 
-    gl.uniform1i(program.uniforms.u_is_size_zoom_constant, sizeData.isZoomConstant ? 1 : 0);
-    gl.uniform1i(program.uniforms.u_is_size_feature_constant, sizeData.isFeatureConstant ? 1 : 0);
+    var isZoomConstant = sizeData.functionType === 'constant' || sizeData.functionType === 'source';
+    var isFeatureConstant = sizeData.functionType === 'constant' || sizeData.functionType === 'camera';
+    gl.uniform1i(program.uniforms.u_is_size_zoom_constant, isZoomConstant ? 1 : 0);
+    gl.uniform1i(program.uniforms.u_is_size_feature_constant, isFeatureConstant ? 1 : 0);
 
     gl.uniform1f(program.uniforms.u_camera_to_center_distance, tr.cameraToCenterDistance);
 
@@ -13998,7 +14154,7 @@ function drawSymbolElements(buffers, layer, gl, program) {
         buffers.dynamicLayoutVertexBuffer);
 }
 
-},{"../source/pixels_to_tile_units":103,"../symbol/projection":176,"../symbol/symbol_size":179,"./draw_collision_debug":76,"@mapbox/gl-matrix":1}],83:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":106,"../symbol/projection":205,"../symbol/symbol_size":208,"./draw_collision_debug":77,"@mapbox/gl-matrix":1}],85:[function(require,module,exports){
 'use strict';//      
 
 var FrameHistory = function FrameHistory() {
@@ -14073,7 +14229,7 @@ FrameHistory.prototype.bind = function bind (gl                   ) {
 
 module.exports = FrameHistory;
 
-},{}],84:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 'use strict';//      
 
 var ShelfPack = require('@mapbox/shelf-pack');
@@ -14151,7 +14307,7 @@ module.exports = {
     makeGlyphAtlas: makeGlyphAtlas
 };
 
-},{"../util/image":214,"@mapbox/shelf-pack":3}],85:[function(require,module,exports){
+},{"../util/image":243,"@mapbox/shelf-pack":3}],87:[function(require,module,exports){
 'use strict';//      
 
 var loadGlyphRange = require('../style/load_glyph_range');
@@ -14309,7 +14465,7 @@ var GlyphManager = function GlyphManager(requestTransform                       
 
 module.exports = GlyphManager;
 
-},{"../style/load_glyph_range":153,"../util/image":214,"../util/is_char_in_unicode_block":216,"../util/util":224,"@mapbox/tiny-sdf":4}],86:[function(require,module,exports){
+},{"../style/load_glyph_range":179,"../util/image":243,"../util/is_char_in_unicode_block":245,"../util/util":253,"@mapbox/tiny-sdf":4}],88:[function(require,module,exports){
 'use strict';//      
 
 var ShelfPack = require('@mapbox/shelf-pack');
@@ -14415,7 +14571,7 @@ module.exports = {
     makeImageAtlas: makeImageAtlas
 };
 
-},{"../util/image":214,"@mapbox/shelf-pack":3}],87:[function(require,module,exports){
+},{"../util/image":243,"@mapbox/shelf-pack":3}],89:[function(require,module,exports){
 'use strict';//      
 
 var ShelfPack = require('@mapbox/shelf-pack');
@@ -14614,7 +14770,7 @@ var ImageManager = function ImageManager() {
 
 module.exports = ImageManager;
 
-},{"../util/image":214,"./image_atlas":86,"./texture":93,"@mapbox/shelf-pack":3,"assert":11}],88:[function(require,module,exports){
+},{"../util/image":243,"./image_atlas":88,"./texture":95,"@mapbox/shelf-pack":3,"assert":11}],90:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -14759,7 +14915,7 @@ LineAtlas.prototype.bind = function bind (gl                   ) {
 
 module.exports = LineAtlas;
 
-},{"../util/util":224}],89:[function(require,module,exports){
+},{"../util/util":253}],91:[function(require,module,exports){
 'use strict';//      
 
 var browser = require('../util/browser');
@@ -14778,10 +14934,12 @@ var ProgramConfiguration = ref.ProgramConfiguration;
 var shaders = require('../shaders');
 var Program = require('./program');
 var RenderTexture = require('./render_texture');
+var updateTileMasks = require('./tile_mask');
 
 var draw = {
     symbol: require('./draw_symbol'),
     circle: require('./draw_circle'),
+    heatmap: require('./draw_heatmap'),
     line: require('./draw_line'),
     fill: require('./draw_fill'),
     'fill-extrusion': require('./draw_fill_extrusion'),
@@ -14796,6 +14954,7 @@ var draw = {
                                         
                                                    
                                           
+                                     
                                                 
                                                 
 
@@ -14818,8 +14977,6 @@ var Painter = function Painter(gl                   , transform       ) {
     this.gl = gl;
     this.transform = transform;
     this._tileTextures = {};
-    this.prerenderedFrames = {};
-    this.viewportFrames = [];
 
     this.frameHistory = new FrameHistory();
 
@@ -14849,13 +15006,13 @@ Painter.prototype.resize = function resize (width    , height    ) {
     this.height = height * browser.devicePixelRatio;
     gl.viewport(0, 0, this.width, this.height);
 
-    for (var i = 0, list = this$1.viewportFrames; i < list.length; i += 1) {
-        var frame = list[i];
+    if (this.style) {
+        for (var i = 0, list = this$1.style._order; i < list.length; i += 1) {
+            var layerId = list[i];
 
-            this$1.gl.deleteTexture(frame.texture);
-        this$1.gl.deleteFramebuffer(frame.fbo);
+                this$1.style._layers[layerId].resize(gl);
+        }
     }
-    this.viewportFrames = [];
 
     if (this.depthRbo) {
         this.gl.deleteRenderbuffer(this.depthRbo);
@@ -14905,6 +15062,14 @@ Painter.prototype.setup = function setup () {
     this.rasterBoundsBuffer = new VertexBuffer(gl, rasterBoundsArray);
     this.rasterBoundsVAO = new VertexArrayObject();
 
+    var viewportArray = new PosArray();
+    viewportArray.emplaceBack(0, 0);
+    viewportArray.emplaceBack(1, 0);
+    viewportArray.emplaceBack(0, 1);
+    viewportArray.emplaceBack(1, 1);
+    this.viewportBuffer = new VertexBuffer(gl, viewportArray);
+    this.viewportVAO = new VertexArrayObject();
+
     this.extTextureFilterAnisotropic = (
         gl.getExtension('EXT_texture_filter_anisotropic') ||
         gl.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
@@ -14912,6 +15077,11 @@ Painter.prototype.setup = function setup () {
     );
     if (this.extTextureFilterAnisotropic) {
         this.extTextureFilterAnisotropicMax = gl.getParameter(this.extTextureFilterAnisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+    }
+
+    this.extTextureHalfFloat = gl.getExtension('OES_texture_half_float');
+    if (this.extTextureHalfFloat) {
+        gl.getExtension('OES_texture_half_float_linear');
     }
 };
 
@@ -15005,6 +15175,16 @@ Painter.prototype.render = function render (style   , options            ) {
 
     var layerIds = this.style._order;
 
+    var rasterSources = util.filterObject(this.style.sourceCaches, function (sc) { return sc._source.type === 'raster'; });
+    var loop = function ( key ) {
+        var sourceCache$1 = rasterSources[key];
+        var coords = sourceCache$1.getVisibleCoordinates();
+        var visibleTiles = coords.map(function (c){ return sourceCache$1.getTile(c); });
+        updateTileMasks(visibleTiles, this$1.gl);
+    };
+
+        for (var key in rasterSources) loop( key );
+
     // 3D pass
     // We first create a renderbuffer that we'll use to preserve depth
     // results across 3D layers, then render each 3D layer to its own
@@ -15021,31 +15201,32 @@ Painter.prototype.render = function render (style   , options            ) {
         // rendering something.
         var first = true;
 
-        var sourceCache$1;
-        var coords = [];
+        var sourceCache$2;
+        var coords$1 = [];
 
         for (var i = 0; i < layerIds.length; i++) {
             var layer = this$1.style._layers[layerIds[i]];
 
             if (!layer.has3DPass() || layer.isHidden(this$1.transform.zoom)) { continue; }
 
-            if (layer.source !== (sourceCache$1 && sourceCache$1.id)) {
-                sourceCache$1 = this$1.style.sourceCaches[layer.source];
-                coords = [];
+            if (layer.source !== (sourceCache$2 && sourceCache$2.id)) {
+                sourceCache$2 = this$1.style.sourceCaches[layer.source];
+                coords$1 = [];
 
-                if (sourceCache$1) {
+                if (sourceCache$2) {
                     this$1.clearStencil();
-                    coords = sourceCache$1.getVisibleCoordinates();
+                    coords$1 = sourceCache$2.getVisibleCoordinates();
                 }
 
-                coords.reverse();
+                coords$1.reverse();
             }
 
-            if (!coords.length) { continue; }
+            if (!coords$1.length) { continue; }
 
             this$1._setup3DRenderbuffer();
 
-            var renderTarget = this$1.viewportFrames.pop() || new RenderTexture(this$1);
+            var renderTarget = layer.viewportFrame || new RenderTexture(this$1);
+            layer.viewportFrame = renderTarget;
             renderTarget.bindWithDepth(this$1.depthRbo);
 
             if (first) {
@@ -15053,10 +15234,9 @@ Painter.prototype.render = function render (style   , options            ) {
                 first = false;
             }
 
-            this$1.renderLayer(this$1, (sourceCache$1 ), layer, coords);
+            this$1.renderLayer(this$1, (sourceCache$2 ), layer, coords$1);
 
             renderTarget.unbind();
-            this$1.prerenderedFrames[layer.id] = renderTarget;
         }
     }
 
@@ -15072,8 +15252,8 @@ Painter.prototype.render = function render (style   , options            ) {
     // Draw opaque layers top-to-bottom first.
     this.renderPass = 'opaque';
     {
-        var sourceCache$2;
-        var coords$1 = [];
+        var sourceCache$3;
+        var coords$2 = [];
 
         this.currentLayer = layerIds.length - 1;
 
@@ -15084,39 +15264,8 @@ Painter.prototype.render = function render (style   , options            ) {
         for (this.currentLayer; this.currentLayer >= 0; this.currentLayer--) {
             var layer$1 = this$1.style._layers[layerIds[this$1.currentLayer]];
 
-            if (layer$1.source !== (sourceCache$2 && sourceCache$2.id)) {
-                sourceCache$2 = this$1.style.sourceCaches[layer$1.source];
-                coords$1 = [];
-
-                if (sourceCache$2) {
-                    this$1.clearStencil();
-                    coords$1 = sourceCache$2.getVisibleCoordinates();
-                    if (sourceCache$2.getSource().isTileClipped) {
-                        this$1._renderTileClippingMasks(coords$1);
-                    }
-                }
-            }
-
-            this$1.renderLayer(this$1, (sourceCache$2 ), layer$1, coords$1);
-        }
-    }
-
-    // Translucent pass
-    // Draw all other layers bottom-to-top.
-    this.renderPass = 'translucent';
-    {
-        var sourceCache$3;
-        var coords$2 = [];
-
-        this.gl.enable(this.gl.BLEND);
-
-        this.currentLayer = 0;
-
-        for (this.currentLayer; this.currentLayer < layerIds.length; this.currentLayer++) {
-            var layer$2 = this$1.style._layers[layerIds[this$1.currentLayer]];
-
-            if (layer$2.source !== (sourceCache$3 && sourceCache$3.id)) {
-                sourceCache$3 = this$1.style.sourceCaches[layer$2.source];
+            if (layer$1.source !== (sourceCache$3 && sourceCache$3.id)) {
+                sourceCache$3 = this$1.style.sourceCaches[layer$1.source];
                 coords$2 = [];
 
                 if (sourceCache$3) {
@@ -15126,18 +15275,49 @@ Painter.prototype.render = function render (style   , options            ) {
                         this$1._renderTileClippingMasks(coords$2);
                     }
                 }
-
-                coords$2.reverse();
             }
 
-            this$1.renderLayer(this$1, (sourceCache$3 ), layer$2, coords$2);
+            this$1.renderLayer(this$1, (sourceCache$3 ), layer$1, coords$2);
+        }
+    }
+
+    // Translucent pass
+    // Draw all other layers bottom-to-top.
+    this.renderPass = 'translucent';
+    {
+        var sourceCache$4;
+        var coords$3 = [];
+
+        this.gl.enable(this.gl.BLEND);
+
+        this.currentLayer = 0;
+
+        for (this.currentLayer; this.currentLayer < layerIds.length; this.currentLayer++) {
+            var layer$2 = this$1.style._layers[layerIds[this$1.currentLayer]];
+
+            if (layer$2.source !== (sourceCache$4 && sourceCache$4.id)) {
+                sourceCache$4 = this$1.style.sourceCaches[layer$2.source];
+                coords$3 = [];
+
+                if (sourceCache$4) {
+                    this$1.clearStencil();
+                    coords$3 = sourceCache$4.getVisibleCoordinates();
+                    if (sourceCache$4.getSource().isTileClipped) {
+                        this$1._renderTileClippingMasks(coords$3);
+                    }
+                }
+
+                coords$3.reverse();
+            }
+
+            this$1.renderLayer(this$1, (sourceCache$4 ), layer$2, coords$3);
         }
     }
 
     if (this.options.showTileBoundaries) {
-        var sourceCache$4 = this.style.sourceCaches[Object.keys(this.style.sourceCaches)[0]];
-        if (sourceCache$4) {
-            draw.debug(this, sourceCache$4, sourceCache$4.getVisibleCoordinates());
+        var sourceCache$5 = this.style.sourceCaches[Object.keys(this.style.sourceCaches)[0]];
+        if (sourceCache$5) {
+            draw.debug(this, sourceCache$5, sourceCache$5.getVisibleCoordinates());
         }
     }
 };
@@ -15213,10 +15393,10 @@ Painter.prototype.translatePosMatrix = function translatePosMatrix (matrix      
     return translatedMatrix;
 };
 
-Painter.prototype.saveTileTexture = function saveTileTexture (texture                             ) {
-    var textures = this._tileTextures[texture.size];
+Painter.prototype.saveTileTexture = function saveTileTexture (texture     ) {
+    var textures = this._tileTextures[texture.size[0]];
     if (!textures) {
-        this._tileTextures[texture.size] = [texture];
+        this._tileTextures[texture.size[0]] = [texture];
     } else {
         textures.push(texture);
     }
@@ -15271,7 +15451,7 @@ Painter.prototype.useProgram = function useProgram (name    , programConfigurati
 
 module.exports = Painter;
 
-},{"../data/extent":58,"../data/pos_array":62,"../data/program_configuration":63,"../data/raster_bounds_array":64,"../gl/vertex_buffer":72,"../shaders":96,"../source/pixels_to_tile_units":103,"../source/source_cache":108,"../util/browser":203,"../util/util":224,"./draw_background":74,"./draw_circle":75,"./draw_debug":77,"./draw_fill":78,"./draw_fill_extrusion":79,"./draw_line":80,"./draw_raster":81,"./draw_symbol":82,"./frame_history":83,"./program":91,"./render_texture":92,"./vertex_array_object":94,"@mapbox/gl-matrix":1}],90:[function(require,module,exports){
+},{"../data/extent":59,"../data/pos_array":63,"../data/program_configuration":64,"../data/raster_bounds_array":65,"../gl/vertex_buffer":73,"../shaders":99,"../source/pixels_to_tile_units":106,"../source/source_cache":111,"../util/browser":232,"../util/util":253,"./draw_background":75,"./draw_circle":76,"./draw_debug":78,"./draw_fill":79,"./draw_fill_extrusion":80,"./draw_heatmap":81,"./draw_line":82,"./draw_raster":83,"./draw_symbol":84,"./frame_history":85,"./program":93,"./render_texture":94,"./tile_mask":96,"./vertex_array_object":97,"@mapbox/gl-matrix":1}],92:[function(require,module,exports){
 'use strict';//      
 
 var assert = require('assert');
@@ -15343,7 +15523,7 @@ exports.setTile = function (tile                                      , painter 
     gl.uniform2f(program.uniforms.u_pixel_coord_lower, pixelX & 0xFFFF, pixelY & 0xFFFF);
 };
 
-},{"../source/pixels_to_tile_units":103,"assert":11}],91:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":106,"assert":11}],93:[function(require,module,exports){
 'use strict';//      
 
 var browser = require('../util/browser');
@@ -15463,12 +15643,11 @@ Program.prototype.draw = function draw (gl                   ,
 
 module.exports = Program;
 
-},{"../data/program_configuration":63,"../shaders":96,"../util/browser":203,"./vertex_array_object":94,"assert":11}],92:[function(require,module,exports){
+},{"../data/program_configuration":64,"../shaders":99,"../util/browser":232,"./vertex_array_object":97,"assert":11}],94:[function(require,module,exports){
 'use strict';//      
 
-var VertexBuffer = require('../gl/vertex_buffer');
-var VertexArrayObject = require('./vertex_array_object');
-var PosArray = require('../data/pos_array');
+                                                    
+                                                           
 
                                      
 
@@ -15488,14 +15667,6 @@ var RenderTexture = function RenderTexture(painter     ) {
     var fbo = this.fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-
-    var array = new PosArray();
-    array.emplaceBack(0, 0);
-    array.emplaceBack(1, 0);
-    array.emplaceBack(0, 1);
-    array.emplaceBack(1, 1);
-    this.buffer = new VertexBuffer(gl, array);
-    this.vao = new VertexArrayObject();
 };
 
 RenderTexture.prototype.bindWithDepth = function bindWithDepth (depthRbo               ) {
@@ -15514,23 +15685,36 @@ RenderTexture.prototype.unbind = function unbind () {
 
 module.exports = RenderTexture;
 
-},{"../data/pos_array":62,"../gl/vertex_buffer":72,"./vertex_array_object":94}],93:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 'use strict';//      
 
+var ref = require('../util/window');
+var HTMLImageElement = ref.HTMLImageElement;
+var HTMLCanvasElement = ref.HTMLCanvasElement;
+var HTMLVideoElement = ref.HTMLVideoElement;
+var ImageData = ref.ImageData;
+
                                                          
+                                                               
 
                            
                                                   
                                                     
                            
                                                     
+                                                                   
                                                       
                          
                                                     
                                                            
-                                                             
+                                                              
 
-var Texture = function Texture(gl                   , image                    , format           ) {
+                          
+               
+                
+                         
+
+var Texture = function Texture(gl                   , image          , format           ) {
     this.gl = gl;
 
     var width = image.width;
@@ -15542,10 +15726,9 @@ var Texture = function Texture(gl                   , image                    ,
     this.update(image);
 };
 
-Texture.prototype.update = function update (image                    ) {
+Texture.prototype.update = function update (image          ) {
     var width = image.width;
         var height = image.height;
-        var data = image.data;
     this.size = [width, height];
 
     var ref = this;
@@ -15557,17 +15740,21 @@ Texture.prototype.update = function update (image                    ) {
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, (true ));
     }
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, data);
+    if (image instanceof HTMLImageElement || image instanceof HTMLCanvasElement || image instanceof HTMLVideoElement || image instanceof ImageData) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, image);
+    } else {
+        gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, image.data);
+    }
 };
 
-Texture.prototype.bind = function bind (filter           , wrap         ) {
+Texture.prototype.bind = function bind (filter           , wrap         , minFilter            ) {
     var ref = this;
         var gl = ref.gl;
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
 
     if (filter !== this.filter) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter || filter);
         this.filter = filter;
     }
 
@@ -15587,7 +15774,113 @@ Texture.prototype.destroy = function destroy () {
 
 module.exports = Texture;
 
-},{}],94:[function(require,module,exports){
+},{"../util/window":234}],96:[function(require,module,exports){
+'use strict';//      
+
+var TileCoord = require('../source/tile_coord');
+
+                                         
+
+                    
+                     
+  
+
+// Updates the TileMasks for all renderable tiles. A TileMask describes all regions
+// within that tile that are *not* covered by other renderable tiles.
+// Example: renderableTiles in our list are 2/1/3, 3/3/6, and 4/5/13. The schematic for creating the
+// TileMask for 2/1/3 looks like this:
+//
+//    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+//    â”‚        â”‚        â”‚#################â”‚
+//    â”‚ 4/4/12 â”‚ 4/5/12 â”‚#################â”‚
+//    â”‚        â”‚        â”‚#################â”‚
+//    â”œâ”€â”€â”€â”€â”€â”€3/2/6â”€â”€â”€â”€â”€â”€â”¤#####3/3/6#######â”‚
+//    â”‚        â”‚########â”‚#################â”‚
+//    â”‚ 4/4/13 â”‚#4/5/13#â”‚#################â”‚
+//    â”‚        â”‚########â”‚#################â”‚
+//    â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€2/1/3â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚      3/2/7      â”‚      3/3/7      â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+//
+// The TileMask for 2/1/3 thus consists of the tiles 4/4/12, 4/5/12, 4/4/13, 3/2/7, and 3/3/7,
+// but it does *not* include 4/5/13, and 3/3/6, since these are other renderableTiles.
+// A TileMask always contains TileIDs *relative* to the tile it is generated for, so 2/1/3 is
+// "subtracted" from these TileIDs. The final TileMask for 2/1/3 will thus be:
+//
+//    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+//    â”‚        â”‚        â”‚#################â”‚
+//    â”‚ 2/0/0  â”‚ 2/1/0  â”‚#################â”‚
+//    â”‚        â”‚        â”‚#################â”‚
+//    â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”¤#################â”‚
+//    â”‚        â”‚########â”‚#################â”‚
+//    â”‚ 2/0/1  â”‚########â”‚#################â”‚
+//    â”‚        â”‚########â”‚#################â”‚
+//    â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚      1/0/1      â”‚      1/1/1      â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â”‚                 â”‚                 â”‚
+//    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+//
+// Only other renderable tiles that are *children* of the tile we are generating the mask for will
+// be considered. For example, adding TileID 4/8/13 to renderableTiles won't affect the TileMask for
+// 2/1/3, since it is not a descendant of it.
+
+
+module.exports = function(renderableTiles             , gl                       ) {
+    var sortedRenderables = renderableTiles.sort(function (a, b) { return a.coord.isLessThan(b.coord) ? -1 : b.coord.isLessThan(a.coord) ? 1 : 0; });
+
+    for (var i = 0; i < sortedRenderables.length; i++) {
+        var mask = {};
+        var tile =  sortedRenderables[i];
+        var childArray = sortedRenderables.slice(i + 1);
+        // Try to add all remaining ids as children. We sorted the tile list
+        // by z earlier, so all preceding items cannot be children of the current
+        // tile. We also compute the lower bound of the next wrap, because items of the next wrap
+        // can never be children of the current wrap.
+
+        computeTileMasks(tile.coord.wrapped(), tile.coord, childArray, new TileCoord(0, 0, 0, tile.coord.w + 1), mask);
+        tile.setMask(mask, gl);
+    }
+};
+
+function computeTileMasks(rootTile           , ref           , childArray             , lowerBound           , mask      ) {
+    // If the reference or any of its children is found in the list, we need to recurse.
+    for (var i = 0; i < childArray.length; i++) {
+        var childTile = childArray[i];
+        // childTile is from a larger wrap than the rootTile so it cannot be a child tile
+        if (lowerBound.isLessThan(childTile.coord)) { break; }
+        // The current tile is masked out, so we don't need to add them to the mask set.
+        if (ref.id === childTile.coord.id) {
+            return;
+        } else if (childTile.coord.isChildOf(ref)) {
+            // There's at least one child tile that is masked out, so recursively descend
+            var children = ref.children(Infinity);
+            for (var j = 0; j < children.length; j++) {
+                var child = children[j];
+                computeTileMasks(rootTile, child, childArray.slice(i), lowerBound, mask);
+            }
+            return;
+        }
+    }
+    // We couldn't find a child, so it's definitely a masked part.
+    // Compute the difference between the root tile ID and the reference tile ID, since TileMask
+    // elements are always relative (see below for explanation).
+    var diffZ = ref.z - rootTile.z;
+    var maskTileId = new TileCoord(diffZ, ref.x - (rootTile.x << diffZ), ref.y - (rootTile.y << diffZ)).id;
+    mask[maskTileId] = mask[maskTileId] || true;
+}
+
+},{"../source/tile_coord":114}],97:[function(require,module,exports){
 'use strict';//      
 
 var assert = require('assert');
@@ -15712,7 +16005,7 @@ VertexArrayObject.prototype.destroy = function destroy () {
 
 module.exports = VertexArrayObject;
 
-},{"assert":11}],95:[function(require,module,exports){
+},{"assert":11}],98:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -15731,7 +16024,7 @@ exports.packUint8ToFloat = function pack(a        , b        ) {
     return 256 * a + b;
 };
 
-},{"../util/util":224}],96:[function(require,module,exports){
+},{"../util/util":253}],99:[function(require,module,exports){
 'use strict';//      
 
 
@@ -15748,13 +16041,21 @@ var shaders                                                             = {
         fragmentSource: "#pragma mapbox: define highp vec4 color\n#pragma mapbox: define mediump float radius\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define highp vec4 stroke_color\n#pragma mapbox: define mediump float stroke_width\n#pragma mapbox: define lowp float stroke_opacity\n\nvarying vec3 v_data;\n\nvoid main() {\n    #pragma mapbox: initialize highp vec4 color\n    #pragma mapbox: initialize mediump float radius\n    #pragma mapbox: initialize lowp float blur\n    #pragma mapbox: initialize lowp float opacity\n    #pragma mapbox: initialize highp vec4 stroke_color\n    #pragma mapbox: initialize mediump float stroke_width\n    #pragma mapbox: initialize lowp float stroke_opacity\n\n    vec2 extrude = v_data.xy;\n    float extrude_length = length(extrude);\n\n    lowp float antialiasblur = v_data.z;\n    float antialiased_blur = -max(blur, antialiasblur);\n\n    float opacity_t = smoothstep(0.0, antialiased_blur, extrude_length - 1.0);\n\n    float color_t = stroke_width < 0.01 ? 0.0 : smoothstep(\n        antialiased_blur,\n        0.0,\n        extrude_length - radius / (radius + stroke_width)\n    );\n\n    gl_FragColor = opacity_t * mix(color * opacity, stroke_color * stroke_opacity, color_t);\n\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(1.0);\n#endif\n}\n",
         vertexSource: "uniform mat4 u_matrix;\nuniform bool u_scale_with_map;\nuniform bool u_pitch_with_map;\nuniform vec2 u_extrude_scale;\nuniform highp float u_camera_to_center_distance;\n\nattribute vec2 a_pos;\n\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define mediump float radius\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define highp vec4 stroke_color\n#pragma mapbox: define mediump float stroke_width\n#pragma mapbox: define lowp float stroke_opacity\n\nvarying vec3 v_data;\n\nvoid main(void) {\n    #pragma mapbox: initialize highp vec4 color\n    #pragma mapbox: initialize mediump float radius\n    #pragma mapbox: initialize lowp float blur\n    #pragma mapbox: initialize lowp float opacity\n    #pragma mapbox: initialize highp vec4 stroke_color\n    #pragma mapbox: initialize mediump float stroke_width\n    #pragma mapbox: initialize lowp float stroke_opacity\n\n    // unencode the extrusion vector that we snuck into the a_pos vector\n    vec2 extrude = vec2(mod(a_pos, 2.0) * 2.0 - 1.0);\n\n    // multiply a_pos by 0.5, since we had it * 2 in order to sneak\n    // in extrusion data\n    vec2 circle_center = floor(a_pos * 0.5);\n    if (u_pitch_with_map) {\n        vec2 corner_position = circle_center;\n        if (u_scale_with_map) {\n            corner_position += extrude * (radius + stroke_width) * u_extrude_scale;\n        } else {\n            // Pitching the circle with the map effectively scales it with the map\n            // To counteract the effect for pitch-scale: viewport, we rescale the\n            // whole circle based on the pitch scaling effect at its central point\n            vec4 projected_center = u_matrix * vec4(circle_center, 0, 1);\n            corner_position += extrude * (radius + stroke_width) * u_extrude_scale * (projected_center.w / u_camera_to_center_distance);\n        }\n\n        gl_Position = u_matrix * vec4(corner_position, 0, 1);\n    } else {\n        gl_Position = u_matrix * vec4(circle_center, 0, 1);\n\n        if (u_scale_with_map) {\n            gl_Position.xy += extrude * (radius + stroke_width) * u_extrude_scale * u_camera_to_center_distance;\n        } else {\n            gl_Position.xy += extrude * (radius + stroke_width) * u_extrude_scale * gl_Position.w;\n        }\n    }\n\n    // This is a minimum blur distance that serves as a faux-antialiasing for\n    // the circle. since blur is a ratio of the circle's size and the intent is\n    // to keep the blur at roughly 1px, the two are inversely related.\n    lowp float antialiasblur = 1.0 / DEVICE_PIXEL_RATIO / (radius + stroke_width);\n\n    v_data = vec3(extrude.x, extrude.y, antialiasblur);\n}\n"
     },
+    heatmap: {
+        fragmentSource: "#pragma mapbox: define highp float weight\n\nuniform highp float u_intensity;\nuniform highp float u_radius;\nvarying vec2 v_extrude;\n\n// Gaussian kernel coefficient: 1 / sqrt(2 * PI)\n#define GAUSS_COEF 0.3989422804014327\n\nvoid main() {\n    #pragma mapbox: initialize highp float weight\n\n    // Kernel density estimation with a Gaussian kernel of size 5x5\n    float d = -0.5 * 3.0 * 3.0 * dot(v_extrude, v_extrude);\n    float val = weight * u_intensity * GAUSS_COEF * exp(d);\n\n    gl_FragColor = vec4(val, 1.0, 1.0, 1.0);\n\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(1.0);\n#endif\n}\n",
+        vertexSource: "#pragma mapbox: define highp float weight\n\nuniform mat4 u_matrix;\nuniform float u_extrude_scale;\nuniform float u_radius;\nuniform float u_opacity;\nuniform float u_intensity;\n\nattribute vec2 a_pos;\n\nvarying vec2 v_extrude;\n\n// Effective \"0\" in the kernel density texture to adjust the kernel size to;\n// this empirically chosen number minimizes artifacts on overlapping kernels\n// for typical heatmap cases (assuming clustered source)\nconst highp float ZERO = 1.0 / 255.0 / 16.0;\n\n// Gaussian kernel coefficient: 1 / sqrt(2 * PI)\n#define GAUSS_COEF 0.3989422804014327\n\nvoid main(void) {\n    #pragma mapbox: initialize highp float weight\n\n    // unencode the extrusion vector that we snuck into the a_pos vector\n    vec2 unscaled_extrude = vec2(mod(a_pos, 2.0) * 2.0 - 1.0);\n\n    // This 'extrude' comes in ranging from [-1, -1], to [1, 1].  We'll use\n    // it to produce the vertices of a square mesh framing the point feature\n    // we're adding to the kernel density texture.  We'll also pass it as\n    // a varying, so that the fragment shader can determine the distance of\n    // each fragment from the point feature.\n    // Before we do so, we need to scale it up sufficiently so that the\n    // kernel falls effectively to zero at the edge of the mesh.\n    // That is, we want to know S such that\n    // weight * u_intensity * GAUSS_COEF * exp(-0.5 * 3.0^2 * S^2) == ZERO\n    // Which solves to:\n    // S = sqrt(-2.0 * log(ZERO / (weight * u_intensity * GAUSS_COEF))) / 3.0\n    float S = sqrt(-2.0 * log(ZERO / weight / u_intensity / GAUSS_COEF)) / 3.0;\n\n    // Pass the varying in units of u_radius\n    v_extrude = S * unscaled_extrude;\n\n    // Scale by u_radius and the zoom-based scale factor to produce actual\n    // mesh position\n    vec2 extrude = v_extrude * u_radius * u_extrude_scale;\n\n    // multiply a_pos by 0.5, since we had it * 2 in order to sneak\n    // in extrusion data\n    vec4 pos = vec4(floor(a_pos * 0.5) + extrude, 0, 1);\n\n    gl_Position = u_matrix * pos;\n}\n"
+    },
+    heatmapTexture: {
+        fragmentSource: "uniform sampler2D u_image;\nuniform sampler2D u_color_ramp;\nuniform float u_opacity;\nvarying vec2 v_pos;\n\nvoid main() {\n    float t = texture2D(u_image, v_pos).r;\n    vec4 color = texture2D(u_color_ramp, vec2(t, 0.5));\n    gl_FragColor = color * u_opacity;\n\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(0.0);\n#endif\n}\n",
+        vertexSource: "uniform mat4 u_matrix;\nuniform vec2 u_world;\nattribute vec2 a_pos;\nvarying vec2 v_pos;\n\nvoid main() {\n    gl_Position = u_matrix * vec4(a_pos * u_world, 0, 1);\n\n    v_pos.x = a_pos.x;\n    v_pos.y = 1.0 - a_pos.y;\n}\n"
+    },
     collisionBox: {
         fragmentSource: "uniform float u_zoom;\n// u_maxzoom is derived from the maximum scale considered by the CollisionTile\n// Labels with placement zoom greater than this value will not be placed,\n// regardless of perspective effects.\nuniform float u_maxzoom;\nuniform sampler2D u_fadetexture;\n\n// v_max_zoom is a collision-box-specific value that controls when line-following\n// collision boxes are used.\nvarying float v_max_zoom;\nvarying float v_placement_zoom;\nvarying float v_perspective_zoom_adjust;\nvarying vec2 v_fade_tex;\n\nvoid main() {\n\n    float alpha = 0.5;\n\n    // Green = no collisions, label is showing\n    gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0) * alpha;\n\n    // Red = collision, label hidden\n    if (texture2D(u_fadetexture, v_fade_tex).a < 1.0) {\n        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0) * alpha;\n    }\n\n    // Faded black = this collision box is not used at this zoom (for curved labels)\n    if (u_zoom >= v_max_zoom + v_perspective_zoom_adjust) {\n        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) * alpha * 0.25;\n    }\n\n    // Faded blue = the placement scale for this label is beyond the CollisionTile\n    // max scale, so it's impossible for this label to show without collision detection\n    // being run again (the label's glyphs haven't even been added to the symbol bucket)\n    if (v_placement_zoom >= u_maxzoom) {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0) * alpha * 0.2;\n    }\n}\n",
         vertexSource: "attribute vec2 a_pos;\nattribute vec2 a_anchor_pos;\nattribute vec2 a_extrude;\nattribute vec2 a_data;\n\nuniform mat4 u_matrix;\nuniform float u_scale;\nuniform float u_pitch;\nuniform float u_collision_y_stretch;\nuniform float u_camera_to_center_distance;\n\nvarying float v_max_zoom;\nvarying float v_placement_zoom;\nvarying float v_perspective_zoom_adjust;\nvarying vec2 v_fade_tex;\n\nvoid main() {\n    vec4 projectedPoint = u_matrix * vec4(a_anchor_pos, 0, 1);\n    highp float camera_to_anchor_distance = projectedPoint.w;\n    highp float collision_perspective_ratio = 1.0 + 0.5 * ((camera_to_anchor_distance / u_camera_to_center_distance) - 1.0);\n\n    highp float incidence_stretch  = camera_to_anchor_distance / (u_camera_to_center_distance * cos(u_pitch));\n    highp float collision_adjustment = max(1.0, incidence_stretch / u_collision_y_stretch);\n\n    gl_Position = u_matrix * vec4(a_pos + a_extrude * collision_perspective_ratio * collision_adjustment / u_scale, 0.0, 1.0);\n\n    v_max_zoom = a_data.x;\n    v_placement_zoom = a_data.y;\n\n    v_perspective_zoom_adjust = floor(log2(collision_perspective_ratio * collision_adjustment) * 10.0);\n    v_fade_tex = vec2((v_placement_zoom + v_perspective_zoom_adjust) / 255.0, 0.0);\n}\n"
     },
     debug: {
         fragmentSource: "uniform highp vec4 u_color;\n\nvoid main() {\n    gl_FragColor = u_color;\n}\n",
-        vertexSource: "attribute vec2 a_pos;\n\nuniform mat4 u_matrix;\n\nvoid main() {\n    // We are using Int16 for texture position coordinates to give us enough precision for\n    // fractional coordinates. We use 8192 to scale the texture coordinates in the buffer\n    // as an arbitrarily high number to preserve adequate precision when rendering.\n    // This is also the same value as the EXTENT we are using for our tile buffer pos coordinates,\n    // so math for modifying either is consistent.\n    gl_Position = u_matrix * vec4(a_pos, step(8192.0, a_pos.x), 1);\n}\n"
+        vertexSource: "attribute vec2 a_pos;\n\nuniform mat4 u_matrix;\n\nvoid main() {\n    gl_Position = u_matrix * vec4(a_pos, 0, 1);\n}\n"
     },
     fill: {
         fragmentSource: "#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float opacity\n\nvoid main() {\n    #pragma mapbox: initialize highp vec4 color\n    #pragma mapbox: initialize lowp float opacity\n\n    gl_FragColor = color * opacity;\n\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(1.0);\n#endif\n}\n",
@@ -15849,7 +16150,7 @@ for (var programName in shaders) loop( programName );
 
 module.exports = shaders;
 
-},{}],97:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 'use strict';//      
 
 var ImageSource = require('./image_source');
@@ -15874,8 +16175,7 @@ var window = require('../util/window');
  *        [-76.52, 39.18],
  *        [-76.52, 39.17],
  *        [-76.54, 39.17]
- *    ],
- *    contextType: '2d'
+ *    ]
  * });
  *
  * // update
@@ -15902,9 +16202,6 @@ var CanvasSource = (function (ImageSource) {
 
     CanvasSource.prototype.load = function load () {
         this.canvas = this.canvas || window.document.getElementById(this.options.canvas);
-        var context = this.canvas.getContext(this.options.contextType);
-        if (!context) { return this.fire('error', new Error('Canvas context not found.')); }
-        this.context = context;
         this.width = this.canvas.width;
         this.height = this.canvas.height;
         if (this._hasInvalidDimensions()) { return this.fire('error', new Error('Canvas dimensions cannot be less than or equal to zero.')); }
@@ -15960,32 +16257,6 @@ var CanvasSource = (function (ImageSource) {
      */
     // setCoordinates inherited from ImageSource
 
-    CanvasSource.prototype.readCanvas = function readCanvas (resize         ) {
-        var this$1 = this;
-
-        // We *should* be able to use a pure HTMLCanvasElement in
-        // texImage2D/texSubImage2D (in ImageSource#_prepareImage), but for
-        // some reason this breaks the map on certain GPUs (see #4262).
-
-        if (this.context instanceof CanvasRenderingContext2D) {
-            this.canvasData = this.context.getImageData(0, 0, this.width, this.height);
-        } else if (this.context instanceof WebGLRenderingContext) {
-            var gl = this.context;
-            var data = new Uint8Array(this.width * this.height * 4);
-            gl.readPixels(0, 0, this.width, this.height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-
-            if (!this.secondaryContext) { this.secondaryContext = window.document.createElement('canvas').getContext('2d'); }
-            if (!this.canvasData || resize) {
-                this.canvasData = this.secondaryContext.createImageData(this.width, this.height);
-            }
-
-            // WebGL reads pixels bottom to top, but for our ImageData object we need top to bottom: flip here
-            for (var i = this.height - 1, j = 0; i >= 0; i--, j++) {
-                this$1.canvasData.data.set(data.subarray(i * this$1.width * 4, (i + 1) * this$1.width * 4), j * this$1.width * 4);
-            }
-        }
-    };
-
     CanvasSource.prototype.prepare = function prepare () {
         var resize = false;
         if (this.canvas.width !== this.width) {
@@ -15996,20 +16267,12 @@ var CanvasSource = (function (ImageSource) {
             this.height = this.canvas.height;
             resize = true;
         }
+
         if (this._hasInvalidDimensions()) { return; }
 
         if (Object.keys(this.tiles).length === 0) { return; } // not enough data for current position
 
-        var reread = this.animate || !this.canvasData || resize;
-        if (reread) {
-            this.readCanvas(resize);
-        }
-
-        if (!this.canvasData) {
-            this.fire('error', new Error('Could not read canvas data.'));
-            return;
-        }
-        this._prepareImage(this.map.painter.gl, this.canvasData, resize);
+        this._prepareImage(this.map.painter.gl, this.canvas, resize);
     };
 
     CanvasSource.prototype.serialize = function serialize ()         {
@@ -16036,7 +16299,7 @@ var CanvasSource = (function (ImageSource) {
 
 module.exports = CanvasSource;
 
-},{"../util/window":205,"./image_source":101}],98:[function(require,module,exports){
+},{"../util/window":234,"./image_source":104}],101:[function(require,module,exports){
 'use strict';//      
 
 var Evented = require('../util/evented');
@@ -16222,7 +16485,7 @@ var GeoJSONSource = (function (Evented) {
     GeoJSONSource.prototype.loadTile = function loadTile (tile      , callback                ) {
         var this$1 = this;
 
-        var message = !tile.workerID || tile.state === 'expired' ? 'loadTile' : 'reloadTile';
+        var message = tile.workerID === undefined || tile.state === 'expired' ? 'loadTile' : 'reloadTile';
         var params = {
             type: this.type,
             uid: tile.uid,
@@ -16292,7 +16555,7 @@ function resolveURL(url) {
 
 module.exports = GeoJSONSource;
 
-},{"../data/extent":58,"../util/ajax":202,"../util/browser":203,"../util/evented":211,"../util/util":224,"../util/window":205}],99:[function(require,module,exports){
+},{"../data/extent":59,"../util/ajax":231,"../util/browser":232,"../util/evented":240,"../util/util":253,"../util/window":234}],102:[function(require,module,exports){
 'use strict';//      
 
 var ajax = require('../util/ajax');
@@ -16482,7 +16745,7 @@ var GeoJSONWorkerSource = (function (VectorTileWorkerSource) {
 
 module.exports = GeoJSONWorkerSource;
 
-},{"../util/ajax":202,"./geojson_wrapper":100,"./vector_tile_worker_source":113,"geojson-rewind":15,"geojson-vt":19,"supercluster":42,"vt-pbf":47}],100:[function(require,module,exports){
+},{"../util/ajax":231,"./geojson_wrapper":103,"./vector_tile_worker_source":116,"geojson-rewind":15,"geojson-vt":19,"supercluster":42,"vt-pbf":47}],103:[function(require,module,exports){
 'use strict';//      
 
 var Point = require('@mapbox/point-geometry');
@@ -16567,7 +16830,7 @@ GeoJSONWrapper.prototype.feature = function feature (i    )                {
 
 module.exports = GeoJSONWrapper;
 
-},{"../data/extent":58,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6}],101:[function(require,module,exports){
+},{"../data/extent":59,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6}],104:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -16582,12 +16845,19 @@ var EXTENT = require('../data/extent');
 var RasterBoundsArray = require('../data/raster_bounds_array');
 var VertexBuffer = require('../gl/vertex_buffer');
 var VertexArrayObject = require('../render/vertex_array_object');
+var Texture = require('../render/texture');
 
                                      
                                  
                                                  
                                
                                                 
+
+                                
+             
+                    
+                     
+                   
 
 /**
  * A data source containing an image.
@@ -16737,7 +17007,7 @@ var ImageSource = (function (Evented) {
         this._prepareImage(this.map.painter.gl, this.image);
     };
 
-    ImageSource.prototype._prepareImage = function _prepareImage (gl                       , image                , resize          ) {
+    ImageSource.prototype._prepareImage = function _prepareImage (gl                       , image                    , resize          ) {
         var this$1 = this;
 
         if (!this.boundsBuffer) {
@@ -16750,17 +17020,12 @@ var ImageSource = (function (Evented) {
 
         if (!this.textureLoaded) {
             this.textureLoaded = true;
-            this.texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, this.texture);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            this.texture = new Texture(gl, image, gl.RGBA);
+            this.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
         } else if (resize) {
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        } else if (image instanceof window.HTMLVideoElement || image instanceof window.ImageData) {
-            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            this.texture.update(image);
+        } else if (image instanceof window.HTMLVideoElement || image instanceof window.ImageData || image instanceof window.HTMLCanvasElement) {
+            this.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
             gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, image);
         }
 
@@ -16803,7 +17068,7 @@ var ImageSource = (function (Evented) {
 
 module.exports = ImageSource;
 
-},{"../data/extent":58,"../data/raster_bounds_array":64,"../geo/lng_lat":68,"../gl/vertex_buffer":72,"../render/vertex_array_object":94,"../util/ajax":202,"../util/browser":203,"../util/evented":211,"../util/util":224,"../util/window":205,"./tile_coord":111,"@mapbox/point-geometry":2}],102:[function(require,module,exports){
+},{"../data/extent":59,"../data/raster_bounds_array":65,"../geo/lng_lat":69,"../gl/vertex_buffer":73,"../render/texture":95,"../render/vertex_array_object":97,"../util/ajax":231,"../util/browser":232,"../util/evented":240,"../util/util":253,"../util/window":234,"./tile_coord":114,"@mapbox/point-geometry":2}],105:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -16836,7 +17101,7 @@ module.exports = function(options     , requestTransformFn                      
     }
 };
 
-},{"../util/ajax":202,"../util/browser":203,"../util/mapbox":218,"../util/util":224}],103:[function(require,module,exports){
+},{"../util/ajax":231,"../util/browser":232,"../util/mapbox":247,"../util/util":253}],106:[function(require,module,exports){
 'use strict';//      
 
 var EXTENT = require('../data/extent');
@@ -16859,7 +17124,7 @@ module.exports = function(tile                                      , pixelValue
     return pixelValue * (EXTENT / (tile.tileSize * Math.pow(2, z - tile.coord.z)));
 };
 
-},{"../data/extent":58}],104:[function(require,module,exports){
+},{"../data/extent":59}],107:[function(require,module,exports){
 'use strict';//      
 
 var TileCoord = require('./tile_coord');
@@ -16950,7 +17215,7 @@ function mergeRenderedFeatureLayers(tiles) {
     return result;
 }
 
-},{"./tile_coord":111}],105:[function(require,module,exports){
+},{"./tile_coord":114}],108:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -16959,6 +17224,7 @@ var Evented = require('../util/evented');
 var loadTileJSON = require('./load_tilejson');
 var normalizeURL = require('../util/mapbox').normalizeTileURL;
 var TileBounds = require('./tile_bounds');
+var Texture = require('../render/texture');
 
                                      
                                           
@@ -17026,15 +17292,14 @@ var RasterTileSource = (function (Evented) {
         var this$1 = this;
 
         var url = normalizeURL(tile.coord.url(this.tiles, null, this.scheme), this.url, this.tileSize);
-
         tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), function (err, img) {
             delete tile.request;
 
             if (tile.aborted) {
-                this$1.state = 'unloaded';
+                tile.state = 'unloaded';
                 callback(null);
             } else if (err) {
-                this$1.state = 'errored';
+                tile.state = 'errored';
                 callback(err);
             } else if (img) {
                 if (this$1.map._refreshExpiredTiles) { tile.setExpiryData(img); }
@@ -17044,22 +17309,15 @@ var RasterTileSource = (function (Evented) {
                 var gl = this$1.map.painter.gl;
                 tile.texture = this$1.map.painter.getTileTexture(img.width);
                 if (tile.texture) {
-                    gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+                    tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
                 } else {
-                    tile.texture = gl.createTexture();
-                    gl.bindTexture(gl.TEXTURE_2D, tile.texture);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, (true     ));
+                    tile.texture = new Texture(gl, img, gl.RGBA);
+                    tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+
                     if (this$1.map.painter.extTextureFilterAnisotropic) {
                         gl.texParameterf(gl.TEXTURE_2D, this$1.map.painter.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, this$1.map.painter.extTextureFilterAnisotropicMax);
                     }
-
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-                    tile.texture.size = img.width;
                 }
                 gl.generateMipmap(gl.TEXTURE_2D);
 
@@ -17086,7 +17344,7 @@ var RasterTileSource = (function (Evented) {
 
 module.exports = RasterTileSource;
 
-},{"../util/ajax":202,"../util/evented":211,"../util/mapbox":218,"../util/util":224,"./load_tilejson":102,"./tile_bounds":110}],106:[function(require,module,exports){
+},{"../render/texture":95,"../util/ajax":231,"../util/evented":240,"../util/mapbox":247,"../util/util":253,"./load_tilejson":105,"./tile_bounds":113}],109:[function(require,module,exports){
 'use strict';//      
 
 var ajax = require('../util/ajax');
@@ -17140,7 +17398,7 @@ module.exports.setRTLTextPlugin = function(pluginURL        , callback          
 module.exports.applyArabicShaping = (null           );
 module.exports.processBidirectionalText = (null                                           );
 
-},{"../util/ajax":202,"../util/evented":211,"../util/window":205}],107:[function(require,module,exports){
+},{"../util/ajax":231,"../util/evented":240,"../util/window":234}],110:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -17254,7 +17512,7 @@ exports.setType = function (name        , type               ) {
     sourceTypes[name] = type;
 };
 
-},{"../source/canvas_source":97,"../source/geojson_source":98,"../source/image_source":101,"../source/raster_tile_source":105,"../source/vector_tile_source":112,"../source/video_source":114,"../util/util":224}],108:[function(require,module,exports){
+},{"../source/canvas_source":100,"../source/geojson_source":101,"../source/image_source":104,"../source/raster_tile_source":108,"../source/vector_tile_source":115,"../source/video_source":117,"../util/util":253}],111:[function(require,module,exports){
 'use strict';//      
 
 var createSource = require('./source').create;
@@ -17417,8 +17675,16 @@ var SourceCache = (function (Evented) {
         return this.getIds().filter(this._isIdRenderable);
     };
 
+    SourceCache.prototype.hasRenderableParent = function hasRenderableParent (coord           ) {
+        var parentTile = this.findLoadedParent(coord, 0, {});
+        if (parentTile) {
+            return this._isIdRenderable(parentTile.coord.id);
+        }
+        return false;
+    };
+
     SourceCache.prototype._isIdRenderable = function _isIdRenderable (id        ) {
-        return this._tiles[id].hasData() && !this._coveredTiles[id];
+        return this._tiles[id] && this._tiles[id].hasData() && !this._coveredTiles[id];
     };
 
     SourceCache.prototype.reload = function reload () {
@@ -17964,7 +18230,7 @@ function isRasterType(type) {
 
 module.exports = SourceCache;
 
-},{"../data/extent":58,"../geo/coordinate":67,"../util/evented":211,"../util/lru_cache":217,"../util/util":224,"./source":107,"./tile":109,"./tile_coord":111,"@mapbox/point-geometry":2}],109:[function(require,module,exports){
+},{"../data/extent":59,"../geo/coordinate":68,"../util/evented":240,"../util/lru_cache":246,"../util/util":253,"./source":110,"./tile":112,"./tile_coord":114,"@mapbox/point-geometry":2}],112:[function(require,module,exports){
 'use strict';//      
 
 var util = require('../util/util');
@@ -17978,17 +18244,25 @@ var featureFilter = require('../style-spec/feature_filter');
 var CollisionTile = require('../symbol/collision_tile');
 var CollisionBoxArray = require('../symbol/collision_box');
 var Throttler = require('../util/throttler');
+var RasterBoundsArray = require('../data/raster_bounds_array');
+var TileCoord = require('./tile_coord');
+var EXTENT = require('../data/extent');
+var Point = require('@mapbox/point-geometry');
+var VertexBuffer = require('../gl/vertex_buffer');
+var IndexBuffer = require('../gl/index_buffer');
 var Texture = require('../render/texture');
+var ref = require('../data/segment');
+var SegmentVector = ref.SegmentVector;
+var ref$1 = require('../data/index_array_type');
+var TriangleIndexArray = ref$1.TriangleIndexArray;
 
 var CLOCK_SKEW_RETRY_TIMEOUT = 30000;
 
                                            
                                                    
-                                          
                                                       
-                                                
                                                          
-
+                                            
                        
                                                             
                                                                      
@@ -18285,12 +18559,78 @@ Tile.prototype.querySourceFeatures = function querySourceFeatures (result       
 
     for (var i = 0; i < layer.length; i++) {
         var feature = layer.feature(i);
-        if (filter(feature)) {
+        if (filter({zoom: this$1.coord.z}, feature)) {
             var geojsonFeature = new GeoJSONFeature(feature, this$1.coord.z, this$1.coord.x, this$1.coord.y);
             (geojsonFeature ).tile = coord;
             result.push(geojsonFeature);
         }
     }
+};
+
+Tile.prototype.clearMask = function clearMask () {
+    if (this.segments) {
+        this.segments.destroy();
+        delete this.segments;
+    }
+    if (this.maskedBoundsBuffer) {
+        this.maskedBoundsBuffer.destroy();
+        delete this.maskedBoundsBuffer;
+    }
+    if (this.maskedIndexBuffer) {
+        this.maskedIndexBuffer.destroy();
+        delete this.maskedIndexBuffer;
+    }
+};
+
+Tile.prototype.setMask = function setMask (mask  , gl                   ) {
+        var this$1 = this;
+
+
+    // don't redo buffer work if the mask is the same;
+    if (util.deepEqual(this.mask, mask)) { return; }
+
+    this.mask = mask;
+    this.clearMask();
+
+    // We want to render the full tile, and keeping the segments/vertices/indices empty means
+    // using the global shared buffers for covering the entire tile.
+    if (util.deepEqual(mask, {'0': true})) { return; }
+
+    var maskedBoundsArray = new RasterBoundsArray();
+    var indexArray = new TriangleIndexArray();
+
+    this.segments = new SegmentVector();
+    // Create a new segment so that we will upload (empty) buffers even when there is nothing to
+    // draw for this tile.
+    this.segments.prepareSegment(0, maskedBoundsArray, indexArray);
+
+    var maskArray = Object.keys(mask);
+    for (var i = 0; i < maskArray.length; i++) {
+        var maskCoord = TileCoord.fromID(+maskArray[i]);
+        var vertexExtent = EXTENT >> maskCoord.z;
+        var tlVertex = new Point(maskCoord.x * vertexExtent, maskCoord.y * vertexExtent);
+        var brVertex = new Point(tlVertex.x + vertexExtent, tlVertex.y + vertexExtent);
+
+        // not sure why flow is complaining here because it doesn't complain at L401
+        var segment = (this$1.segments ).prepareSegment(4, maskedBoundsArray, indexArray);
+
+        maskedBoundsArray.emplaceBack(tlVertex.x, tlVertex.y, tlVertex.x, tlVertex.y);
+        maskedBoundsArray.emplaceBack(brVertex.x, tlVertex.y, brVertex.x, tlVertex.y);
+        maskedBoundsArray.emplaceBack(tlVertex.x, brVertex.y, tlVertex.x, brVertex.y);
+        maskedBoundsArray.emplaceBack(brVertex.x, brVertex.y, brVertex.x, brVertex.y);
+
+        var offset = segment.vertexLength;
+        // 0, 1, 2
+        // 1, 2, 3
+        indexArray.emplaceBack(offset, offset + 1, offset + 2);
+        indexArray.emplaceBack(offset + 1, offset + 2, offset + 3);
+
+        segment.vertexLength += 4;
+        segment.primitiveLength += 2;
+    }
+
+    this.maskedBoundsBuffer = new VertexBuffer(gl, maskedBoundsArray);
+    this.maskedIndexBuffer = new IndexBuffer(gl, indexArray);
 };
 
 Tile.prototype.hasData = function hasData () {
@@ -18366,7 +18706,7 @@ Tile.prototype.stopPlacementThrottler = function stopPlacementThrottler () {
 
 module.exports = Tile;
 
-},{"../data/bucket":52,"../data/bucket/symbol_bucket":57,"../data/feature_index":59,"../render/texture":93,"../style-spec/feature_filter":120,"../symbol/collision_box":171,"../symbol/collision_tile":173,"../util/throttler":222,"../util/util":224,"../util/vectortile_to_geojson":225,"@mapbox/vector-tile":6,"pbf":39}],110:[function(require,module,exports){
+},{"../data/bucket":52,"../data/bucket/symbol_bucket":58,"../data/extent":59,"../data/feature_index":60,"../data/index_array_type":61,"../data/raster_bounds_array":65,"../data/segment":66,"../gl/index_buffer":72,"../gl/vertex_buffer":73,"../render/texture":95,"../style-spec/feature_filter":145,"../symbol/collision_box":200,"../symbol/collision_tile":202,"../util/throttler":251,"../util/util":253,"../util/vectortile_to_geojson":254,"./tile_coord":114,"@mapbox/point-geometry":2,"@mapbox/vector-tile":6,"pbf":39}],113:[function(require,module,exports){
 'use strict';//      
 
 var LngLatBounds = require('../geo/lng_lat_bounds');
@@ -18413,7 +18753,7 @@ TileBounds.prototype.latY = function latY (lat    , zoom    ) {
 
 module.exports = TileBounds;
 
-},{"../geo/lng_lat_bounds":69,"../util/util":224}],111:[function(require,module,exports){
+},{"../geo/lng_lat_bounds":70,"../util/util":253}],114:[function(require,module,exports){
 'use strict';//      
 
 var assert = require('assert');
@@ -18484,6 +18824,20 @@ TileCoord.prototype.wrapped = function wrapped () {
     return new TileCoord(this.z, this.x, this.y, 0);
 };
 
+TileCoord.prototype.isLessThan = function isLessThan (rhs       ) {
+    if (this.w < rhs.w) { return true; }
+    if (this.w > rhs.w) { return false; }
+
+    if (this.z < rhs.z) { return true; }
+    if (this.z > rhs.z) { return false; }
+
+    if (this.x < rhs.x) { return true; }
+    if (this.x > rhs.x) { return false; }
+
+    if (this.y < rhs.y) { return true; }
+    return false;
+};
+
 // Return the coordinates of the tile's children
 TileCoord.prototype.children = function children (sourceMaxZoom    ) {
 
@@ -18514,6 +18868,18 @@ TileCoord.prototype.scaledTo = function scaledTo (targetZ    , sourceMaxZoom    
     } else {
         return new TileCoord(targetZ, this.x << (targetZ - this.z), this.y << (targetZ - this.z), this.w); // child
     }
+};
+
+/**
+ *
+ * @memberof Map
+ * @param {TileCoord} child TileCoord to check whether it is a child of the root tile
+ * @returns {boolean} result boolean describing whether or not `child` is a child tile of the root
+ * @private
+ */
+TileCoord.prototype.isChildOf = function isChildOf (parent ) {
+    // We're first testing for z == 0, to avoid a 32 bit shift, which is undefined.
+    return parent.z === 0 || (parent.z < this.z && parent.x === (this.x >> (this.z - parent.z)) && parent.y === (this.y >> (this.z - parent.z)));
 };
 
 TileCoord.cover = function cover (z    , bounds                                              ,
@@ -18627,7 +18993,7 @@ function getQuadkey(z, x, y) {
 
 module.exports = TileCoord;
 
-},{"../geo/coordinate":67,"@mapbox/whoots-js":10,"assert":11}],112:[function(require,module,exports){
+},{"../geo/coordinate":68,"@mapbox/whoots-js":10,"assert":11}],115:[function(require,module,exports){
 'use strict';//      
 
 var Evented = require('../util/evented');
@@ -18726,7 +19092,7 @@ var VectorTileSource = (function (Evented) {
             showCollisionBoxes: this.map.showCollisionBoxes
         };
 
-        if (!tile.workerID || tile.state === 'expired') {
+        if (tile.workerID === undefined || tile.state === 'expired') {
             tile.workerID = this.dispatcher.send('loadTile', params, done.bind(this));
         } else if (tile.state === 'loading') {
             // schedule tile reloading after it has been loaded
@@ -18774,7 +19140,7 @@ var VectorTileSource = (function (Evented) {
 
 module.exports = VectorTileSource;
 
-},{"../util/ajax":202,"../util/browser":203,"../util/evented":211,"../util/mapbox":218,"../util/util":224,"./load_tilejson":102,"./tile_bounds":110}],113:[function(require,module,exports){
+},{"../util/ajax":231,"../util/browser":232,"../util/evented":240,"../util/mapbox":247,"../util/util":253,"./load_tilejson":105,"./tile_bounds":113}],116:[function(require,module,exports){
 'use strict';//      
 
 var ajax = require('../util/ajax');
@@ -18971,7 +19337,7 @@ var VectorTileWorkerSource = function VectorTileWorkerSource(actor     , layerIn
 
 module.exports = VectorTileWorkerSource;
 
-},{"../util/ajax":202,"../util/util":224,"./worker_tile":116,"@mapbox/vector-tile":6,"pbf":39}],114:[function(require,module,exports){
+},{"../util/ajax":231,"../util/util":253,"./worker_tile":119,"@mapbox/vector-tile":6,"pbf":39}],117:[function(require,module,exports){
 'use strict';//      
 
 var ajax = require('../util/ajax');
@@ -19109,7 +19475,7 @@ var VideoSource = (function (ImageSource) {
 
 module.exports = VideoSource;
 
-},{"../util/ajax":202,"./image_source":101}],115:[function(require,module,exports){
+},{"../util/ajax":231,"./image_source":104}],118:[function(require,module,exports){
 'use strict';//      
 
 var Actor = require('../util/actor');
@@ -19268,7 +19634,7 @@ module.exports = function createWorker(self                            ) {
     return new Worker(self);
 };
 
-},{"../style/style_layer_index":165,"../util/actor":201,"./geojson_worker_source":99,"./rtl_text_plugin":106,"./vector_tile_worker_source":113,"assert":11}],116:[function(require,module,exports){
+},{"../style/style_layer_index":194,"../util/actor":230,"./geojson_worker_source":102,"./rtl_text_plugin":109,"./vector_tile_worker_source":116,"assert":11}],119:[function(require,module,exports){
 'use strict';//      
 
 var FeatureIndex = require('../data/feature_index');
@@ -19520,7 +19886,7 @@ function serializeBuckets(buckets                        , transferables        
 
 module.exports = WorkerTile;
 
-},{"../data/bucket/symbol_bucket":57,"../data/feature_index":59,"../render/glyph_atlas":84,"../render/image_atlas":86,"../symbol/collision_box":171,"../symbol/collision_tile":173,"../util/dictionary_coder":208,"../util/util":224,"assert":11}],117:[function(require,module,exports){
+},{"../data/bucket/symbol_bucket":58,"../data/feature_index":60,"../render/glyph_atlas":86,"../render/image_atlas":88,"../symbol/collision_box":200,"../symbol/collision_tile":202,"../util/dictionary_coder":237,"../util/util":253,"assert":11}],120:[function(require,module,exports){
 'use strict';
 var refProperties = require('./util/ref_properties');
 
@@ -19574,7 +19940,7 @@ function derefLayers(layers) {
     return layers;
 }
 
-},{"./util/ref_properties":130}],118:[function(require,module,exports){
+},{"./util/ref_properties":155}],121:[function(require,module,exports){
 'use strict';
 var isEqual = require('lodash.isequal');
 
@@ -19619,6 +19985,11 @@ var operations = {
      * { command: 'removeSource', args: ['sourceId'] }
      */
     removeSource: 'removeSource',
+
+    /*
+     * { command: 'setGeoJSONSourceData', args: ['sourceId', data] }
+     */
+    setGeoJSONSourceData: 'setGeoJSONSourceData',
 
     /*
      * { command: 'setLayerZoomRange', args: ['layerId', 0, 22] }
@@ -19694,10 +20065,15 @@ function diffSources(before, after, commands, sourcesRemoved) {
         if (!before.hasOwnProperty(sourceId)) {
             commands.push({ command: operations.addSource, args: [sourceId, after[sourceId]] });
         } else if (!isEqual(before[sourceId], after[sourceId])) {
-            // no update command, must remove then add
-            commands.push({ command: operations.removeSource, args: [sourceId] });
-            commands.push({ command: operations.addSource, args: [sourceId, after[sourceId]] });
-            sourcesRemoved[sourceId] = true;
+            if (before[sourceId].type === 'geojson' && after[sourceId].type === 'geojson') {
+                // geojson sources use setGeoJSONSourceData command to update
+                commands.push({ command: operations.setGeoJSONSourceData, args: [sourceId, after[sourceId].data] });
+            } else {
+                // no update command, must remove then add
+                commands.push({ command: operations.removeSource, args: [sourceId] });
+                commands.push({ command: operations.addSource, args: [sourceId, after[sourceId]] });
+                sourcesRemoved[sourceId] = true;
+            }
         }
     }
 }
@@ -19933,7 +20309,7 @@ function diffStyles(before, after) {
 module.exports = diffStyles;
 module.exports.operations = operations;
 
-},{"lodash.isequal":35}],119:[function(require,module,exports){
+},{"lodash.isequal":35}],122:[function(require,module,exports){
 'use strict';
 var format = require('util').format;
 
@@ -19950,10 +20326,2683 @@ function ValidationError(key, value) {
 
 module.exports = ValidationError;
 
-},{"util":46}],120:[function(require,module,exports){
-'use strict';module.exports = createFilter;
+},{"util":46}],123:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('./types');
+var toString = ref.toString;
+var ParsingContext = require('./parsing_context');
+var EvaluationContext = require('./evaluation_context');
+var assert = require('assert');
+
+                                               
+                                    
+                                      
+
+                                
+                                       
+                                                                
+                                               
+                                                            
+
+var CompoundExpression = function CompoundExpression(key    , name    , type  , evaluate      , args               ) {
+    this.key = key;
+    this.name = name;
+    this.type = type;
+    this._evaluate = evaluate;
+    this.args = args;
+};
+
+CompoundExpression.prototype.evaluate = function evaluate (ctx               ) {
+    return this._evaluate(ctx, this.args);
+};
+
+CompoundExpression.prototype.eachChild = function eachChild (fn                  ) {
+    this.args.forEach(fn);
+};
+
+CompoundExpression.parse = function parse (args          , context            )          {
+    var op     = (args[0] );
+    var definition = CompoundExpression.definitions[op];
+    if (!definition) {
+        return context.error(("Unknown expression \"" + op + "\". If you wanted a literal array, use [\"literal\", [...]]."), 0);
+    }
+
+    // Now check argument types against each signature
+    var type = Array.isArray(definition) ?
+        definition[0] : definition.type;
+
+    var overloads = Array.isArray(definition) ?
+        [[definition[1], definition[2]]] :
+        definition.overloads.filter(function (overload) { return (
+            !Array.isArray(overload[0][0]) || // varags
+            overload[0][0].length === args.length - 1 // correct param count
+        ); });
+
+    // First parse all the args
+    var parsedArgs                = [];
+    for (var i = 1; i < args.length; i++) {
+        var arg = args[i];
+        var expected = (void 0);
+        if (overloads.length === 1) {
+            var params = overloads[0][0];
+            expected = Array.isArray(params) ?
+                params[i - 1] :
+                params.type;
+        }
+        var parsed = context.parse(arg, 1 + parsedArgs.length, expected);
+        if (!parsed) { return null; }
+        parsedArgs.push(parsed);
+    }
+
+    var signatureContext             = (null );
+
+    for (var i$2 = 0, list = overloads; i$2 < list.length; i$2 += 1) {
+        // Use a fresh context for each attempted signature so that, if
+        // we eventually succeed, we haven't polluted `context.errors`.
+        var ref = list[i$2];
+            var params$1 = ref[0];
+            var evaluate = ref[1];
+
+            signatureContext = new ParsingContext(context.definitions, context.path, null, context.scope);
+
+        if (Array.isArray(params$1)) {
+            if (params$1.length !== parsedArgs.length) {
+                signatureContext.error(("Expected " + (params$1.length) + " arguments, but found " + (parsedArgs.length) + " instead."));
+                continue;
+            }
+        }
+
+        for (var i$1 = 0; i$1 < parsedArgs.length; i$1++) {
+            var expected$1 = Array.isArray(params$1) ? params$1[i$1] : params$1.type;
+            var arg$1 = parsedArgs[i$1];
+            signatureContext.concat(i$1 + 1).checkSubtype(expected$1, arg$1.type);
+        }
+
+        if (signatureContext.errors.length === 0) {
+            return new CompoundExpression(context.key, op, type, evaluate, parsedArgs);
+        }
+    }
+
+    assert(signatureContext.errors.length > 0);
+
+    if (overloads.length === 1) {
+        context.errors.push.apply(context.errors, signatureContext.errors);
+    } else {
+        var signatures = overloads
+            .map(function (ref) {
+                    var params = ref[0];
+
+                    return stringifySignature(params);
+            })
+            .join(' | ');
+        var actualTypes = parsedArgs
+            .map(function (arg) { return toString(arg.type); })
+            .join(', ');
+        context.error(("Expected arguments of type " + signatures + ", but found (" + actualTypes + ") instead."));
+    }
+
+    return null;
+};
+
+CompoundExpression.register = function register (
+    expressions                             ,
+    definitions                          
+) {
+    assert(!CompoundExpression.definitions);
+    CompoundExpression.definitions = definitions;
+    for (var name in definitions) {
+        expressions[name] = CompoundExpression;
+    }
+};
+
+function varargs(type      )          {
+    return { type: type };
+}
+
+function stringifySignature(signature           )         {
+    if (Array.isArray(signature)) {
+        return ("(" + (signature.map(toString).join(', ')) + ")");
+    } else {
+        return ("(" + (toString(signature.type)) + "...)");
+    }
+}
+
+module.exports = {
+    CompoundExpression: CompoundExpression,
+    varargs: varargs
+};
+
+},{"./evaluation_context":136,"./parsing_context":139,"./types":143,"assert":11}],124:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../types');
+var toString = ref.toString;
+var array = ref.array;
+var ValueType = ref.ValueType;
+var StringType = ref.StringType;
+var NumberType = ref.NumberType;
+var BooleanType = ref.BooleanType;
+var checkSubtype = ref.checkSubtype;
+
+var ref$1 = require('../values');
+var typeOf = ref$1.typeOf;
+var RuntimeError = require('../runtime_error');
+
+                                                
+                                                     
+                                                           
+                                          
+
+var types = {
+    string: StringType,
+    number: NumberType,
+    boolean: BooleanType
+};
+
+var ArrayAssertion = function ArrayAssertion(key    , type       , input        ) {
+    this.key = key;
+    this.type = type;
+    this.input = input;
+};
+
+ArrayAssertion.parse = function parse (args          , context            )          {
+    if (args.length < 2 || args.length > 4)
+        { return context.error(("Expected 1, 2, or 3 arguments, but found " + (args.length - 1) + " instead.")); }
+
+    var itemType;
+    var N;
+    if (args.length > 2) {
+        var type$1 = args[1];
+        if (typeof type$1 !== 'string' || !(type$1 in types))
+            { return context.error('The item type argument of "array" must be one of string, number, boolean', 1); }
+        itemType = types[type$1];
+    } else {
+        itemType = ValueType;
+    }
+
+    if (args.length > 3) {
+        if (
+            typeof args[2] !== 'number' ||
+            args[2] < 0 ||
+            args[2] !== Math.floor(args[2])
+        ) {
+            return context.error('The length argument to "array" must be a positive integer literal', 2);
+        }
+        N = args[2];
+    }
+
+    var type = array(itemType, N);
+
+    var input = context.parse(args[args.length - 1], args.length - 1, ValueType);
+    if (!input) { return null; }
+
+    return new ArrayAssertion(context.key, type, input);
+};
+
+ArrayAssertion.prototype.evaluate = function evaluate (ctx               ) {
+    var value = this.input.evaluate(ctx);
+    var error = checkSubtype(this.type, typeOf(value));
+    if (error) {
+        throw new RuntimeError(("Expected value to be of type " + (toString(this.type)) + ", but found " + (toString(typeOf(value))) + " instead."));
+    }
+    return value;
+};
+
+ArrayAssertion.prototype.eachChild = function eachChild (fn                  ) {
+    fn(this.input);
+};
+
+module.exports = ArrayAssertion;
+
+},{"../runtime_error":141,"../types":143,"../values":144}],125:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var ref = require('../types');
+var ObjectType = ref.ObjectType;
+var ValueType = ref.ValueType;
+var StringType = ref.StringType;
+var NumberType = ref.NumberType;
+var BooleanType = ref.BooleanType;
+
+var RuntimeError = require('../runtime_error');
+var ref$1 = require('../types');
+var checkSubtype = ref$1.checkSubtype;
+var toString = ref$1.toString;
+var ref$2 = require('../values');
+var typeOf = ref$2.typeOf;
+
+                                                
+                                                     
+                                                           
+                                     
+
+var types = {
+    string: StringType,
+    number: NumberType,
+    boolean: BooleanType,
+    object: ObjectType
+};
+
+var Assertion = function Assertion(key    , type  , args               ) {
+    this.key = key;
+    this.type = type;
+    this.args = args;
+};
+
+Assertion.parse = function parse (args          , context            )          {
+    if (args.length < 2)
+        { return context.error("Expected at least one argument."); }
+
+    var name     = (args[0] );
+    assert(types[name], name);
+
+    var type = types[name];
+
+    var parsed = [];
+    for (var i = 1; i < args.length; i++) {
+        var input = context.parse(args[i], i, ValueType);
+        if (!input) { return null; }
+        parsed.push(input);
+    }
+
+    return new Assertion(context.key, type, parsed);
+};
+
+Assertion.prototype.evaluate = function evaluate (ctx               ) {
+        var this$1 = this;
+
+    for (var i = 0; i < this.args.length; i++) {
+        var value = this$1.args[i].evaluate(ctx);
+        var error = checkSubtype(this$1.type, typeOf(value));
+        if (!error) {
+            return value;
+        } else if (i === this$1.args.length - 1) {
+            throw new RuntimeError(("Expected value to be of type " + (toString(this$1.type)) + ", but found " + (toString(typeOf(value))) + " instead."));
+        }
+    }
+
+    assert(false);
+    return null;
+};
+
+Assertion.prototype.eachChild = function eachChild (fn                  ) {
+    this.args.forEach(fn);
+};
+
+module.exports = Assertion;
+
+},{"../runtime_error":141,"../types":143,"../values":144,"assert":11}],126:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../types');
+var array = ref.array;
+var ValueType = ref.ValueType;
+var NumberType = ref.NumberType;
+
+var RuntimeError = require('../runtime_error');
+
+                                                
+                                                     
+                                                           
+                                                
+                                       
+
+var At = function At(key    , type  , index        , input        ) {
+    this.key = key;
+    this.type = type;
+    this.index = index;
+    this.input = input;
+};
+
+At.parse = function parse (args          , context            ) {
+    if (args.length !== 3)
+        { return context.error(("Expected 2 arguments, but found " + (args.length - 1) + " instead.")); }
+
+    var index = context.parse(args[1], 1, NumberType);
+    var input = context.parse(args[2], 2, array(context.expectedType || ValueType));
+
+    if (!index || !input) { return null; }
+
+    var t        = (input.type );
+    return new At(context.key, t.itemType, index, input);
+};
+
+At.prototype.evaluate = function evaluate (ctx               ) {
+    var index = ((this.index.evaluate(ctx) )    );
+    var array = ((this.input.evaluate(ctx) )          );
+
+    if (index < 0 || index >= array.length) {
+        throw new RuntimeError(("Array index out of bounds: " + index + " > " + (array.length) + "."));
+    }
+
+    if (index !== Math.floor(index)) {
+        throw new RuntimeError(("Array index must be an integer, but found " + index + " instead."));
+    }
+
+    return array[index];
+};
+
+At.prototype.eachChild = function eachChild (fn                  ) {
+    fn(this.index);
+    fn(this.input);
+};
+
+module.exports = At;
+
+},{"../runtime_error":141,"../types":143}],127:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var ref = require('../types');
+var BooleanType = ref.BooleanType;
+
+                                                
+                                                     
+                                                           
+                                     
+
+                                                
+
+var Case = function Case(key    , type  , branches      , otherwise        ) {
+    this.key = key;
+    this.type = type;
+    this.branches = branches;
+    this.otherwise = otherwise;
+};
+
+Case.parse = function parse (args          , context            ) {
+    if (args.length < 4)
+        { return context.error(("Expected at least 3 arguments, but found only " + (args.length - 1) + ".")); }
+    if (args.length % 2 !== 0)
+        { return context.error("Expected an odd number of arguments."); }
+
+    var outputType   ;
+    if (context.expectedType && context.expectedType.kind !== 'value') {
+        outputType = context.expectedType;
+    }
+
+    var branches = [];
+    for (var i = 1; i < args.length - 1; i += 2) {
+        var test = context.parse(args[i], i, BooleanType);
+        if (!test) { return null; }
+
+        var result = context.parse(args[i + 1], i + 1, outputType);
+        if (!result) { return null; }
+
+        branches.push([test, result]);
+
+        outputType = outputType || result.type;
+    }
+
+    var otherwise = context.parse(args[args.length - 1], args.length - 1, outputType);
+    if (!otherwise) { return null; }
+
+    assert(outputType);
+    return new Case(context.key, (outputType ), branches, otherwise);
+};
+
+Case.prototype.evaluate = function evaluate (ctx               ) {
+        var this$1 = this;
+
+    for (var i = 0, list = this$1.branches; i < list.length; i += 1) {
+        var ref = list[i];
+            var test = ref[0];
+            var expression = ref[1];
+
+            if (test.evaluate(ctx)) {
+            return expression.evaluate(ctx);
+        }
+    }
+    return this.otherwise.evaluate(ctx);
+};
+
+Case.prototype.eachChild = function eachChild (fn                  ) {
+        var this$1 = this;
+
+    for (var i = 0, list = this$1.branches; i < list.length; i += 1) {
+        var ref = list[i];
+            var test = ref[0];
+            var expression = ref[1];
+
+            fn(test);
+        fn(expression);
+    }
+    fn(this.otherwise);
+};
+
+module.exports = Case;
+
+},{"../types":143,"assert":11}],128:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+
+                                                
+                                                     
+                                                           
+                                     
+
+var Coalesce = function Coalesce(key    , type  , args               ) {
+    this.key = key;
+    this.type = type;
+    this.args = args;
+};
+
+Coalesce.parse = function parse (args          , context            ) {
+    if (args.length < 2) {
+        return context.error("Expectected at least one argument.");
+    }
+    var outputType   = (null );
+    if (context.expectedType && context.expectedType.kind !== 'value') {
+        outputType = context.expectedType;
+    }
+    var parsedArgs = [];
+    for (var i = 0, list = args.slice(1); i < list.length; i += 1) {
+        var arg = list[i];
+
+            var parsed = context.parse(arg, 1 + parsedArgs.length, outputType);
+        if (!parsed) { return null; }
+        outputType = outputType || parsed.type;
+        parsedArgs.push(parsed);
+    }
+    assert(outputType);
+    return new Coalesce(context.key, (outputType ), parsedArgs);
+};
+
+Coalesce.prototype.evaluate = function evaluate (ctx               ) {
+        var this$1 = this;
+
+    var result = null;
+    for (var i = 0, list = this$1.args; i < list.length; i += 1) {
+        var arg = list[i];
+
+            result = arg.evaluate(ctx);
+        if (result !== null) { break; }
+    }
+    return result;
+};
+
+Coalesce.prototype.eachChild = function eachChild (fn                  ) {
+    this.args.forEach(fn);
+};
+
+module.exports = Coalesce;
+
+},{"assert":11}],129:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var ref = require('../types');
+var ColorType = ref.ColorType;
+var ValueType = ref.ValueType;
+var NumberType = ref.NumberType;
+
+var ref$1 = require('../values');
+var Color = ref$1.Color;
+var validateRGBA = ref$1.validateRGBA;
+var unwrap = ref$1.unwrap;
+var RuntimeError = require('../runtime_error');
+
+                                                
+                                                     
+                                                           
+                                     
+
+var types = {
+    'to-number': NumberType,
+    'to-color': ColorType
+};
+
+/**
+ * Special form for error-coalescing coercion expressions "to-number",
+ * "to-color".  Since these coercions can fail at runtime, they accept multiple
+ * arguments, only evaluating one at a time until one succeeds.
+ *
+ * @private
+ */
+var Coercion = function Coercion(key    , type  , args               ) {
+    this.key = key;
+    this.type = type;
+    this.args = args;
+};
+
+Coercion.parse = function parse (args          , context            )          {
+    if (args.length < 2)
+        { return context.error("Expected at least one argument."); }
+
+    var name     = (args[0] );
+    assert(types[name], name);
+
+    var type = types[name];
+
+    var parsed = [];
+    for (var i = 1; i < args.length; i++) {
+        var input = context.parse(args[i], i, ValueType);
+        if (!input) { return null; }
+        parsed.push(input);
+    }
+
+    return new Coercion(context.key, type, parsed);
+};
+
+Coercion.prototype.evaluate = function evaluate (ctx               ) {
+        var this$1 = this;
+
+    if (this.type.kind === 'color') {
+        var input;
+        var error;
+        for (var i = 0, list = this$1.args; i < list.length; i += 1) {
+            var arg = list[i];
+
+                input = arg.evaluate(ctx);
+            error = null;
+            if (typeof input === 'string') {
+                var c = ctx.parseColor(input);
+                if (c) { return c; }
+            } else if (Array.isArray(input)) {
+                if (input.length < 3 || input.length > 4) {
+                    error = "Invalid rbga value " + (JSON.stringify(input)) + ": expected an array containing either three or four numeric values.";
+                } else {
+                    error = validateRGBA(input[0], input[1], input[2], input[3]);
+                }
+                if (!error) {
+                    return new Color((input[0] ) / 255, (input[1] ) / 255, (input[2] ) / 255, (input[3] ));
+                }
+            }
+        }
+        throw new RuntimeError(error || ("Could not parse color from value '" + (typeof input === 'string' ? input : JSON.stringify(input)) + "'"));
+    } else {
+        var value = null;
+        for (var i$1 = 0, list$1 = this$1.args; i$1 < list$1.length; i$1 += 1) {
+            var arg$1 = list$1[i$1];
+
+                value = arg$1.evaluate(ctx);
+            if (value === null) { continue; }
+            var num = Number(value);
+            if (isNaN(num)) { continue; }
+            return num;
+        }
+        throw new RuntimeError(("Could not convert " + (JSON.stringify(unwrap(value))) + " to number."));
+    }
+};
+
+Coercion.prototype.eachChild = function eachChild (fn                  ) {
+    this.args.forEach(fn);
+};
+
+module.exports = Coercion;
+
+},{"../runtime_error":141,"../types":143,"../values":144,"assert":11}],130:[function(require,module,exports){
+'use strict';//      
+
+var UnitBezier = require('@mapbox/unitbezier');
+var interpolate = require('../../util/interpolate');
+var ref = require('../types');
+var toString = ref.toString;
+var NumberType = ref.NumberType;
+var ref$1 = require('../values');
+var Color = ref$1.Color;
+
+                                                
+                                                     
+                                                           
+                                     
+
+                               
+                      
+                        
+                                           
+                                                                              
+
+                                         
+
+var Curve = function Curve(key    , type  , interpolation               , input        , stops   ) {
+    var this$1 = this;
+
+    this.key = key;
+    this.type = type;
+    this.interpolation = interpolation;
+    this.input = input;
+
+    this.labels = [];
+    this.outputs = [];
+    for (var i = 0, list = stops; i < list.length; i += 1) {
+        var ref = list[i];
+        var label = ref[0];
+        var expression = ref[1];
+
+        this$1.labels.push(label);
+        this$1.outputs.push(expression);
+    }
+};
+
+Curve.interpolationFactor = function interpolationFactor (interpolation               , input    , lower    , upper    ) {
+    var t = 0;
+    if (interpolation.name === 'exponential') {
+        t = exponentialInterpolation(input, interpolation.base, lower, upper);
+    } else if (interpolation.name === 'linear') {
+        t = exponentialInterpolation(input, 1, lower, upper);
+    } else if (interpolation.name === 'cubic-bezier') {
+        var c = interpolation.controlPoints;
+        var ub = new UnitBezier(c[0], c[1], c[2], c[3]);
+        t = ub.solve(exponentialInterpolation(input, 1, lower, upper));
+    }
+    return t;
+};
+
+Curve.parse = function parse (args          , context            ) {
+    var interpolation = args[1];
+        var input = args[2];
+        var rest = args.slice(3);
+
+    if (!Array.isArray(interpolation) || interpolation.length === 0) {
+        return context.error("Expected an interpolation type expression.", 1);
+    }
+
+    if (interpolation[0] === 'step') {
+        interpolation = { name: 'step' };
+    } else if (interpolation[0] === 'linear') {
+        interpolation = { name: 'linear' };
+    } else if (interpolation[0] === 'exponential') {
+        var base = interpolation[1];
+        if (typeof base !== 'number')
+            { return context.error("Exponential interpolation requires a numeric base.", 1, 1); }
+        interpolation = {
+            name: 'exponential',
+            base: base
+        };
+    } else if (interpolation[0] === 'cubic-bezier') {
+        var controlPoints = interpolation.slice(1);
+        if (
+            controlPoints.length !== 4 ||
+            controlPoints.some(function (t) { return typeof t !== 'number' || t < 0 || t > 1; })
+        ) {
+            return context.error('Cubic bezier interpolation requires four numeric arguments with values between 0 and 1.', 1);
+        }
+
+        interpolation = {
+            name: 'cubic-bezier',
+            controlPoints: (controlPoints )
+        };
+    } else {
+        return context.error(("Unknown interpolation type " + (String(interpolation[0]))), 1, 0);
+    }
+
+    var isStep = interpolation.name === 'step';
+
+    var minArgs = isStep ? 5 : 4;
+    if (args.length - 1 < minArgs)
+        { return context.error(("Expected at least " + minArgs + " arguments, but found only " + (args.length - 1) + ".")); }
+
+    var parity = minArgs % 2;
+    if ((args.length - 1) % 2 !== parity) {
+        return context.error(("Expected an " + (parity === 0 ? 'even' : 'odd') + " number of arguments."));
+    }
+
+    input = context.parse(input, 2, NumberType);
+    if (!input) { return null; }
+
+    var stops    = [];
+
+    var outputType   = (null );
+    if (context.expectedType && context.expectedType.kind !== 'value') {
+        outputType = context.expectedType;
+    }
+
+    if (isStep) {
+        rest.unshift(-Infinity);
+    }
+
+    for (var i = 0; i < rest.length; i += 2) {
+        var label = rest[i];
+        var value = rest[i + 1];
+
+        var labelKey = isStep ? i + 2 : i + 3;
+        var valueKey = isStep ? i + 3 : i + 4;
+
+        if (typeof label !== 'number') {
+            return context.error('Input/output pairs for "curve" expressions must be defined using literal numeric values (not computed expressions) for the input values.', labelKey);
+        }
+
+        if (stops.length && stops[stops.length - 1][0] > label) {
+            return context.error('Input/output pairs for "curve" expressions must be arranged with input values in strictly ascending order.', labelKey);
+        }
+
+        var parsed = context.parse(value, valueKey, outputType);
+        if (!parsed) { return null; }
+        outputType = outputType || parsed.type;
+        stops.push([label, parsed]);
+    }
+
+    if (interpolation.name !== 'step' &&
+        outputType.kind !== 'number' &&
+        outputType.kind !== 'color' &&
+        !(outputType.kind === 'array' && outputType.itemType.kind === 'number')) {
+        return context.error(("Type " + (toString(outputType)) + " is not interpolatable, and thus cannot be used as a " + (interpolation.name) + " curve's output type."));
+    }
+
+    return new Curve(context.key, outputType, interpolation, input, stops);
+};
+
+Curve.prototype.evaluate = function evaluate (ctx               ) {
+    var labels = this.labels;
+    var outputs = this.outputs;
+
+    if (labels.length === 1) {
+        return outputs[0].evaluate(ctx);
+    }
+
+    var value = ((this.input.evaluate(ctx) )    );
+    if (value <= labels[0]) {
+        return outputs[0].evaluate(ctx);
+    }
+
+    var stopCount = labels.length;
+    if (value >= labels[stopCount - 1]) {
+        return outputs[stopCount - 1].evaluate(ctx);
+    }
+
+    var index = findStopLessThanOrEqualTo(labels, value);
+    if (this.interpolation.name === 'step') {
+        return outputs[index].evaluate(ctx);
+    }
+
+    var lower = labels[index];
+    var upper = labels[index + 1];
+    var t = Curve.interpolationFactor(this.interpolation, value, lower, upper);
+
+    var outputLower = outputs[index].evaluate(ctx);
+    var outputUpper = outputs[index + 1].evaluate(ctx);
+
+    var type = this.type.kind.toLowerCase();
+    if (type === 'color') {
+        return new (Function.prototype.bind.apply( Color, [ null ].concat( interpolate.color((outputLower ).value, (outputUpper ).value, t)) ));
+    }
+
+    return interpolate[type](outputLower, outputUpper, t);
+};
+
+Curve.prototype.eachChild = function eachChild (fn                  ) {
+        var this$1 = this;
+
+    fn(this.input);
+    for (var i = 0, list = this$1.outputs; i < list.length; i += 1) {
+        var expression = list[i];
+
+            fn(expression);
+    }
+};
+
+/**
+ * Returns a ratio that can be used to interpolate between exponential function
+ * stops.
+ * How it works: Two consecutive stop values define a (scaled and shifted) exponential function `f(x) = a * base^x + b`, where `base` is the user-specified base,
+ * and `a` and `b` are constants affording sufficient degrees of freedom to fit
+ * the function to the given stops.
+ *
+ * Here's a bit of algebra that lets us compute `f(x)` directly from the stop
+ * values without explicitly solving for `a` and `b`:
+ *
+ * First stop value: `f(x0) = y0 = a * base^x0 + b`
+ * Second stop value: `f(x1) = y1 = a * base^x1 + b`
+ * => `y1 - y0 = a(base^x1 - base^x0)`
+ * => `a = (y1 - y0)/(base^x1 - base^x0)`
+ *
+ * Desired value: `f(x) = y = a * base^x + b`
+ * => `f(x) = y0 + a * (base^x - base^x0)`
+ *
+ * From the above, we can replace the `a` in `a * (base^x - base^x0)` and do a
+ * little algebra:
+ * ```
+ * a * (base^x - base^x0) = (y1 - y0)/(base^x1 - base^x0) * (base^x - base^x0)
+ *                     = (y1 - y0) * (base^x - base^x0) / (base^x1 - base^x0)
+ * ```
+ *
+ * If we let `(base^x - base^x0) / (base^x1 base^x0)`, then we have
+ * `f(x) = y0 + (y1 - y0) * ratio`.  In other words, `ratio` may be treated as
+ * an interpolation factor between the two stops' output values.
+ *
+ * (Note: a slightly different form for `ratio`,
+ * `(base^(x-x0) - 1) / (base^(x1-x0) - 1) `, is equivalent, but requires fewer
+ * expensive `Math.pow()` operations.)
+ *
+ * @private
+*/
+function exponentialInterpolation(input, base, lowerValue, upperValue) {
+    var difference = upperValue - lowerValue;
+    var progress = input - lowerValue;
+
+    if (difference === 0) {
+        return 0;
+    } else if (base === 1) {
+        return progress / difference;
+    } else {
+        return (Math.pow(base, progress) - 1) / (Math.pow(base, difference) - 1);
+    }
+}
+
+module.exports = Curve;
+
+/**
+ * Returns the index of the last stop <= input, or 0 if it doesn't exist.
+ * @private
+ */
+function findStopLessThanOrEqualTo(stops, input) {
+    var n = stops.length;
+    var lowerIndex = 0;
+    var upperIndex = n - 1;
+    var currentIndex = 0;
+    var currentValue, upperValue;
+
+    while (lowerIndex <= upperIndex) {
+        currentIndex = Math.floor((lowerIndex + upperIndex) / 2);
+        currentValue = stops[currentIndex];
+        upperValue = stops[currentIndex + 1];
+        if (input === currentValue || input > currentValue && input < upperValue) { // Search complete
+            return currentIndex;
+        } else if (currentValue < input) {
+            lowerIndex = currentIndex + 1;
+        } else if (currentValue > input) {
+            upperIndex = currentIndex - 1;
+        }
+    }
+
+    return Math.max(currentIndex - 1, 0);
+}
+
+},{"../../util/interpolate":153,"../types":143,"../values":144,"@mapbox/unitbezier":5}],131:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../types');
+var NullType = ref.NullType;
+var NumberType = ref.NumberType;
+var StringType = ref.StringType;
+var BooleanType = ref.BooleanType;
+var ColorType = ref.ColorType;
+var ObjectType = ref.ObjectType;
+var ValueType = ref.ValueType;
+var ErrorType = ref.ErrorType;
+var array = ref.array;
+var toString = ref.toString;
+
+var ref$1 = require('../values');
+var typeOf = ref$1.typeOf;
+var Color = ref$1.Color;
+var validateRGBA = ref$1.validateRGBA;
+var ref$2 = require('../compound_expression');
+var CompoundExpression = ref$2.CompoundExpression;
+var varargs = ref$2.varargs;
+var RuntimeError = require('../runtime_error');
+var Let = require('./let');
+var Var = require('./var');
+var Literal = require('./literal');
+var Assertion = require('./assertion');
+var ArrayAssertion = require('./array');
+var Coercion = require('./coercion');
+var At = require('./at');
+var Match = require('./match');
+var Case = require('./case');
+var Curve = require('./curve');
+var Coalesce = require('./coalesce');
+
+                                                
+
+var expressions                                  = {
+    // special forms
+    'let': Let,
+    'var': Var,
+    'literal': Literal,
+    'string': Assertion,
+    'number': Assertion,
+    'boolean': Assertion,
+    'object': Assertion,
+    'array': ArrayAssertion,
+    'to-number': Coercion,
+    'to-color': Coercion,
+    'at': At,
+    'case': Case,
+    'match': Match,
+    'coalesce': Coalesce,
+    'curve': Curve,
+};
+
+function rgba(ctx, ref) {
+    var r = ref[0];
+    var g = ref[1];
+    var b = ref[2];
+    var a = ref[3];
+
+    r = r.evaluate(ctx);
+    g = g.evaluate(ctx);
+    b = b.evaluate(ctx);
+    a = a && a.evaluate(ctx);
+    var error = validateRGBA(r, g, b, a);
+    if (error) { throw new RuntimeError(error); }
+    return new Color(r / 255, g / 255, b / 255, a);
+}
+
+function has(key, obj) {
+    return key in obj;
+}
+
+function get(key, obj) {
+    var v = obj[key];
+    return typeof v === 'undefined' ? null : v;
+}
+
+function length(ctx, ref) {
+    var v = ref[0];
+
+    return v.evaluate(ctx).length;
+}
+
+function eq(ctx, ref) {
+var a = ref[0];
+var b = ref[1];
+ return a.evaluate(ctx) === b.evaluate(ctx); }
+function ne(ctx, ref) {
+var a = ref[0];
+var b = ref[1];
+ return a.evaluate(ctx) !== b.evaluate(ctx); }
+function lt(ctx, ref) {
+var a = ref[0];
+var b = ref[1];
+ return a.evaluate(ctx) < b.evaluate(ctx); }
+function gt(ctx, ref) {
+var a = ref[0];
+var b = ref[1];
+ return a.evaluate(ctx) > b.evaluate(ctx); }
+function lteq(ctx, ref) {
+var a = ref[0];
+var b = ref[1];
+ return a.evaluate(ctx) <= b.evaluate(ctx); }
+function gteq(ctx, ref) {
+var a = ref[0];
+var b = ref[1];
+ return a.evaluate(ctx) >= b.evaluate(ctx); }
+
+CompoundExpression.register(expressions, {
+    'error': [
+        ErrorType,
+        [StringType],
+        function (ctx, ref) {
+        var v = ref[0];
+ throw new RuntimeError(v.evaluate(ctx)); }
+    ],
+    'typeof': [
+        StringType,
+        [ValueType],
+        function (ctx, ref) {
+            var v = ref[0];
+
+            return toString(typeOf(v.evaluate(ctx)));
+}
+    ],
+    'to-string': [
+        StringType,
+        [ValueType],
+        function (ctx, ref) {
+            var v = ref[0];
+
+            v = v.evaluate(ctx);
+            var type = typeof v;
+            if (v === null || type === 'string' || type === 'number' || type === 'boolean') {
+                return String(v);
+            } else if (v instanceof Color) {
+                var ref$1 = v.value;
+                var r = ref$1[0];
+                var g = ref$1[1];
+                var b = ref$1[2];
+                var a = ref$1[3];
+                return ("rgba(" + (r * 255) + ", " + (g * 255) + ", " + (b * 255) + ", " + a + ")");
+            } else {
+                return JSON.stringify(v);
+            }
+        }
+    ],
+    'to-boolean': [
+        BooleanType,
+        [ValueType],
+        function (ctx, ref) {
+            var v = ref[0];
+
+            return Boolean(v.evaluate(ctx));
+}
+    ],
+    'to-rgba': [
+        array(NumberType, 4),
+        [ColorType],
+        function (ctx, ref) {
+            var v = ref[0];
+
+            return v.evaluate(ctx).value;
+}
+    ],
+    'rgb': [
+        ColorType,
+        [NumberType, NumberType, NumberType],
+        rgba
+    ],
+    'rgba': [
+        ColorType,
+        [NumberType, NumberType, NumberType, NumberType],
+        rgba
+    ],
+    'length': {
+        type: NumberType,
+        overloads: [
+            [
+                [StringType],
+                length
+            ], [
+                [array(ValueType)],
+                length
+            ]
+        ]
+    },
+    'has': {
+        type: BooleanType,
+        overloads: [
+            [
+                [StringType],
+                function (ctx, ref) {
+                    var key = ref[0];
+
+                    return has(key.evaluate(ctx), ctx.properties());
+}
+            ], [
+                [StringType, ObjectType],
+                function (ctx, ref) {
+                    var key = ref[0];
+                    var obj = ref[1];
+
+                    return has(key.evaluate(ctx), obj.evaluate(ctx));
+}
+            ]
+        ]
+    },
+    'get': {
+        type: ValueType,
+        overloads: [
+            [
+                [StringType],
+                function (ctx, ref) {
+                    var key = ref[0];
+
+                    return get(key.evaluate(ctx), ctx.properties());
+}
+            ], [
+                [StringType, ObjectType],
+                function (ctx, ref) {
+                    var key = ref[0];
+                    var obj = ref[1];
+
+                    return get(key.evaluate(ctx), obj.evaluate(ctx));
+}
+            ]
+        ]
+    },
+    'properties': [
+        ObjectType,
+        [],
+        function (ctx) { return ctx.properties(); }
+    ],
+    'geometry-type': [
+        StringType,
+        [],
+        function (ctx) { return ctx.geometryType(); }
+    ],
+    'id': [
+        ValueType,
+        [],
+        function (ctx) { return ctx.id(); }
+    ],
+    'zoom': [
+        NumberType,
+        [],
+        function (ctx) { return ctx.globals.zoom; }
+    ],
+    'heatmap-density': [
+        NumberType,
+        [],
+        function (ctx) { return ctx.globals.heatmapDensity || 0; }
+    ],
+    '+': [
+        NumberType,
+        varargs(NumberType),
+        function (ctx, args) {
+            var result = 0;
+            for (var i = 0, list = args; i < list.length; i += 1) {
+                var arg = list[i];
+
+                result += arg.evaluate(ctx);
+            }
+            return result;
+        }
+    ],
+    '*': [
+        NumberType,
+        varargs(NumberType),
+        function (ctx, args) {
+            var result = 1;
+            for (var i = 0, list = args; i < list.length; i += 1) {
+                var arg = list[i];
+
+                result *= arg.evaluate(ctx);
+            }
+            return result;
+        }
+    ],
+    '-': {
+        type: NumberType,
+        overloads: [
+            [
+                [NumberType, NumberType],
+                function (ctx, ref) {
+                    var a = ref[0];
+                    var b = ref[1];
+
+                    return a.evaluate(ctx) - b.evaluate(ctx);
+}
+            ], [
+                [NumberType],
+                function (ctx, ref) {
+                    var a = ref[0];
+
+                    return -a.evaluate(ctx);
+}
+            ]
+        ]
+    },
+    '/': [
+        NumberType,
+        [NumberType, NumberType],
+        function (ctx, ref) {
+            var a = ref[0];
+            var b = ref[1];
+
+            return a.evaluate(ctx) / b.evaluate(ctx);
+}
+    ],
+    '%': [
+        NumberType,
+        [NumberType, NumberType],
+        function (ctx, ref) {
+            var a = ref[0];
+            var b = ref[1];
+
+            return a.evaluate(ctx) % b.evaluate(ctx);
+}
+    ],
+    'ln2': [
+        NumberType,
+        [],
+        function () { return Math.LN2; }
+    ],
+    'pi': [
+        NumberType,
+        [],
+        function () { return Math.PI; }
+    ],
+    'e': [
+        NumberType,
+        [],
+        function () { return Math.E; }
+    ],
+    '^': [
+        NumberType,
+        [NumberType, NumberType],
+        function (ctx, ref) {
+            var b = ref[0];
+            var e = ref[1];
+
+            return Math.pow(b.evaluate(ctx), e.evaluate(ctx));
+}
+    ],
+    'log10': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.log10(n.evaluate(ctx));
+}
+    ],
+    'ln': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.log(n.evaluate(ctx));
+}
+    ],
+    'log2': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.log2(n.evaluate(ctx));
+}
+    ],
+    'sin': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.sin(n.evaluate(ctx));
+}
+    ],
+    'cos': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.cos(n.evaluate(ctx));
+}
+    ],
+    'tan': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.tan(n.evaluate(ctx));
+}
+    ],
+    'asin': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.asin(n.evaluate(ctx));
+}
+    ],
+    'acos': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.acos(n.evaluate(ctx));
+}
+    ],
+    'atan': [
+        NumberType,
+        [NumberType],
+        function (ctx, ref) {
+            var n = ref[0];
+
+            return Math.atan(n.evaluate(ctx));
+}
+    ],
+    'min': [
+        NumberType,
+        varargs(NumberType),
+        function (ctx, args) { return Math.min.apply(Math, args.map(function (arg) { return arg.evaluate(ctx); })); }
+    ],
+    'max': [
+        NumberType,
+        varargs(NumberType),
+        function (ctx, args) { return Math.max.apply(Math, args.map(function (arg) { return arg.evaluate(ctx); })); }
+    ],
+    '==': {
+        type: BooleanType,
+        overloads: [
+            [[NumberType, NumberType], eq],
+            [[StringType, StringType], eq],
+            [[BooleanType, BooleanType], eq],
+            [[NullType, NullType], eq]
+        ]
+    },
+    '!=': {
+        type: BooleanType,
+        overloads: [
+            [[NumberType, NumberType], ne],
+            [[StringType, StringType], ne],
+            [[BooleanType, BooleanType], ne],
+            [[NullType, NullType], ne]
+        ]
+    },
+    '>': {
+        type: BooleanType,
+        overloads: [
+            [[NumberType, NumberType], gt],
+            [[StringType, StringType], gt]
+        ]
+    },
+    '<': {
+        type: BooleanType,
+        overloads: [
+            [[NumberType, NumberType], lt],
+            [[StringType, StringType], lt]
+        ]
+    },
+    '>=': {
+        type: BooleanType,
+        overloads: [
+            [[NumberType, NumberType], gteq],
+            [[StringType, StringType], gteq]
+        ]
+    },
+    '<=': {
+        type: BooleanType,
+        overloads: [
+            [[NumberType, NumberType], lteq],
+            [[StringType, StringType], lteq]
+        ]
+    },
+    'all': {
+        type: BooleanType,
+        overloads: [
+            [
+                [BooleanType, BooleanType],
+                function (ctx, ref) {
+                    var a = ref[0];
+                    var b = ref[1];
+
+                    return a.evaluate(ctx) && b.evaluate(ctx);
+}
+            ],
+            [
+                varargs(BooleanType),
+                function (ctx, args) {
+                    for (var i = 0, list = args; i < list.length; i += 1) {
+                        var arg = list[i];
+
+                        if (!arg.evaluate(ctx))
+                            { return false; }
+                    }
+                    return true;
+                }
+            ]
+        ]
+    },
+    'any': {
+        type: BooleanType,
+        overloads: [
+            [
+                [BooleanType, BooleanType],
+                function (ctx, ref) {
+                    var a = ref[0];
+                    var b = ref[1];
+
+                    return a.evaluate(ctx) || b.evaluate(ctx);
+}
+            ],
+            [
+                varargs(BooleanType),
+                function (ctx, args) {
+                    for (var i = 0, list = args; i < list.length; i += 1) {
+                        var arg = list[i];
+
+                        if (arg.evaluate(ctx))
+                            { return true; }
+                    }
+                    return false;
+                }
+            ]
+        ]
+    },
+    '!': [
+        BooleanType,
+        [BooleanType],
+        function (ctx, ref) {
+            var b = ref[0];
+
+            return !b.evaluate(ctx);
+}
+    ],
+    'upcase': [
+        StringType,
+        [StringType],
+        function (ctx, ref) {
+            var s = ref[0];
+
+            return s.evaluate(ctx).toUpperCase();
+}
+    ],
+    'downcase': [
+        StringType,
+        [StringType],
+        function (ctx, ref) {
+            var s = ref[0];
+
+            return s.evaluate(ctx).toLowerCase();
+}
+    ],
+    'concat': [
+        StringType,
+        varargs(StringType),
+        function (ctx, args) { return args.map(function (arg) { return arg.evaluate(ctx); }).join(''); }
+    ]
+});
+
+module.exports = expressions;
+
+},{"../compound_expression":123,"../runtime_error":141,"../types":143,"../values":144,"./array":124,"./assertion":125,"./at":126,"./case":127,"./coalesce":128,"./coercion":129,"./curve":130,"./let":132,"./literal":133,"./match":134,"./var":135}],132:[function(require,module,exports){
+'use strict';//      
+
+                                     
+                                                
+                                                     
+                                                            
+
+var Let = function Let(key    , bindings                         , result        ) {
+    this.key = key;
+    this.type = result.type;
+    this.bindings = [].concat(bindings);
+    this.result = result;
+};
+
+Let.prototype.evaluate = function evaluate (ctx               ) {
+    ctx.pushScope(this.bindings);
+    var result = this.result.evaluate(ctx);
+    ctx.popScope();
+    return result;
+};
+
+Let.prototype.eachChild = function eachChild (fn                  ) {
+        var this$1 = this;
+
+    for (var i = 0, list = this$1.bindings; i < list.length; i += 1) {
+        var binding = list[i];
+
+            fn(binding[1]);
+    }
+    fn(this.result);
+};
+
+Let.parse = function parse (args          , context            ) {
+    if (args.length < 4)
+        { return context.error(("Expected at least 3 arguments, but found " + (args.length - 1) + " instead.")); }
+
+    var bindings                          = [];
+    for (var i = 1; i < args.length - 1; i += 2) {
+        var name = args[i];
+
+        if (typeof name !== 'string') {
+            return context.error(("Expected string, but found " + (typeof name) + " instead."), i);
+        }
+
+        if (/[^a-zA-Z0-9_]/.test(name)) {
+            return context.error("Variable names must contain only alphanumeric characters or '_'.", i);
+        }
+
+        var value = context.parse(args[i + 1], i + 1);
+        if (!value) { return null; }
+
+        bindings.push([name, value]);
+    }
+
+    var result = context.parse(args[args.length - 1], args.length - 1, undefined, bindings);
+    if (!result) { return null; }
+
+    return new Let(context.key, bindings, result);
+};
+
+module.exports = Let;
+
+},{}],133:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../values');
+var isValue = ref.isValue;
+var typeOf = ref.typeOf;
+
+                                     
+                                        
+                                                
+                                                     
+
+var Literal = function Literal(key   , type  , value   ) {
+    this.key = key;
+    this.type = type;
+    this.value = value;
+};
+
+Literal.parse = function parse (args          , context            ) {
+    if (args.length !== 2)
+        { return context.error(("'literal' expression requires exactly one argument, but found " + (args.length - 1) + " instead.")); }
+
+    if (!isValue(args[1]))
+        { return context.error("invalid value"); }
+
+    var value = (args[1] );
+    var type = typeOf(value);
+
+    // special case: infer the item type if possible for zero-length arrays
+    var expected = context.expectedType;
+    if (
+        type.kind === 'array' &&
+        type.N === 0 &&
+        expected &&
+        expected.kind === 'array' &&
+        (typeof expected.N !== 'number' || expected.N === 0)
+    ) {
+        type = expected;
+    }
+
+    return new Literal(context.key, type, value);
+};
+
+Literal.prototype.evaluate = function evaluate () {
+    return this.value;
+};
+
+Literal.prototype.eachChild = function eachChild () {};
+
+module.exports = Literal;
+
+},{"../values":144}],134:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var ref = require('../values');
+var typeOf = ref.typeOf;
+
+                                                
+                                                     
+                                                           
+                                     
+
+// Map input label values to output expression index
+                                         
+
+var Match = function Match(key    , inputType  , outputType  , input        , cases   , outputs               , otherwise        ) {
+    this.key = key;
+    this.inputType = inputType;
+    this.type = outputType;
+    this.input = input;
+    this.cases = cases;
+    this.outputs = outputs;
+    this.otherwise = otherwise;
+};
+
+Match.parse = function parse (args          , context            ) {
+    if (args.length < 5)
+        { return context.error(("Expected at least 4 arguments, but found only " + (args.length - 1) + ".")); }
+    if (args.length % 2 !== 1)
+        { return context.error("Expected an even number of arguments."); }
+
+    var inputType;
+    var outputType;
+    if (context.expectedType && context.expectedType.kind !== 'value') {
+        outputType = context.expectedType;
+    }
+    var cases = {};
+    var outputs = [];
+    for (var i = 2; i < args.length - 1; i += 2) {
+        var labels = args[i];
+        var value = args[i + 1];
+
+        if (!Array.isArray(labels)) {
+            labels = [labels];
+        }
+
+        var labelContext = context.concat(i);
+        if (labels.length === 0) {
+            return labelContext.error('Expected at least one branch label.');
+        }
+
+        for (var i$1 = 0, list = labels; i$1 < list.length; i$1 += 1) {
+            var label = list[i$1];
+
+                if (typeof label !== 'number' && typeof label !== 'string') {
+                return labelContext.error("Branch labels must be numbers or strings.");
+            } else if (typeof label === 'number' && Math.abs(label) > Number.MAX_SAFE_INTEGER) {
+                return labelContext.error(("Branch labels must be integers no larger than " + (Number.MAX_SAFE_INTEGER) + "."));
+
+            } else if (typeof label === 'number' && Math.floor(label) !== label) {
+                return labelContext.error("Numeric branch labels must be integer values.");
+
+            } else if (!inputType) {
+                inputType = typeOf(label);
+            } else if (labelContext.checkSubtype(inputType, typeOf(label))) {
+                return null;
+            }
+
+            if (typeof cases[String(label)] !== 'undefined') {
+                return labelContext.error('Branch labels must be unique.');
+            }
+
+            cases[String(label)] = outputs.length;
+        }
+
+        var result = context.parse(value, i, outputType);
+        if (!result) { return null; }
+        outputType = outputType || result.type;
+        outputs.push(result);
+    }
+
+    var input = context.parse(args[1], 1, inputType);
+    if (!input) { return null; }
+
+    var otherwise = context.parse(args[args.length - 1], args.length - 1, outputType);
+    if (!otherwise) { return null; }
+
+    assert(inputType && outputType);
+    return new Match(context.key, (inputType ), (outputType ), input, cases, outputs, otherwise);
+};
+
+Match.prototype.evaluate = function evaluate (ctx               ) {
+    var input = (this.input.evaluate(ctx) );
+    return (this.outputs[this.cases[input]] || this.otherwise).evaluate(ctx);
+};
+
+Match.prototype.eachChild = function eachChild (fn                  ) {
+    fn(this.input);
+    this.outputs.forEach(fn);
+    fn(this.otherwise);
+};
+
+module.exports = Match;
+
+},{"../values":144,"assert":11}],135:[function(require,module,exports){
+'use strict';//      
+
+                                     
+                                                
+                                                     
+                                                            
+
+var Var = function Var(key    , name    , type  ) {
+    this.key = key;
+    this.type = type;
+    this.name = name;
+};
+
+Var.parse = function parse (args          , context            ) {
+    if (args.length !== 2 || typeof args[1] !== 'string')
+        { return context.error("'var' expression requires exactly one string literal argument."); }
+
+    var name = args[1];
+    if (!context.scope.has(name)) {
+        return context.error(("Unknown variable \"" + name + "\". Make sure \"" + name + "\" has been bound in an enclosing \"let\" expression before using it."), 1);
+    }
+
+    return new Var(context.key, name, context.scope.get(name).type);
+};
+
+Var.prototype.evaluate = function evaluate (ctx               ) {
+    return ctx.scope.get(this.name).evaluate(ctx);
+};
+
+Var.prototype.eachChild = function eachChild () {};
+
+module.exports = Var;
+
+},{}],136:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var Scope = require('./scope');
+var parseColor = require('../util/parse_color');
+var ref = require('./values');
+var Color = ref.Color;
+
+                                                         
+                                               
+
+var geometryTypes = ['Unknown', 'Point', 'LineString', 'Polygon'];
+
+var EvaluationContext = function EvaluationContext() {
+    this.scope = new Scope();
+    this._parseColorCache = {};
+};
+
+EvaluationContext.prototype.id = function id () {
+    return this.feature && 'id' in this.feature ? this.feature.id : null;
+};
+
+EvaluationContext.prototype.geometryType = function geometryType () {
+    return this.feature ? typeof this.feature.type === 'number' ? geometryTypes[this.feature.type] : this.feature.type : null;
+};
+
+EvaluationContext.prototype.properties = function properties () {
+    return this.feature && this.feature.properties || {};
+};
+
+EvaluationContext.prototype.pushScope = function pushScope (bindings                         ) {
+    this.scope = this.scope.concat(bindings);
+};
+
+EvaluationContext.prototype.popScope = function popScope () {
+    assert(this.scope.parent);
+    this.scope = (this.scope.parent );
+};
+
+EvaluationContext.prototype.parseColor = function parseColor$1 (input    )     {
+    var cached = this._parseColorCache[input];
+    if (!cached) {
+        var c = parseColor(input);
+        cached = this._parseColorCache[input] = c ? new Color(c[0], c[1], c[2], c[3]) : null;
+    }
+    return cached;
+};
+
+module.exports = EvaluationContext;
+
+},{"../util/parse_color":154,"./scope":142,"./values":144,"assert":11}],137:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var ParsingError = require('./parsing_error');
+var ParsingContext = require('./parsing_context');
+var EvaluationContext = require('./evaluation_context');
+var ref = require('./compound_expression');
+var CompoundExpression = ref.CompoundExpression;
+var Curve = require('./definitions/curve');
+var Coalesce = require('./definitions/coalesce');
+var Let = require('./definitions/let');
+var definitions = require('./definitions');
+var isConstant = require('./is_constant');
+var ref$1 = require('./values');
+var unwrap = ref$1.unwrap;
+
+                                  
+                                    
+                                             
+                                                           
+
+                       
+                                                                                                                          
+              
+                                
+  
+
+                                
+                 
+                           
+  
+
+                                                           
+
+                                     
+                    
+                               
+  
+
+                               
+                      
+                                    
+                         
+                               
+                                                                    
+                         
+  
+
+                                                                   
+                      
+                        
+                          
+                               
+                                                                    
+                          
+                                     
+                            
+  
+
+                                                              
+                      
+                      
+                          
+                               
+                                                           
+                          
+  
+
+                                                                                 
+
+                                          
+                   
+                        
+                                 
+                    
+     
+                   
+                        
+                                 
+                    
+     
+                    
+                        
+                                 
+                     
+     
+                 
+                        
+                                 
+                           
+                    
+     
+                  
+                        
+                                 
+                                           
+                    
+                          
+     
+                  
+                        
+                                 
+                    
+  
+
+function isExpression(expression       ) {
+    return Array.isArray(expression) && expression.length > 0 &&
+        typeof expression[0] === 'string' && expression[0] in definitions;
+}
+
+/**
+ * Parse and typecheck the given style spec JSON expression.  If
+ * options.defaultValue is provided, then the resulting StyleExpression's
+ * `evaluate()` method will handle errors by logging a warning (once per
+ * message) and returning the default value.  Otherwise, it will throw
+ * evaluation errors.
+ *
+ * @private
+ */
+function createExpression(expression       ,
+                          propertySpec                            ,
+                          context                        ,
+                          options)                                          {
+    if ( options === void 0 ) options                           = {};
+
+    var parser = new ParsingContext(definitions, [], getExpectedType(propertySpec));
+    var parsed = parser.parse(expression);
+    if (!parsed) {
+        assert(parser.errors.length > 0);
+        return {
+            result: 'error',
+            errors: parser.errors
+        };
+    }
+
+    var evaluator = new EvaluationContext();
+
+    var evaluate;
+    if (options.handleErrors === false) {
+        evaluate = function (globals, feature) {
+            evaluator.globals = globals;
+            evaluator.feature = feature;
+            return parsed.evaluate(evaluator);
+        };
+    } else {
+        var warningHistory                           = {};
+        var defaultValue = getDefaultValue(propertySpec);
+        evaluate = function (globals, feature) {
+            evaluator.globals = globals;
+            evaluator.feature = feature;
+            try {
+                var val = parsed.evaluate(evaluator);
+                if (val === null || val === undefined) {
+                    return unwrap(defaultValue);
+                }
+                return unwrap(val);
+            } catch (e) {
+                if (!warningHistory[e.message]) {
+                    warningHistory[e.message] = true;
+                    if (typeof console !== 'undefined') {
+                        console.warn(e.message);
+                    }
+                }
+                return unwrap(defaultValue);
+            }
+        };
+    }
+
+    var isFeatureConstant = isConstant.isFeatureConstant(parsed);
+    if (!isFeatureConstant && context === 'property' && !propertySpec['property-function']) {
+        return {
+            result: 'error',
+            errors: [new ParsingError('', 'property expressions not supported')]
+        };
+    }
+
+    var isZoomConstant = isConstant.isGlobalPropertyConstant(parsed, ['zoom']);
+    if (isZoomConstant) {
+        return {
+            result: 'success',
+            context: context,
+            isZoomConstant: true,
+            isFeatureConstant: isFeatureConstant,
+            evaluate: evaluate,
+            parsed: parsed
+        };
+    } else if (context === 'filter') {
+        return {
+            result: 'success',
+            context: 'filter',
+            isZoomConstant: false,
+            isFeatureConstant: isFeatureConstant,
+            evaluate: evaluate,
+            parsed: parsed
+        };
+    }
+
+    var zoomCurve = findZoomCurve(parsed);
+    if (!zoomCurve) {
+        return {
+            result: 'error',
+            errors: [new ParsingError('', '"zoom" expression may only be used as input to a top-level "curve" expression.')]
+        };
+    } else if (!(zoomCurve instanceof Curve)) {
+        return {
+            result: 'error',
+            errors: [new ParsingError(zoomCurve.key, zoomCurve.error)]
+        };
+    } else if (zoomCurve.interpolation.name !== 'step' && propertySpec['function'] === 'piecewise-constant') {
+        return {
+            result: 'error',
+            errors: [new ParsingError(zoomCurve.key, 'interpolation type must be "step" for this property')]
+        };
+    }
+
+    return {
+        result: 'success',
+        context: 'property',
+        isZoomConstant: false,
+        isFeatureConstant: isFeatureConstant,
+        evaluate: evaluate,
+        parsed: parsed,
+
+        // capture metadata from the curve definition that's needed for
+        // our prepopulate-and-interpolate approach to paint properties
+        // that are zoom-and-property dependent.
+        interpolation: zoomCurve.interpolation,
+        zoomStops: zoomCurve.labels
+    };
+}
+
+module.exports.createExpression = createExpression;
+module.exports.isExpression = isExpression;
+
+// Zoom-dependent expressions may only use ["zoom"] as the input to a
+// 'top-level' "curve" expression. (The curve may be wrapped in one or more
+// "let" or "coalesce" expressions.)
+function findZoomCurve(expression            )                                              {
+    if (expression instanceof Curve) {
+        var input = expression.input;
+        if (input instanceof CompoundExpression && input.name === 'zoom') {
+            return expression;
+        } else {
+            return null;
+        }
+    } else if (expression instanceof Let) {
+        return findZoomCurve(expression.result);
+    } else if (expression instanceof Coalesce) {
+        var result = null;
+        for (var i = 0, list = expression.args; i < list.length; i += 1) {
+            var arg = list[i];
+
+          var e = findZoomCurve(arg);
+            if (!e) {
+                continue;
+            } else if (e.error) {
+                return e;
+            } else if (e instanceof Curve && !result) {
+                result = e;
+            } else {
+                return {
+                    key: e.key,
+                    error: 'Only one zoom-based curve may be used in a style function.'
+                };
+            }
+        }
+
+        return result;
+    } else {
+        return null;
+    }
+}
+
+var ref$2 = require('./types');
+var ColorType = ref$2.ColorType;
+var StringType = ref$2.StringType;
+var NumberType = ref$2.NumberType;
+var BooleanType = ref$2.BooleanType;
+var ValueType = ref$2.ValueType;
+var array = ref$2.array;
+
+function getExpectedType(spec                            )              {
+    var types = {
+        color: ColorType,
+        string: StringType,
+        number: NumberType,
+        enum: StringType,
+        boolean: BooleanType
+    };
+
+    if (spec.type === 'array') {
+        return array(types[spec.value] || ValueType, spec.length);
+    }
+
+    return types[spec.type] || null;
+}
+
+var ref$3 = require('../function');
+var isFunction = ref$3.isFunction;
+var parseColor = require('../util/parse_color');
+var ref$4 = require('./values');
+var Color = ref$4.Color;
+
+function getDefaultValue(spec                            )               {
+    var defaultValue = spec.default;
+    if (spec.type === 'color' && isFunction(defaultValue)) {
+        // Special case for heatmap-color: it uses the 'default:' to define a
+        // default color ramp, but createExpression expects a simple value to fall
+        // back to in case of runtime errors
+        return [0, 0, 0, 0];
+    } else if (spec.type === 'color') {
+        var c                                   = (parseColor((defaultValue     ))     );
+        assert(Array.isArray(c));
+        return new Color(c[0], c[1], c[2], c[3]);
+    }
+    return defaultValue === undefined ? null : defaultValue;
+}
+
+},{"../function":146,"../util/parse_color":154,"./compound_expression":123,"./definitions":131,"./definitions/coalesce":128,"./definitions/curve":130,"./definitions/let":132,"./evaluation_context":136,"./is_constant":138,"./parsing_context":139,"./parsing_error":140,"./types":143,"./values":144,"assert":11}],138:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('./compound_expression');
+var CompoundExpression = ref.CompoundExpression;
+
+                                                  
+
+function isFeatureConstant(e            ) {
+    if (e instanceof CompoundExpression) {
+        if (e.name === 'get' && e.args.length === 1) {
+            return false;
+        } else if (e.name === 'has' && e.args.length === 1) {
+            return false;
+        } else if (
+            e.name === 'properties' ||
+            e.name === 'geometry-type' ||
+            e.name === 'id'
+        ) {
+            return false;
+        }
+    }
+
+    var result = true;
+    e.eachChild(function (arg) {
+        if (result && !isFeatureConstant(arg)) { result = false; }
+    });
+    return result;
+}
+
+function isGlobalPropertyConstant(e            , properties               ) {
+    if (e instanceof CompoundExpression && properties.indexOf(e.name) >= 0) { return false; }
+    var result = true;
+    e.eachChild(function (arg) {
+        if (result && !isGlobalPropertyConstant(arg, properties)) { result = false; }
+    });
+    return result;
+}
+
+module.exports = {
+    isFeatureConstant: isFeatureConstant,
+    isGlobalPropertyConstant: isGlobalPropertyConstant,
+};
+
+},{"./compound_expression":123}],139:[function(require,module,exports){
+'use strict';//      
+
+var Scope = require('./scope');
+var ref = require('./types');
+var checkSubtype = ref.checkSubtype;
+var ParsingError = require('./parsing_error');
+var Literal = require('./definitions/literal');
+
+                                             
+                                  
+
+/**
+ * State associated parsing at a given point in an expression tree.
+ * @private
+ */
+var ParsingContext = function ParsingContext(
+    definitions   ,
+    path,
+    expectedType   ,
+    scope,
+    errors
+) {
+    if ( path === void 0 ) path            = [];
+    if ( scope === void 0 ) scope    = new Scope();
+    if ( errors === void 0 ) errors                  = [];
+
+    this.definitions = definitions;
+    this.path = path;
+    this.key = path.map(function (part) { return ("[" + part + "]"); }).join('');
+    this.scope = scope;
+    this.errors = errors;
+    this.expectedType = expectedType;
+};
+
+ParsingContext.prototype.parse = function parse (expr   , index     , expectedType    , bindings                          )          {
+    var context = this;
+    if (index) {
+        context = context.concat(index, expectedType, bindings);
+    }
+
+    if (expr === null || typeof expr === 'string' || typeof expr === 'boolean' || typeof expr === 'number') {
+        expr = ['literal', expr];
+    }
+
+    if (Array.isArray(expr)) {
+        if (expr.length === 0) {
+            return context.error("Expected an array with at least one element. If you wanted a literal array, use [\"literal\", []].");
+        }
+
+        var op = expr[0];
+        if (typeof op !== 'string') {
+            context.error(("Expression name must be a string, but found " + (typeof op) + " instead. If you wanted a literal array, use [\"literal\", [...]]."), 0);
+            return null;
+        }
+
+        var Expr = context.definitions[op];
+        if (Expr) {
+            var parsed = Expr.parse(expr, context);
+            if (!parsed) { return null; }
+            var expected = context.expectedType;
+            var actual = parsed.type;
+            if (expected) {
+                // When we expect a number, string, or boolean but have a
+                // Value, wrap it in a refining assertion, and when we expect
+                // a Color but have a String or Value, wrap it in "to-color"
+                // coercion.
+                var canAssert = expected.kind === 'string' ||
+                    expected.kind === 'number' ||
+                    expected.kind === 'boolean';
+
+                if (canAssert && actual.kind === 'value') {
+                    var Assertion = require('./definitions/assertion');
+                    parsed = new Assertion(parsed.key, expected, [parsed]);
+                } else if (expected.kind === 'color' && (actual.kind === 'value' || actual.kind === 'string')) {
+                    var Coercion = require('./definitions/coercion');
+                    parsed = new Coercion(parsed.key, expected, [parsed]);
+                }
+
+                if (context.checkSubtype(expected, parsed.type)) {
+                    return null;
+                }
+            }
+
+            // If an expression's arguments are all literals, we can evaluate
+            // it immediately and replace it with a literal value in the
+            // parsed/compiled result.
+            if (!(parsed instanceof Literal) && isConstant(parsed)) {
+                var ec = new (require('./evaluation_context'))();
+                try {
+                    parsed = new Literal(parsed.key, parsed.type, parsed.evaluate(ec));
+                } catch (e) {
+                    context.error(e.message);
+                    return null;
+                }
+            }
+
+            return parsed;
+        }
+
+        return context.error(("Unknown expression \"" + op + "\". If you wanted a literal array, use [\"literal\", [...]]."), 0);
+    } else if (typeof expr === 'undefined') {
+        return context.error("'undefined' value invalid. Use null instead.");
+    } else if (typeof expr === 'object') {
+        return context.error("Bare objects invalid. Use [\"literal\", {...}] instead.");
+    } else {
+        return context.error(("Expected an array, but found " + (typeof expr) + " instead."));
+    }
+};
+
+/**
+ * Returns a copy of this context suitable for parsing the subexpression at
+ * index `index`, optionally appending to 'let' binding map.
+ *
+ * Note that `errors` property, intended for collecting errors while
+ * parsing, is copied by reference rather than cloned.
+ * @private
+ */
+ParsingContext.prototype.concat = function concat (index    , expectedType    , bindings                          ) {
+    var path = typeof index === 'number' ? this.path.concat(index) : this.path;
+    var scope = bindings ? this.scope.concat(bindings) : this.scope;
+    return new ParsingContext(
+        this.definitions,
+        path,
+        expectedType || null,
+        scope,
+        this.errors
+    );
+};
+
+/**
+ * Push a parsing (or type checking) error into the `this.errors`
+ * @param error The message
+ * @param keys Optionally specify the source of the error at a child
+ * of the current expression at `this.key`.
+ * @private
+ */
+ParsingContext.prototype.error = function error (error$1           ) {
+        var keys = [], len = arguments.length - 1;
+        while ( len-- > 0 ) keys[ len ] = arguments[ len + 1 ];
+
+    var key = "" + (this.key) + (keys.map(function (k) { return ("[" + k + "]"); }).join(''));
+    this.errors.push(new ParsingError(key, error$1));
+};
+
+/**
+ * Returns null if `t` is a subtype of `expected`; otherwise returns an
+ * error message and also pushes it to `this.errors`.
+ */
+ParsingContext.prototype.checkSubtype = function checkSubtype$1 (expected  , t  )      {
+    var error = checkSubtype(expected, t);
+    if (error) { this.error(error); }
+    return error;
+};
+
+module.exports = ParsingContext;
+
+function isConstant(expression            ) {
+    // requires within function body to workaround circular dependency
+    var ref = require('./compound_expression');
+    var CompoundExpression = ref.CompoundExpression;
+    var ref$1 = require('./is_constant');
+    var isGlobalPropertyConstant = ref$1.isGlobalPropertyConstant;
+    var isFeatureConstant = ref$1.isFeatureConstant;
+    var Var = require('./definitions/var');
+
+    if (expression instanceof Var) {
+        return false;
+    } else if (expression instanceof CompoundExpression && expression.name === 'error') {
+        return false;
+    }
+
+    var literalArgs = true;
+    expression.eachChild(function (arg) {
+        if (!(arg instanceof Literal)) { literalArgs = false; }
+    });
+    if (!literalArgs) {
+        return false;
+    }
+
+    return isFeatureConstant(expression) &&
+        isGlobalPropertyConstant(expression, ['zoom', 'heatmap-density']);
+}
+
+},{"./compound_expression":123,"./definitions/assertion":125,"./definitions/coercion":129,"./definitions/literal":133,"./definitions/var":135,"./evaluation_context":136,"./is_constant":138,"./parsing_error":140,"./scope":142,"./types":143}],140:[function(require,module,exports){
+'use strict';//      
+
+var ParsingError = (function (Error) {
+    function ParsingError(key        , message        ) {
+        Error.call(this, message);
+        this.message = message;
+        this.key = key;
+    }
+
+    if ( Error ) ParsingError.__proto__ = Error;
+    ParsingError.prototype = Object.create( Error && Error.prototype );
+    ParsingError.prototype.constructor = ParsingError;
+
+    return ParsingError;
+}(Error));
+
+module.exports = ParsingError;
+
+},{}],141:[function(require,module,exports){
+'use strict';//      
+
+var RuntimeError = function RuntimeError(message    ) {
+    this.name = 'ExpressionEvaluationError';
+    this.message = message;
+};
+
+RuntimeError.prototype.toJSON = function toJSON () {
+    return this.message;
+};
+
+module.exports = RuntimeError;
+
+},{}],142:[function(require,module,exports){
+'use strict';//      
+
+                                             
+
+/**
+ * Tracks `let` bindings during expression parsing.
+ * @private
+ */
+var Scope = function Scope(parent    , bindings) {
+    var this$1 = this;
+    if ( bindings === void 0 ) bindings                          = [];
+
+    this.parent = parent;
+    this.bindings = {};
+    for (var i = 0, list = bindings; i < list.length; i += 1) {
+        var ref = list[i];
+        var name = ref[0];
+        var expression = ref[1];
+
+        this$1.bindings[name] = expression;
+    }
+};
+
+Scope.prototype.concat = function concat (bindings                         ) {
+    return new Scope(this, bindings);
+};
+
+Scope.prototype.get = function get (name    )         {
+    if (this.bindings[name]) { return this.bindings[name]; }
+    if (this.parent) { return this.parent.get(name); }
+    throw new Error((name + " not found in scope."));
+};
+
+Scope.prototype.has = function has (name    )      {
+    if (this.bindings[name]) { return true; }
+    return this.parent ? this.parent.has(name) : false;
+};
+
+module.exports = Scope;
+
+},{}],143:[function(require,module,exports){
+'use strict';//      
+
+                                         
+                                             
+                                             
+                                               
+                                           
+                                             
+                                           
+                                           
+
+                  
+               
+                 
+                 
+                  
+                
+                 
+                
+                                                           
+              
+
+                         
+                  
+                   
+              
+ 
+
+var NullType = { kind: 'null' };
+var NumberType = { kind: 'number' };
+var StringType = { kind: 'string' };
+var BooleanType = { kind: 'boolean' };
+var ColorType = { kind: 'color' };
+var ObjectType = { kind: 'object' };
+var ValueType = { kind: 'value' };
+var ErrorType = { kind: 'error' };
+
+function array(itemType      , N         )            {
+    return {
+        kind: 'array',
+        itemType: itemType,
+        N: N
+    };
+}
+
+function toString(type      )         {
+    if (type.kind === 'array') {
+        var itemType = toString(type.itemType);
+        return typeof type.N === 'number' ?
+            ("array<" + itemType + ", " + (type.N) + ">") :
+            type.itemType.kind === 'value' ? 'array' : ("array<" + itemType + ">");
+    } else {
+        return type.kind;
+    }
+}
+
+var valueMemberTypes = [
+    NullType,
+    NumberType,
+    StringType,
+    BooleanType,
+    ColorType,
+    ObjectType,
+    array(ValueType)
+];
+
+/**
+ * Returns null if `t` is a subtype of `expected`; otherwise returns an
+ * error message.
+ * * @private
+ */
+function checkSubtype(expected      , t      )          {
+    if (t.kind === 'error') {
+        // Error is a subtype of every type
+        return null;
+    } else if (expected.kind === 'array') {
+        if (t.kind === 'array' &&
+            !checkSubtype(expected.itemType, t.itemType) &&
+            (typeof expected.N !== 'number' || expected.N === t.N)) {
+            return null;
+        }
+    } else if (expected.kind === t.kind) {
+        return null;
+    } else if (expected.kind === 'value') {
+        for (var i = 0, list = valueMemberTypes; i < list.length; i += 1) {
+            var memberType = list[i];
+
+            if (!checkSubtype(memberType, t)) {
+                return null;
+            }
+        }
+    }
+
+    return ("Expected " + (toString(expected)) + " but found " + (toString(t)) + " instead.");
+}
+
+module.exports = {
+    NullType: NullType,
+    NumberType: NumberType,
+    StringType: StringType,
+    BooleanType: BooleanType,
+    ColorType: ColorType,
+    ObjectType: ObjectType,
+    ValueType: ValueType,
+    array: array,
+    ErrorType: ErrorType,
+    toString: toString,
+    checkSubtype: checkSubtype
+};
+
+},{}],144:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+
+var ref = require('./types');
+var NullType = ref.NullType;
+var NumberType = ref.NumberType;
+var StringType = ref.StringType;
+var BooleanType = ref.BooleanType;
+var ColorType = ref.ColorType;
+var ObjectType = ref.ObjectType;
+var ValueType = ref.ValueType;
+var array = ref.array;
+
+                                    
+
+var Color = function Color(r    , g    , b    , a) {
+    if ( a === void 0 ) a     = 1;
+
+    this.value = [r, g, b, a];
+};
+
+function validateRGBA(r       , g       , b       , a        )          {
+    if (!(
+        typeof r === 'number' && r >= 0 && r <= 255 &&
+        typeof g === 'number' && g >= 0 && g <= 255 &&
+        typeof b === 'number' && b >= 0 && b <= 255
+    )) {
+        var value = typeof a === 'number' ? [r, g, b, a] : [r, g, b];
+        return ("Invalid rgba value [" + (value.join(', ')) + "]: 'r', 'g', and 'b' must be between 0 and 255.");
+    }
+
+    if (!(
+        typeof a === 'undefined' || (typeof a === 'number' && a >= 0 && a <= 1)
+    )) {
+        return ("Invalid rgba value [" + ([r, g, b, a].join(', ')) + "]: 'a' must be between 0 and 1.");
+    }
+
+    return null;
+}
+
+                                                                                                 
+
+function isValue(mixed       )          {
+    if (mixed === null) {
+        return true;
+    } else if (typeof mixed === 'string') {
+        return true;
+    } else if (typeof mixed === 'boolean') {
+        return true;
+    } else if (typeof mixed === 'number') {
+        return true;
+    } else if (mixed instanceof Color) {
+        return true;
+    } else if (Array.isArray(mixed)) {
+        for (var i = 0, list = mixed; i < list.length; i += 1) {
+            var item = list[i];
+
+            if (!isValue(item)) {
+                return false;
+            }
+        }
+        return true;
+    } else if (typeof mixed === 'object') {
+        for (var key in mixed) {
+            if (!isValue(mixed[key])) {
+                return false;
+            }
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function typeOf(value       )       {
+    if (value === null) {
+        return NullType;
+    } else if (typeof value === 'string') {
+        return StringType;
+    } else if (typeof value === 'boolean') {
+        return BooleanType;
+    } else if (typeof value === 'number') {
+        return NumberType;
+    } else if (value instanceof Color) {
+        return ColorType;
+    } else if (Array.isArray(value)) {
+        var length = value.length;
+        var itemType       ;
+
+        for (var i = 0, list = value; i < list.length; i += 1) {
+            var item = list[i];
+
+            var t = typeOf(item);
+            if (!itemType) {
+                itemType = t;
+            } else if (itemType === t) {
+                continue;
+            } else {
+                itemType = ValueType;
+                break;
+            }
+        }
+
+        return array(itemType || ValueType, length);
+    } else {
+        assert(typeof value === 'object');
+        return ObjectType;
+    }
+}
+
+function unwrap(value       )        {
+    return value instanceof Color ? value.value : value;
+}
+
+module.exports = {
+    Color: Color,
+    validateRGBA: validateRGBA,
+    isValue: isValue,
+    typeOf: typeOf,
+    unwrap: unwrap
+};
+
+},{"./types":143,"assert":11}],145:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('../expression');
+var createExpression = ref.createExpression;
+
+                                                    
+                                                                                                        
+
+module.exports = createFilter;
+module.exports.isExpressionFilter = isExpressionFilter;
+
+function isExpressionFilter(filter) {
+    if (!Array.isArray(filter) || filter.length === 0) {
+        return false;
+    }
+    switch (filter[0]) {
+    case 'has':
+        return filter.length >= 2 && filter[1] !== '$id' && filter[1] !== '$type';
+
+    case 'in':
+    case '!in':
+    case '!has':
+    case 'none':
+        return false;
+
+    case '==':
+    case '!=':
+    case '>':
+    case '>=':
+    case '<':
+    case '<=':
+        return filter.length === 3 && (Array.isArray(filter[1]) || Array.isArray(filter[2]));
+
+    case 'any':
+    case 'all':
+        for (var i = 0, list = filter.slice(1); i < list.length; i += 1) {
+            var f = list[i];
+
+        if (!isExpressionFilter(f) && typeof f !== 'boolean') {
+                return false;
+            }
+        }
+        return true;
+
+    default:
+        return true;
+    }
+}
 
 var types = ['Unknown', 'Point', 'LineString', 'Polygon'];
+
+var filterSpec = {
+    'type': 'boolean',
+    'default': false,
+    'function': true,
+    'property-function': true
+};
 
 /**
  * Given a filter expressed as nested arrays, return a new function
@@ -19964,8 +23013,21 @@ var types = ['Unknown', 'Point', 'LineString', 'Polygon'];
  * @param {Array} filter mapbox gl filter
  * @returns {Function} filter-evaluating function
  */
-function createFilter(filter) {
-    return new Function('f', ("var p = (f && f.properties || {}); return " + (compile(filter))));
+function createFilter(filter     )                {
+    if (!filter) {
+        return function () { return true; };
+    }
+
+    if (!isExpressionFilter(filter)) {
+        return (new Function('g', 'f', ("var p = (f && f.properties || {}); return " + (compile(filter))))     );
+    }
+
+    var compiled = createExpression(filter, filterSpec, 'filter');
+    if (compiled.result === 'success') {
+        return compiled.evaluate;
+    } else {
+        throw new Error(compiled.errors.map(function (err) { return ((err.key) + ": " + (err.message)); }).join(', '));
+    }
 }
 
 function compile(filter) {
@@ -20036,7 +23098,414 @@ function compare(a, b) {
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
-},{}],121:[function(require,module,exports){
+},{"../expression":137}],146:[function(require,module,exports){
+'use strict';
+var colorSpaces = require('../util/color_spaces');
+var parseColor = require('../util/parse_color');
+var extend = require('../util/extend');
+var getType = require('../util/get_type');
+var interpolate = require('../util/interpolate');
+
+function isFunction(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function identityFunction(x) {
+    return x;
+}
+
+function createFunction(parameters, propertySpec, name) {
+    var isColor = propertySpec.type === 'color';
+    var zoomAndFeatureDependent = parameters.stops && typeof parameters.stops[0][0] === 'object';
+    var featureDependent = zoomAndFeatureDependent || parameters.property !== undefined;
+    var zoomDependent = zoomAndFeatureDependent || !featureDependent;
+    var type = parameters.type || (propertySpec.function === 'interpolated' ? 'exponential' : 'interval');
+
+    if (isColor) {
+        parameters = extend({}, parameters);
+
+        if (parameters.stops) {
+            parameters.stops = parameters.stops.map(function (stop) {
+                return [stop[0], parseColor(stop[1])];
+            });
+        }
+
+        if (parameters.default) {
+            parameters.default = parseColor(parameters.default);
+        } else {
+            parameters.default = parseColor(propertySpec.default);
+        }
+    }
+
+    var innerFun;
+    var hashedStops;
+    var categoricalKeyType;
+    if (type === 'exponential') {
+        innerFun = evaluateExponentialFunction;
+    } else if (type === 'interval') {
+        innerFun = evaluateIntervalFunction;
+    } else if (type === 'categorical') {
+        innerFun = evaluateCategoricalFunction;
+
+        // For categorical functions, generate an Object as a hashmap of the stops for fast searching
+        hashedStops = Object.create(null);
+        for (var i = 0, list = parameters.stops; i < list.length; i += 1) {
+            var stop = list[i];
+
+            hashedStops[stop[0]] = stop[1];
+        }
+
+        // Infer key type based on first stop key-- used to encforce strict type checking later
+        categoricalKeyType = typeof parameters.stops[0][0];
+
+    } else if (type === 'identity') {
+        innerFun = evaluateIdentityFunction;
+    } else {
+        throw new Error(("Unknown function type \"" + type + "\""));
+    }
+
+    var outputFunction;
+
+    // If we're interpolating colors in a color system other than RGBA,
+    // first translate all stop values to that color system, then interpolate
+    // arrays as usual. The `outputFunction` option lets us then translate
+    // the result of that interpolation back into RGBA.
+    if (parameters.colorSpace && parameters.colorSpace !== 'rgb') {
+        if (colorSpaces[parameters.colorSpace]) {
+            var colorspace = colorSpaces[parameters.colorSpace];
+            // Avoid mutating the parameters value
+            parameters = JSON.parse(JSON.stringify(parameters));
+            for (var s = 0; s < parameters.stops.length; s++) {
+                parameters.stops[s] = [
+                    parameters.stops[s][0],
+                    colorspace.forward(parameters.stops[s][1])
+                ];
+            }
+            outputFunction = colorspace.reverse;
+        } else {
+            throw new Error(("Unknown color space: " + (parameters.colorSpace)));
+        }
+    } else {
+        outputFunction = identityFunction;
+    }
+
+    if (zoomAndFeatureDependent) {
+        var featureFunctions = {};
+        var zoomStops = [];
+        for (var s$1 = 0; s$1 < parameters.stops.length; s$1++) {
+            var stop$1 = parameters.stops[s$1];
+            var zoom = stop$1[0].zoom;
+            if (featureFunctions[zoom] === undefined) {
+                featureFunctions[zoom] = {
+                    zoom: zoom,
+                    type: parameters.type,
+                    property: parameters.property,
+                    default: parameters.default,
+                    stops: []
+                };
+                zoomStops.push(zoom);
+            }
+            featureFunctions[zoom].stops.push([stop$1[0].value, stop$1[1]]);
+        }
+
+        var featureFunctionStops = [];
+        for (var i$1 = 0, list$1 = zoomStops; i$1 < list$1.length; i$1 += 1) {
+            var z = list$1[i$1];
+
+            featureFunctionStops.push([featureFunctions[z].zoom, createFunction(featureFunctions[z], propertySpec)]);
+        }
+
+        return {
+            isFeatureConstant: false,
+            interpolation: {name: 'linear'},
+            zoomStops: featureFunctionStops.map(function (s) { return s[0]; }),
+            evaluate: function evaluate(ref, properties) {
+                var zoom = ref.zoom;
+
+                return outputFunction(evaluateExponentialFunction({
+                    stops: featureFunctionStops,
+                    base: parameters.base
+                }, propertySpec, zoom).evaluate(zoom, properties));
+            }
+        };
+    } else if (zoomDependent) {
+        var evaluate;
+        if (name === 'heatmap-color') {
+            evaluate = function (ref) {
+                var heatmapDensity = ref.heatmapDensity;
+
+                return outputFunction(innerFun(parameters, propertySpec, heatmapDensity, hashedStops, categoricalKeyType));
+            };
+        } else {
+            evaluate = function (ref) {
+                var zoom = ref.zoom;
+
+                return outputFunction(innerFun(parameters, propertySpec, zoom, hashedStops, categoricalKeyType));
+            };
+        }
+        return {
+            isFeatureConstant: true,
+            isZoomConstant: false,
+            interpolation: type === 'exponential' ?
+                {name: 'exponential', base: parameters.base !== undefined ? parameters.base : 1} :
+                {name: 'step'},
+            zoomStops: parameters.stops.map(function (s) { return s[0]; }),
+            evaluate: evaluate
+        };
+    } else {
+        return {
+            isFeatureConstant: false,
+            isZoomConstant: true,
+            evaluate: function evaluate(_, feature) {
+                var value = feature && feature.properties ? feature.properties[parameters.property] : undefined;
+                if (value === undefined) {
+                    return coalesce(parameters.default, propertySpec.default);
+                }
+                return outputFunction(innerFun(parameters, propertySpec, value, hashedStops, categoricalKeyType));
+            }
+        };
+    }
+}
+
+function coalesce(a, b, c) {
+    if (a !== undefined) { return a; }
+    if (b !== undefined) { return b; }
+    if (c !== undefined) { return c; }
+}
+
+function evaluateCategoricalFunction(parameters, propertySpec, input, hashedStops, keyType) {
+    var evaluated = typeof input === keyType ? hashedStops[input] : undefined; // Enforce strict typing on input
+    return coalesce(evaluated, parameters.default, propertySpec.default);
+}
+
+function evaluateIntervalFunction(parameters, propertySpec, input) {
+    // Edge cases
+    if (getType(input) !== 'number') { return coalesce(parameters.default, propertySpec.default); }
+    var n = parameters.stops.length;
+    if (n === 1) { return parameters.stops[0][1]; }
+    if (input <= parameters.stops[0][0]) { return parameters.stops[0][1]; }
+    if (input >= parameters.stops[n - 1][0]) { return parameters.stops[n - 1][1]; }
+
+    var index = findStopLessThanOrEqualTo(parameters.stops, input);
+
+    return parameters.stops[index][1];
+}
+
+function evaluateExponentialFunction(parameters, propertySpec, input) {
+    var base = parameters.base !== undefined ? parameters.base : 1;
+
+    // Edge cases
+    if (getType(input) !== 'number') { return coalesce(parameters.default, propertySpec.default); }
+    var n = parameters.stops.length;
+    if (n === 1) { return parameters.stops[0][1]; }
+    if (input <= parameters.stops[0][0]) { return parameters.stops[0][1]; }
+    if (input >= parameters.stops[n - 1][0]) { return parameters.stops[n - 1][1]; }
+
+    var index = findStopLessThanOrEqualTo(parameters.stops, input);
+    var t = interpolationFactor(
+        input, base,
+        parameters.stops[index][0],
+        parameters.stops[index + 1][0]);
+
+    var outputLower = parameters.stops[index][1];
+    var outputUpper = parameters.stops[index + 1][1];
+    var interp = interpolate[propertySpec.type] || identityFunction;
+
+    if (typeof outputLower.evaluate === 'function') {
+        return {
+            evaluate: function evaluate() {
+                var args = [], len = arguments.length;
+                while ( len-- ) args[ len ] = arguments[ len ];
+
+                var evaluatedLower = outputLower.evaluate.apply(undefined, args);
+                var evaluatedUpper = outputUpper.evaluate.apply(undefined, args);
+                // Special case for fill-outline-color, which has no spec default.
+                if (evaluatedLower === undefined || evaluatedUpper === undefined) {
+                    return undefined;
+                }
+                return interp(evaluatedLower, evaluatedUpper, t);
+            }
+        };
+    }
+
+    return interp(outputLower, outputUpper, t);
+}
+
+function evaluateIdentityFunction(parameters, propertySpec, input) {
+    if (propertySpec.type === 'color') {
+        input = parseColor(input);
+    } else if (getType(input) !== propertySpec.type && (propertySpec.type !== 'enum' || !propertySpec.values[input])) {
+        input = undefined;
+    }
+    return coalesce(input, parameters.default, propertySpec.default);
+}
+
+/**
+ * Returns the index of the last stop <= input, or 0 if it doesn't exist.
+ *
+ * @private
+ */
+function findStopLessThanOrEqualTo(stops, input) {
+    var n = stops.length;
+    var lowerIndex = 0;
+    var upperIndex = n - 1;
+    var currentIndex = 0;
+    var currentValue, upperValue;
+
+    while (lowerIndex <= upperIndex) {
+        currentIndex = Math.floor((lowerIndex + upperIndex) / 2);
+        currentValue = stops[currentIndex][0];
+        upperValue = stops[currentIndex + 1][0];
+        if (input === currentValue || input > currentValue && input < upperValue) { // Search complete
+            return currentIndex;
+        } else if (currentValue < input) {
+            lowerIndex = currentIndex + 1;
+        } else if (currentValue > input) {
+            upperIndex = currentIndex - 1;
+        }
+    }
+
+    return Math.max(currentIndex - 1, 0);
+}
+
+/**
+ * Returns a ratio that can be used to interpolate between exponential function
+ * stops.
+ *
+ * How it works:
+ * Two consecutive stop values define a (scaled and shifted) exponential
+ * function `f(x) = a * base^x + b`, where `base` is the user-specified base,
+ * and `a` and `b` are constants affording sufficient degrees of freedom to fit
+ * the function to the given stops.
+ *
+ * Here's a bit of algebra that lets us compute `f(x)` directly from the stop
+ * values without explicitly solving for `a` and `b`:
+ *
+ * First stop value: `f(x0) = y0 = a * base^x0 + b`
+ * Second stop value: `f(x1) = y1 = a * base^x1 + b`
+ * => `y1 - y0 = a(base^x1 - base^x0)`
+ * => `a = (y1 - y0)/(base^x1 - base^x0)`
+ *
+ * Desired value: `f(x) = y = a * base^x + b`
+ * => `f(x) = y0 + a * (base^x - base^x0)`
+ *
+ * From the above, we can replace the `a` in `a * (base^x - base^x0)` and do a
+ * little algebra:
+ * ```
+ * a * (base^x - base^x0) = (y1 - y0)/(base^x1 - base^x0) * (base^x - base^x0)
+ *                     = (y1 - y0) * (base^x - base^x0) / (base^x1 - base^x0)
+ * ```
+ *
+ * If we let `(base^x - base^x0) / (base^x1 base^x0)`, then we have
+ * `f(x) = y0 + (y1 - y0) * ratio`.  In other words, `ratio` may be treated as
+ * an interpolation factor between the two stops' output values.
+ *
+ * (Note: a slightly different form for `ratio`,
+ * `(base^(x-x0) - 1) / (base^(x1-x0) - 1) `, is equivalent, but requires fewer
+ * expensive `Math.pow()` operations.)
+ *
+ * @private
+ */
+function interpolationFactor(input, base, lowerValue, upperValue) {
+    var difference = upperValue - lowerValue;
+    var progress = input - lowerValue;
+
+    if (difference === 0) {
+        return 0;
+    } else if (base === 1) {
+        return progress / difference;
+    } else {
+        return (Math.pow(base, progress) - 1) / (Math.pow(base, difference) - 1);
+    }
+}
+
+module.exports = {
+    createFunction: createFunction,
+    isFunction: isFunction
+};
+
+},{"../util/color_spaces":150,"../util/extend":151,"../util/get_type":152,"../util/interpolate":153,"../util/parse_color":154}],147:[function(require,module,exports){
+'use strict';
+var refProperties = require('./util/ref_properties');
+
+function stringify(obj) {
+    var type = typeof obj;
+    if (type === 'number' || type === 'boolean' || type === 'string' || obj === undefined || obj === null)
+        { return JSON.stringify(obj); }
+
+    if (Array.isArray(obj)) {
+        var str$1 = '[';
+        for (var i$1 = 0, list = obj; i$1 < list.length; i$1 += 1) {
+            var val = list[i$1];
+
+            str$1 += (stringify(val)) + ",";
+        }
+        return (str$1 + "]");
+    }
+
+    var keys = Object.keys(obj).sort();
+
+    var str = '{';
+    for (var i = 0; i < keys.length; i++) {
+        str += (JSON.stringify(keys[i])) + ":" + (stringify(obj[keys[i]])) + ",";
+    }
+    return (str + "}");
+}
+
+function getKey(layer) {
+    var key = '';
+    for (var i = 0, list = refProperties; i < list.length; i += 1) {
+        var k = list[i];
+
+        key += "/" + (stringify(layer[k]));
+    }
+    return key;
+}
+
+module.exports = groupByLayout;
+
+/**
+ * Given an array of layers, return an array of arrays of layers where all
+ * layers in each group have identical layout-affecting properties. These
+ * are the properties that were formerly used by explicit `ref` mechanism
+ * for layers: 'type', 'source', 'source-layer', 'minzoom', 'maxzoom',
+ * 'filter', and 'layout'.
+ *
+ * The input is not modified. The output layers are references to the
+ * input layers.
+ *
+ * @private
+ * @param {Array<Layer>} layers
+ * @returns {Array<Array<Layer>>}
+ */
+function groupByLayout(layers) {
+    var groups = {};
+
+    for (var i = 0; i < layers.length; i++) {
+        var k = getKey(layers[i]);
+        var group = groups[k];
+        if (!group) {
+            group = groups[k] = [];
+        }
+        group.push(layers[i]);
+    }
+
+    var result = [];
+
+    for (var k$1 in groups) {
+        result.push(groups[k$1]);
+    }
+
+    return result;
+}
+
+},{"./util/ref_properties":155}],148:[function(require,module,exports){
+'use strict';
+module.exports = require('./v8.json');
+
+},{"./v8.json":149}],149:[function(require,module,exports){
+module.exports={"$version":8,"$root":{"version":{"required":true,"type":"enum","values":[8]},"name":{"type":"string"},"metadata":{"type":"*"},"center":{"type":"array","value":"number"},"zoom":{"type":"number"},"bearing":{"type":"number","default":0,"period":360,"units":"degrees"},"pitch":{"type":"number","default":0,"units":"degrees"},"light":{"type":"light"},"sources":{"required":true,"type":"sources"},"sprite":{"type":"string"},"glyphs":{"type":"string"},"transition":{"type":"transition"},"layers":{"required":true,"type":"array","value":"layer"}},"sources":{"*":{"type":"source"}},"source":["source_tile","source_geojson","source_video","source_image","source_canvas"],"source_tile":{"type":{"required":true,"type":"enum","values":{"vector":{},"raster":{}}},"url":{"type":"string"},"tiles":{"type":"array","value":"string"},"bounds":{"type":"array","value":"number","length":4,"default":[-180,-85.0511,180,85.0511]},"minzoom":{"type":"number","default":0},"maxzoom":{"type":"number","default":22},"tileSize":{"type":"number","default":512,"units":"pixels"},"*":{"type":"*"}},"source_geojson":{"type":{"required":true,"type":"enum","values":{"geojson":{}}},"data":{"type":"*"},"maxzoom":{"type":"number","default":18},"buffer":{"type":"number","default":128,"maximum":512,"minimum":0},"tolerance":{"type":"number","default":0.375},"cluster":{"type":"boolean","default":false},"clusterRadius":{"type":"number","default":50,"minimum":0},"clusterMaxZoom":{"type":"number"}},"source_video":{"type":{"required":true,"type":"enum","values":{"video":{}}},"urls":{"required":true,"type":"array","value":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_image":{"type":{"required":true,"type":"enum","values":{"image":{}}},"url":{"required":true,"type":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_canvas":{"type":{"required":true,"type":"enum","values":{"canvas":{}}},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}},"animate":{"type":"boolean","default":"true"},"canvas":{"type":"string","required":true}},"layer":{"id":{"type":"string","required":true},"type":{"type":"enum","values":{"fill":{},"line":{},"symbol":{},"circle":{},"heatmap":{},"fill-extrusion":{},"raster":{},"background":{}}},"metadata":{"type":"*"},"source":{"type":"string"},"source-layer":{"type":"string"},"minzoom":{"type":"number","minimum":0,"maximum":24},"maxzoom":{"type":"number","minimum":0,"maximum":24},"filter":{"type":"filter"},"layout":{"type":"layout"},"paint":{"type":"paint"},"paint.*":{"type":"paint"}},"layout":["layout_fill","layout_line","layout_circle","layout_heatmap","layout_fill-extrusion","layout_symbol","layout_raster","layout_background"],"layout_background":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_fill":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_circle":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_heatmap":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_fill-extrusion":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_line":{"line-cap":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"butt":{},"round":{},"square":{}},"default":"butt"},"line-join":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"bevel":{},"round":{},"miter":{}},"default":"miter"},"line-miter-limit":{"type":"number","default":2,"function":"interpolated","zoom-function":true,"requires":[{"line-join":"miter"}]},"line-round-limit":{"type":"number","default":1.05,"function":"interpolated","zoom-function":true,"requires":[{"line-join":"round"}]},"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_symbol":{"symbol-placement":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"point":{},"line":{}},"default":"point"},"symbol-spacing":{"type":"number","default":250,"minimum":1,"function":"interpolated","zoom-function":true,"units":"pixels","requires":[{"symbol-placement":"line"}]},"symbol-avoid-edges":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false},"icon-allow-overlap":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image"]},"icon-ignore-placement":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image"]},"icon-optional":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image","text-field"]},"icon-rotation-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["icon-image"]},"icon-size":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"units":"factor of the original icon size","requires":["icon-image"]},"icon-text-fit":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"none":{},"width":{},"height":{},"both":{}},"default":"none","requires":["icon-image","text-field"]},"icon-text-fit-padding":{"type":"array","value":"number","length":4,"default":[0,0,0,0],"units":"pixels","function":"interpolated","zoom-function":true,"requires":["icon-image","text-field",{"icon-text-fit":["both","width","height"]}]},"icon-image":{"type":"string","function":"piecewise-constant","zoom-function":true,"property-function":true,"tokens":true},"icon-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","zoom-function":true,"property-function":true,"units":"degrees","requires":["icon-image"]},"icon-padding":{"type":"number","default":2,"minimum":0,"function":"interpolated","zoom-function":true,"units":"pixels","requires":["icon-image"]},"icon-keep-upright":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image",{"icon-rotation-alignment":"map"},{"symbol-placement":"line"}]},"icon-offset":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"property-function":true,"requires":["icon-image"]},"icon-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"center":{},"left":{},"right":{},"top":{},"bottom":{},"top-left":{},"top-right":{},"bottom-left":{},"bottom-right":{}},"default":"center","requires":["icon-image"]},"icon-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["icon-image"]},"text-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["text-field"]},"text-rotation-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["text-field"]},"text-field":{"type":"string","function":"piecewise-constant","zoom-function":true,"property-function":true,"default":"","tokens":true},"text-font":{"type":"array","value":"string","function":"piecewise-constant","zoom-function":true,"default":["Open Sans Regular","Arial Unicode MS Regular"],"requires":["text-field"]},"text-size":{"type":"number","default":16,"minimum":0,"units":"pixels","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-max-width":{"type":"number","default":10,"minimum":0,"units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-line-height":{"type":"number","default":1.2,"units":"ems","function":"interpolated","zoom-function":true,"requires":["text-field"]},"text-letter-spacing":{"type":"number","default":0,"units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-justify":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"left":{},"center":{},"right":{}},"default":"center","requires":["text-field"]},"text-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"center":{},"left":{},"right":{},"top":{},"bottom":{},"top-left":{},"top-right":{},"bottom-left":{},"bottom-right":{}},"default":"center","requires":["text-field"]},"text-max-angle":{"type":"number","default":45,"units":"degrees","function":"interpolated","zoom-function":true,"requires":["text-field",{"symbol-placement":"line"}]},"text-rotate":{"type":"number","default":0,"period":360,"units":"degrees","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-padding":{"type":"number","default":2,"minimum":0,"units":"pixels","function":"interpolated","zoom-function":true,"requires":["text-field"]},"text-keep-upright":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":true,"requires":["text-field",{"text-rotation-alignment":"map"},{"symbol-placement":"line"}]},"text-transform":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"none":{},"uppercase":{},"lowercase":{}},"default":"none","requires":["text-field"]},"text-offset":{"type":"array","value":"number","units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"length":2,"default":[0,0],"requires":["text-field"]},"text-allow-overlap":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field"]},"text-ignore-placement":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field"]},"text-optional":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field","icon-image"]},"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_raster":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"filter":{"type":"array","value":"*"},"filter_operator":{"type":"enum","values":{"==":{},"!=":{},">":{},">=":{},"<":{},"<=":{},"in":{},"!in":{},"all":{},"any":{},"none":{},"has":{},"!has":{}}},"geometry_type":{"type":"enum","values":{"Point":{},"LineString":{},"Polygon":{}}},"function":{"expression":{"type":"expression"},"stops":{"type":"array","value":"function_stop"},"base":{"type":"number","default":1,"minimum":0},"property":{"type":"string","default":"$zoom"},"type":{"type":"enum","values":{"identity":{},"exponential":{},"interval":{},"categorical":{}},"default":"exponential"},"colorSpace":{"type":"enum","values":{"rgb":{},"lab":{},"hcl":{}},"default":"rgb"},"default":{"type":"*","required":false}},"function_stop":{"type":"array","minimum":0,"maximum":22,"value":["number","color"],"length":2},"expression":{"type":"array","value":"*","minimum":1},"expression_name":{"type":"enum","values":{"let":{"group":"Variable binding"},"var":{"group":"Variable binding"},"literal":{"group":"Types"},"array":{"group":"Types"},"at":{"group":"Lookup"},"case":{"group":"Decision"},"match":{"group":"Decision"},"coalesce":{"group":"Decision"},"curve":{"group":"Ramps, scales, curves"},"ln2":{"group":"Math"},"pi":{"group":"Math"},"e":{"group":"Math"},"typeof":{"group":"Types"},"string":{"group":"Types"},"number":{"group":"Types"},"boolean":{"group":"Types"},"object":{"group":"Types"},"to-string":{"group":"Types"},"to-number":{"group":"Types"},"to-boolean":{"group":"Types"},"to-rgba":{"group":"Color"},"to-color":{"group":"Types"},"rgb":{"group":"Color"},"rgba":{"group":"Color"},"get":{"group":"Lookup"},"has":{"group":"Lookup"},"length":{"group":"Lookup"},"properties":{"group":"Feature data"},"geometry-type":{"group":"Feature data"},"id":{"group":"Feature data"},"zoom":{"group":"Zoom"},"heatmap-density":{"group":"Heatmap"},"+":{"group":"Math"},"*":{"group":"Math"},"-":{"group":"Math"},"/":{"group":"Math"},"%":{"group":"Math"},"^":{"group":"Math"},"log10":{"group":"Math"},"ln":{"group":"Math"},"log2":{"group":"Math"},"sin":{"group":"Math"},"cos":{"group":"Math"},"tan":{"group":"Math"},"asin":{"group":"Math"},"acos":{"group":"Math"},"atan":{"group":"Math"},"min":{"group":"Math"},"max":{"group":"Math"},"==":{"group":"Decision"},"!=":{"group":"Decision"},">":{"group":"Decision"},"<":{"group":"Decision"},">=":{"group":"Decision"},"<=":{"group":"Decision"},"all":{"group":"Decision"},"any":{"group":"Decision"},"!":{"group":"Decision"},"upcase":{"group":"String"},"downcase":{"group":"String"},"concat":{"group":"String"}}},"light":{"anchor":{"type":"enum","default":"viewport","values":{"map":{},"viewport":{}},"transition":false,"zoom-function":true,"property-function":false,"function":"piecewise-constant"},"position":{"type":"array","default":[1.15,210,30],"length":3,"value":"number","transition":true,"function":"interpolated","zoom-function":true,"property-function":false},"color":{"type":"color","default":"#ffffff","function":"interpolated","zoom-function":true,"property-function":false,"transition":true},"intensity":{"type":"number","default":0.5,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":false,"transition":true}},"paint":["paint_fill","paint_line","paint_circle","paint_heatmap","paint_fill-extrusion","paint_symbol","paint_raster","paint_background"],"paint_fill":{"fill-antialias":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":true},"fill-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"fill-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-pattern"}]},"fill-outline-color":{"type":"color","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-pattern"},{"fill-antialias":true}]},"fill-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"fill-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["fill-translate"]},"fill-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true}},"paint_fill-extrusion":{"fill-extrusion-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":false,"default":1,"minimum":0,"maximum":1,"transition":true},"fill-extrusion-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-extrusion-pattern"}]},"fill-extrusion-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"fill-extrusion-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["fill-extrusion-translate"]},"fill-extrusion-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true},"fill-extrusion-height":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":0,"minimum":0,"units":"meters","transition":true},"fill-extrusion-base":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":0,"minimum":0,"units":"meters","transition":true,"requires":["fill-extrusion-height"]}},"paint_line":{"line-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"line-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"line-pattern"}]},"line-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"line-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["line-translate"]},"line-width":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-gap-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-offset":{"type":"number","default":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-dasharray":{"type":"array","value":"number","function":"piecewise-constant","zoom-function":true,"minimum":0,"transition":true,"units":"line widths","requires":[{"!":"line-pattern"}]},"line-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true}},"paint_circle":{"circle-radius":{"type":"number","default":5,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"circle-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-blur":{"type":"number","default":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"circle-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["circle-translate"]},"circle-pitch-scale":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map"},"circle-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"viewport"},"circle-stroke-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"circle-stroke-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-stroke-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true}},"paint_heatmap":{"heatmap-radius":{"type":"number","default":30,"minimum":1,"function":"interpolated","zoom-function":true,"property-function":false,"transition":true,"units":"pixels"},"heatmap-weight":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":false},"heatmap-intensity":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":false,"transition":true},"heatmap-color":{"type":"color","default":{"stops":[[0,"rgba(0, 0, 255, 0)"],[0.1,"royalblue"],[0.3,"cyan"],[0.5,"lime"],[0.7,"yellow"],[1,"red"]]},"function":"interpolated","zoom-function":true,"property-function":false,"transition":true},"heatmap-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":false,"transition":true}},"paint_symbol":{"icon-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["icon-image","icon-translate"]},"text-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["text-field","text-translate"]}},"paint_raster":{"raster-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-hue-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","zoom-function":true,"transition":true,"units":"degrees"},"raster-brightness-min":{"type":"number","function":"interpolated","zoom-function":true,"default":0,"minimum":0,"maximum":1,"transition":true},"raster-brightness-max":{"type":"number","function":"interpolated","zoom-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"raster-saturation":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-contrast":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-fade-duration":{"type":"number","default":300,"minimum":0,"function":"interpolated","zoom-function":true,"transition":true,"units":"milliseconds"}},"paint_background":{"background-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"transition":true,"requires":[{"!":"background-pattern"}]},"background-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true},"background-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true}},"transition":{"duration":{"type":"number","default":300,"minimum":0,"units":"milliseconds"},"delay":{"type":"number","default":0,"minimum":0,"units":"milliseconds"}}}
+},{}],150:[function(require,module,exports){
 'use strict';
 // Constants
 var Xn = 0.950470, // D65 standard referent
@@ -20137,404 +23606,7 @@ module.exports = {
     }
 };
 
-},{}],122:[function(require,module,exports){
-'use strict';
-var colorSpaces = require('./color_spaces');
-var parseColor = require('../util/parse_color');
-var extend = require('../util/extend');
-var getType = require('../util/get_type');
-var interpolate = require('../util/interpolate');
-
-function identityFunction(x) {
-    return x;
-}
-
-function createFunction(parameters, propertySpec) {
-    var isColor = propertySpec.type === 'color';
-
-    var fun;
-
-    if (!isFunctionDefinition(parameters)) {
-        if (isColor && parameters) {
-            parameters = parseColor(parameters);
-        }
-        fun = function() {
-            return parameters;
-        };
-        fun.isFeatureConstant = true;
-        fun.isZoomConstant = true;
-
-    } else {
-        var zoomAndFeatureDependent = parameters.stops && typeof parameters.stops[0][0] === 'object';
-        var featureDependent = zoomAndFeatureDependent || parameters.property !== undefined;
-        var zoomDependent = zoomAndFeatureDependent || !featureDependent;
-        var type = parameters.type || (propertySpec.function === 'interpolated' ? 'exponential' : 'interval');
-
-        if (isColor) {
-            parameters = extend({}, parameters);
-
-            if (parameters.stops) {
-                parameters.stops = parameters.stops.map(function (stop) {
-                    return [stop[0], parseColor(stop[1])];
-                });
-            }
-
-            if (parameters.default) {
-                parameters.default = parseColor(parameters.default);
-            } else {
-                parameters.default = parseColor(propertySpec.default);
-            }
-        }
-
-        var innerFun;
-        var hashedStops;
-        var categoricalKeyType;
-        if (type === 'exponential') {
-            innerFun = evaluateExponentialFunction;
-        } else if (type === 'interval') {
-            innerFun = evaluateIntervalFunction;
-        } else if (type === 'categorical') {
-            innerFun = evaluateCategoricalFunction;
-
-            // For categorical functions, generate an Object as a hashmap of the stops for fast searching
-            hashedStops = Object.create(null);
-            for (var i = 0, list = parameters.stops; i < list.length; i += 1) {
-                var stop = list[i];
-
-                hashedStops[stop[0]] = stop[1];
-            }
-
-            // Infer key type based on first stop key-- used to encforce strict type checking later
-            categoricalKeyType = typeof parameters.stops[0][0];
-
-        } else if (type === 'identity') {
-            innerFun = evaluateIdentityFunction;
-        } else {
-            throw new Error(("Unknown function type \"" + type + "\""));
-        }
-
-        var outputFunction;
-
-        // If we're interpolating colors in a color system other than RGBA,
-        // first translate all stop values to that color system, then interpolate
-        // arrays as usual. The `outputFunction` option lets us then translate
-        // the result of that interpolation back into RGBA.
-        if (parameters.colorSpace && parameters.colorSpace !== 'rgb') {
-            if (colorSpaces[parameters.colorSpace]) {
-                var colorspace = colorSpaces[parameters.colorSpace];
-                // Avoid mutating the parameters value
-                parameters = JSON.parse(JSON.stringify(parameters));
-                for (var s = 0; s < parameters.stops.length; s++) {
-                    parameters.stops[s] = [
-                        parameters.stops[s][0],
-                        colorspace.forward(parameters.stops[s][1])
-                    ];
-                }
-                outputFunction = colorspace.reverse;
-            } else {
-                throw new Error(("Unknown color space: " + (parameters.colorSpace)));
-            }
-        } else {
-            outputFunction = identityFunction;
-        }
-
-        if (zoomAndFeatureDependent) {
-            var featureFunctions = {};
-            var zoomStops = [];
-            for (var s$1 = 0; s$1 < parameters.stops.length; s$1++) {
-                var stop$1 = parameters.stops[s$1];
-                var zoom = stop$1[0].zoom;
-                if (featureFunctions[zoom] === undefined) {
-                    featureFunctions[zoom] = {
-                        zoom: zoom,
-                        type: parameters.type,
-                        property: parameters.property,
-                        default: parameters.default,
-                        stops: []
-                    };
-                    zoomStops.push(zoom);
-                }
-                featureFunctions[zoom].stops.push([stop$1[0].value, stop$1[1]]);
-            }
-
-            var featureFunctionStops = [];
-            for (var i$1 = 0, list$1 = zoomStops; i$1 < list$1.length; i$1 += 1) {
-                var z = list$1[i$1];
-
-                featureFunctionStops.push([featureFunctions[z].zoom, createFunction(featureFunctions[z], propertySpec)]);
-            }
-            fun = function(zoom, feature) {
-                return outputFunction(evaluateExponentialFunction({
-                    stops: featureFunctionStops,
-                    base: parameters.base
-                }, propertySpec, zoom)(zoom, feature));
-            };
-            fun.isFeatureConstant = false;
-            fun.isZoomConstant = false;
-
-        } else if (zoomDependent) {
-            fun = function(zoom) {
-                return outputFunction(innerFun(parameters, propertySpec, zoom, hashedStops, categoricalKeyType));
-            };
-            fun.isFeatureConstant = true;
-            fun.isZoomConstant = false;
-        } else {
-            fun = function(zoom, feature) {
-                var value = feature[parameters.property];
-                if (value === undefined) {
-                    return coalesce(parameters.default, propertySpec.default);
-                }
-                return outputFunction(innerFun(parameters, propertySpec, value, hashedStops, categoricalKeyType));
-            };
-            fun.isFeatureConstant = false;
-            fun.isZoomConstant = true;
-        }
-    }
-
-    return fun;
-}
-
-function coalesce(a, b, c) {
-    if (a !== undefined) { return a; }
-    if (b !== undefined) { return b; }
-    if (c !== undefined) { return c; }
-}
-
-function evaluateCategoricalFunction(parameters, propertySpec, input, hashedStops, keyType) {
-    var evaluated = typeof input === keyType ? hashedStops[input] : undefined; // Enforce strict typing on input
-    return coalesce(evaluated, parameters.default, propertySpec.default);
-}
-
-function evaluateIntervalFunction(parameters, propertySpec, input) {
-    // Edge cases
-    if (getType(input) !== 'number') { return coalesce(parameters.default, propertySpec.default); }
-    var n = parameters.stops.length;
-    if (n === 1) { return parameters.stops[0][1]; }
-    if (input <= parameters.stops[0][0]) { return parameters.stops[0][1]; }
-    if (input >= parameters.stops[n - 1][0]) { return parameters.stops[n - 1][1]; }
-
-    var index = findStopLessThanOrEqualTo(parameters.stops, input);
-
-    return parameters.stops[index][1];
-}
-
-function evaluateExponentialFunction(parameters, propertySpec, input) {
-    var base = parameters.base !== undefined ? parameters.base : 1;
-
-    // Edge cases
-    if (getType(input) !== 'number') { return coalesce(parameters.default, propertySpec.default); }
-    var n = parameters.stops.length;
-    if (n === 1) { return parameters.stops[0][1]; }
-    if (input <= parameters.stops[0][0]) { return parameters.stops[0][1]; }
-    if (input >= parameters.stops[n - 1][0]) { return parameters.stops[n - 1][1]; }
-
-    var index = findStopLessThanOrEqualTo(parameters.stops, input);
-    var t = interpolationFactor(
-        input, base,
-        parameters.stops[index][0],
-        parameters.stops[index + 1][0]);
-
-    var outputLower = parameters.stops[index][1];
-    var outputUpper = parameters.stops[index + 1][1];
-    var interp = interpolate[propertySpec.type] || identityFunction;
-
-    if (typeof outputLower === 'function') {
-        return function() {
-            var args = [], len = arguments.length;
-            while ( len-- ) args[ len ] = arguments[ len ];
-
-            var evaluatedLower = outputLower.apply(undefined, args);
-            var evaluatedUpper = outputUpper.apply(undefined, args);
-            // Special case for fill-outline-color, which has no spec default.
-            if (evaluatedLower === undefined || evaluatedUpper === undefined) {
-                return undefined;
-            }
-            return interp(evaluatedLower, evaluatedUpper, t);
-        };
-    }
-
-    return interp(outputLower, outputUpper, t);
-}
-
-function evaluateIdentityFunction(parameters, propertySpec, input) {
-    if (propertySpec.type === 'color') {
-        input = parseColor(input);
-    } else if (getType(input) !== propertySpec.type && (propertySpec.type !== 'enum' || !propertySpec.values[input])) {
-        input = undefined;
-    }
-    return coalesce(input, parameters.default, propertySpec.default);
-}
-
-/**
- * Returns the index of the last stop <= input, or 0 if it doesn't exist.
- *
- * @private
- */
-function findStopLessThanOrEqualTo(stops, input) {
-    var n = stops.length;
-    var lowerIndex = 0;
-    var upperIndex = n - 1;
-    var currentIndex = 0;
-    var currentValue, upperValue;
-
-    while (lowerIndex <= upperIndex) {
-        currentIndex = Math.floor((lowerIndex + upperIndex) / 2);
-        currentValue = stops[currentIndex][0];
-        upperValue = stops[currentIndex + 1][0];
-        if (input === currentValue || input > currentValue && input < upperValue) { // Search complete
-            return currentIndex;
-        } else if (currentValue < input) {
-            lowerIndex = currentIndex + 1;
-        } else if (currentValue > input) {
-            upperIndex = currentIndex - 1;
-        }
-    }
-
-    return Math.max(currentIndex - 1, 0);
-}
-
-function isFunctionDefinition(value) {
-    return typeof value === 'object' && (value.stops || value.type === 'identity');
-}
-
-/**
- * Returns a ratio that can be used to interpolate between exponential function
- * stops.
- *
- * How it works:
- * Two consecutive stop values define a (scaled and shifted) exponential
- * function `f(x) = a * base^x + b`, where `base` is the user-specified base,
- * and `a` and `b` are constants affording sufficient degrees of freedom to fit
- * the function to the given stops.
- *
- * Here's a bit of algebra that lets us compute `f(x)` directly from the stop
- * values without explicitly solving for `a` and `b`:
- *
- * First stop value: `f(x0) = y0 = a * base^x0 + b`
- * Second stop value: `f(x1) = y1 = a * base^x1 + b`
- * => `y1 - y0 = a(base^x1 - base^x0)`
- * => `a = (y1 - y0)/(base^x1 - base^x0)`
- *
- * Desired value: `f(x) = y = a * base^x + b`
- * => `f(x) = y0 + a * (base^x - base^x0)`
- *
- * From the above, we can replace the `a` in `a * (base^x - base^x0)` and do a
- * little algebra:
- * ```
- * a * (base^x - base^x0) = (y1 - y0)/(base^x1 - base^x0) * (base^x - base^x0)
- *                     = (y1 - y0) * (base^x - base^x0) / (base^x1 - base^x0)
- * ```
- *
- * If we let `(base^x - base^x0) / (base^x1 base^x0)`, then we have
- * `f(x) = y0 + (y1 - y0) * ratio`.  In other words, `ratio` may be treated as
- * an interpolation factor between the two stops' output values.
- *
- * (Note: a slightly different form for `ratio`,
- * `(base^(x-x0) - 1) / (base^(x1-x0) - 1) `, is equivalent, but requires fewer
- * expensive `Math.pow()` operations.)
- *
- * @private
-*/
-function interpolationFactor(input, base, lowerValue, upperValue) {
-    var difference = upperValue - lowerValue;
-    var progress = input - lowerValue;
-
-    if (difference === 0) {
-        return 0;
-    } else if (base === 1) {
-        return progress / difference;
-    } else {
-        return (Math.pow(base, progress) - 1) / (Math.pow(base, difference) - 1);
-    }
-}
-
-module.exports = createFunction;
-module.exports.isFunctionDefinition = isFunctionDefinition;
-module.exports.interpolationFactor = interpolationFactor;
-module.exports.findStopLessThanOrEqualTo = findStopLessThanOrEqualTo;
-
-},{"../util/extend":126,"../util/get_type":127,"../util/interpolate":128,"../util/parse_color":129,"./color_spaces":121}],123:[function(require,module,exports){
-'use strict';
-var refProperties = require('./util/ref_properties');
-
-function stringify(obj) {
-    var type = typeof obj;
-    if (type === 'number' || type === 'boolean' || type === 'string' || obj === undefined || obj === null)
-        { return JSON.stringify(obj); }
-
-    if (Array.isArray(obj)) {
-        var str$1 = '[';
-        for (var i$1 = 0, list = obj; i$1 < list.length; i$1 += 1) {
-            var val = list[i$1];
-
-            str$1 += (stringify(val)) + ",";
-        }
-        return (str$1 + "]");
-    }
-
-    var keys = Object.keys(obj).sort();
-
-    var str = '{';
-    for (var i = 0; i < keys.length; i++) {
-        str += (JSON.stringify(keys[i])) + ":" + (stringify(obj[keys[i]])) + ",";
-    }
-    return (str + "}");
-}
-
-function getKey(layer) {
-    var key = '';
-    for (var i = 0, list = refProperties; i < list.length; i += 1) {
-        var k = list[i];
-
-        key += "/" + (stringify(layer[k]));
-    }
-    return key;
-}
-
-module.exports = groupByLayout;
-
-/**
- * Given an array of layers, return an array of arrays of layers where all
- * layers in each group have identical layout-affecting properties. These
- * are the properties that were formerly used by explicit `ref` mechanism
- * for layers: 'type', 'source', 'source-layer', 'minzoom', 'maxzoom',
- * 'filter', and 'layout'.
- *
- * The input is not modified. The output layers are references to the
- * input layers.
- *
- * @private
- * @param {Array<Layer>} layers
- * @returns {Array<Array<Layer>>}
- */
-function groupByLayout(layers) {
-    var groups = {};
-
-    for (var i = 0; i < layers.length; i++) {
-        var k = getKey(layers[i]);
-        var group = groups[k];
-        if (!group) {
-            group = groups[k] = [];
-        }
-        group.push(layers[i]);
-    }
-
-    var result = [];
-
-    for (var k$1 in groups) {
-        result.push(groups[k$1]);
-    }
-
-    return result;
-}
-
-},{"./util/ref_properties":130}],124:[function(require,module,exports){
-'use strict';
-module.exports = require('./v8.json');
-
-},{"./v8.json":125}],125:[function(require,module,exports){
-module.exports={"$version":8,"$root":{"version":{"required":true,"type":"enum","values":[8]},"name":{"type":"string"},"metadata":{"type":"*"},"center":{"type":"array","value":"number"},"zoom":{"type":"number"},"bearing":{"type":"number","default":0,"period":360,"units":"degrees"},"pitch":{"type":"number","default":0,"units":"degrees"},"light":{"type":"light"},"sources":{"required":true,"type":"sources"},"sprite":{"type":"string"},"glyphs":{"type":"string"},"transition":{"type":"transition"},"layers":{"required":true,"type":"array","value":"layer"}},"sources":{"*":{"type":"source"}},"source":["source_tile","source_geojson","source_video","source_image","source_canvas"],"source_tile":{"type":{"required":true,"type":"enum","values":{"vector":{},"raster":{}}},"url":{"type":"string"},"tiles":{"type":"array","value":"string"},"bounds":{"type":"array","value":"number","length":4,"default":[-180,-85.0511,180,85.0511]},"minzoom":{"type":"number","default":0},"maxzoom":{"type":"number","default":22},"tileSize":{"type":"number","default":512,"units":"pixels"},"*":{"type":"*"}},"source_geojson":{"type":{"required":true,"type":"enum","values":{"geojson":{}}},"data":{"type":"*"},"maxzoom":{"type":"number","default":18},"buffer":{"type":"number","default":128,"maximum":512,"minimum":0},"tolerance":{"type":"number","default":0.375},"cluster":{"type":"boolean","default":false},"clusterRadius":{"type":"number","default":50,"minimum":0},"clusterMaxZoom":{"type":"number"}},"source_video":{"type":{"required":true,"type":"enum","values":{"video":{}}},"urls":{"required":true,"type":"array","value":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_image":{"type":{"required":true,"type":"enum","values":{"image":{}}},"url":{"required":true,"type":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_canvas":{"type":{"required":true,"type":"enum","values":{"canvas":{}}},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}},"animate":{"type":"boolean","default":"true"},"canvas":{"type":"string","required":true},"contextType":{"required":true,"type":"enum","values":{"2d":{},"webgl":{},"experimental-webgl":{},"webgl2":{}}}},"layer":{"id":{"type":"string","required":true},"type":{"type":"enum","values":{"fill":{},"line":{},"symbol":{},"circle":{},"fill-extrusion":{},"raster":{},"background":{}}},"metadata":{"type":"*"},"ref":{"type":"string"},"source":{"type":"string"},"source-layer":{"type":"string"},"minzoom":{"type":"number","minimum":0,"maximum":24},"maxzoom":{"type":"number","minimum":0,"maximum":24},"filter":{"type":"filter"},"layout":{"type":"layout"},"paint":{"type":"paint"},"paint.*":{"type":"paint"}},"layout":["layout_fill","layout_line","layout_circle","layout_fill-extrusion","layout_symbol","layout_raster","layout_background"],"layout_background":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_fill":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_circle":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_fill-extrusion":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_line":{"line-cap":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"butt":{},"round":{},"square":{}},"default":"butt"},"line-join":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"bevel":{},"round":{},"miter":{}},"default":"miter"},"line-miter-limit":{"type":"number","default":2,"function":"interpolated","zoom-function":true,"requires":[{"line-join":"miter"}]},"line-round-limit":{"type":"number","default":1.05,"function":"interpolated","zoom-function":true,"requires":[{"line-join":"round"}]},"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_symbol":{"symbol-placement":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"point":{},"line":{}},"default":"point"},"symbol-spacing":{"type":"number","default":250,"minimum":1,"function":"interpolated","zoom-function":true,"units":"pixels","requires":[{"symbol-placement":"line"}]},"symbol-avoid-edges":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false},"icon-allow-overlap":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image"]},"icon-ignore-placement":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image"]},"icon-optional":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image","text-field"]},"icon-rotation-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["icon-image"]},"icon-size":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"units":"factor of the original icon size","requires":["icon-image"]},"icon-text-fit":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"none":{},"width":{},"height":{},"both":{}},"default":"none","requires":["icon-image","text-field"]},"icon-text-fit-padding":{"type":"array","value":"number","length":4,"default":[0,0,0,0],"units":"pixels","function":"interpolated","zoom-function":true,"requires":["icon-image","text-field",{"icon-text-fit":["both","width","height"]}]},"icon-image":{"type":"string","function":"piecewise-constant","zoom-function":true,"property-function":true,"tokens":true},"icon-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","zoom-function":true,"property-function":true,"units":"degrees","requires":["icon-image"]},"icon-padding":{"type":"number","default":2,"minimum":0,"function":"interpolated","zoom-function":true,"units":"pixels","requires":["icon-image"]},"icon-keep-upright":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["icon-image",{"icon-rotation-alignment":"map"},{"symbol-placement":"line"}]},"icon-offset":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"property-function":true,"requires":["icon-image"]},"icon-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"center":{},"left":{},"right":{},"top":{},"bottom":{},"top-left":{},"top-right":{},"bottom-left":{},"bottom-right":{}},"default":"center","requires":["icon-image"]},"icon-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["icon-image"]},"text-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["text-field"]},"text-rotation-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{},"auto":{}},"default":"auto","requires":["text-field"]},"text-field":{"type":"string","function":"piecewise-constant","zoom-function":true,"property-function":true,"default":"","tokens":true},"text-font":{"type":"array","value":"string","function":"piecewise-constant","zoom-function":true,"default":["Open Sans Regular","Arial Unicode MS Regular"],"requires":["text-field"]},"text-size":{"type":"number","default":16,"minimum":0,"units":"pixels","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-max-width":{"type":"number","default":10,"minimum":0,"units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-line-height":{"type":"number","default":1.2,"units":"ems","function":"interpolated","zoom-function":true,"requires":["text-field"]},"text-letter-spacing":{"type":"number","default":0,"units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-justify":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"left":{},"center":{},"right":{}},"default":"center","requires":["text-field"]},"text-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"center":{},"left":{},"right":{},"top":{},"bottom":{},"top-left":{},"top-right":{},"bottom-left":{},"bottom-right":{}},"default":"center","requires":["text-field"]},"text-max-angle":{"type":"number","default":45,"units":"degrees","function":"interpolated","zoom-function":true,"requires":["text-field",{"symbol-placement":"line"}]},"text-rotate":{"type":"number","default":0,"period":360,"units":"degrees","function":"interpolated","zoom-function":true,"property-function":true,"requires":["text-field"]},"text-padding":{"type":"number","default":2,"minimum":0,"units":"pixels","function":"interpolated","zoom-function":true,"requires":["text-field"]},"text-keep-upright":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":true,"requires":["text-field",{"text-rotation-alignment":"map"},{"symbol-placement":"line"}]},"text-transform":{"type":"enum","function":"piecewise-constant","zoom-function":true,"property-function":true,"values":{"none":{},"uppercase":{},"lowercase":{}},"default":"none","requires":["text-field"]},"text-offset":{"type":"array","value":"number","units":"ems","function":"interpolated","zoom-function":true,"property-function":true,"length":2,"default":[0,0],"requires":["text-field"]},"text-allow-overlap":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field"]},"text-ignore-placement":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field"]},"text-optional":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":false,"requires":["text-field","icon-image"]},"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"layout_raster":{"visibility":{"type":"enum","values":{"visible":{},"none":{}},"default":"visible"}},"filter":{"type":"array","value":"*"},"filter_operator":{"type":"enum","values":{"==":{},"!=":{},">":{},">=":{},"<":{},"<=":{},"in":{},"!in":{},"all":{},"any":{},"none":{},"has":{},"!has":{}}},"geometry_type":{"type":"enum","values":{"Point":{},"LineString":{},"Polygon":{}}},"function":{"stops":{"type":"array","value":"function_stop"},"base":{"type":"number","default":1,"minimum":0},"property":{"type":"string","default":"$zoom"},"type":{"type":"enum","values":{"identity":{},"exponential":{},"interval":{},"categorical":{}},"default":"exponential"},"colorSpace":{"type":"enum","values":{"rgb":{},"lab":{},"hcl":{}},"default":"rgb"},"default":{"type":"*","required":false}},"function_stop":{"type":"array","minimum":0,"maximum":22,"value":["number","color"],"length":2},"light":{"anchor":{"type":"enum","default":"viewport","values":{"map":{},"viewport":{}},"transition":false,"zoom-function":true,"property-function":false,"function":"piecewise-constant"},"position":{"type":"array","default":[1.15,210,30],"length":3,"value":"number","transition":true,"function":"interpolated","zoom-function":true,"property-function":false},"color":{"type":"color","default":"#ffffff","function":"interpolated","zoom-function":true,"property-function":false,"transition":true},"intensity":{"type":"number","default":0.5,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":false,"transition":true}},"paint":["paint_fill","paint_line","paint_circle","paint_fill-extrusion","paint_symbol","paint_raster","paint_background"],"paint_fill":{"fill-antialias":{"type":"boolean","function":"piecewise-constant","zoom-function":true,"default":true},"fill-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"fill-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-pattern"}]},"fill-outline-color":{"type":"color","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-pattern"},{"fill-antialias":true}]},"fill-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"fill-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["fill-translate"]},"fill-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true}},"paint_fill-extrusion":{"fill-extrusion-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":false,"default":1,"minimum":0,"maximum":1,"transition":true},"fill-extrusion-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"fill-extrusion-pattern"}]},"fill-extrusion-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"fill-extrusion-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["fill-extrusion-translate"]},"fill-extrusion-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true},"fill-extrusion-height":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":0,"minimum":0,"units":"meters","transition":true},"fill-extrusion-base":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":0,"minimum":0,"maximum":65535,"units":"meters","transition":true,"requires":["fill-extrusion-height"]}},"paint_line":{"line-opacity":{"type":"number","function":"interpolated","zoom-function":true,"property-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"line-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":[{"!":"line-pattern"}]},"line-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"line-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["line-translate"]},"line-width":{"type":"number","default":1,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-gap-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-offset":{"type":"number","default":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"line-dasharray":{"type":"array","value":"number","function":"piecewise-constant","zoom-function":true,"minimum":0,"transition":true,"units":"line widths","requires":[{"!":"line-pattern"}]},"line-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true}},"paint_circle":{"circle-radius":{"type":"number","default":5,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"circle-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-blur":{"type":"number","default":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels"},"circle-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["circle-translate"]},"circle-pitch-scale":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map"},"circle-pitch-alignment":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"viewport"},"circle-stroke-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels"},"circle-stroke-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true},"circle-stroke-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true}},"paint_symbol":{"icon-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["icon-image"]},"icon-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["icon-image","icon-translate"]},"text-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"requires":["text-field"]},"text-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","zoom-function":true,"property-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","zoom-function":true,"transition":true,"units":"pixels","requires":["text-field"]},"text-translate-anchor":{"type":"enum","function":"piecewise-constant","zoom-function":true,"values":{"map":{},"viewport":{}},"default":"map","requires":["text-field","text-translate"]}},"paint_raster":{"raster-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-hue-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","zoom-function":true,"transition":true,"units":"degrees"},"raster-brightness-min":{"type":"number","function":"interpolated","zoom-function":true,"default":0,"minimum":0,"maximum":1,"transition":true},"raster-brightness-max":{"type":"number","function":"interpolated","zoom-function":true,"default":1,"minimum":0,"maximum":1,"transition":true},"raster-saturation":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-contrast":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true},"raster-fade-duration":{"type":"number","default":300,"minimum":0,"function":"interpolated","zoom-function":true,"transition":true,"units":"milliseconds"}},"paint_background":{"background-color":{"type":"color","default":"#000000","function":"interpolated","zoom-function":true,"transition":true,"requires":[{"!":"background-pattern"}]},"background-pattern":{"type":"string","function":"piecewise-constant","zoom-function":true,"transition":true},"background-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","zoom-function":true,"transition":true}},"transition":{"duration":{"type":"number","default":300,"minimum":0,"units":"milliseconds"},"delay":{"type":"number","default":0,"minimum":0,"units":"milliseconds"}}}
-},{}],126:[function(require,module,exports){
+},{}],151:[function(require,module,exports){
 'use strict';
 module.exports = function (output) {
     var inputs = [], len = arguments.length - 1;
@@ -20550,7 +23622,7 @@ module.exports = function (output) {
     return output;
 };
 
-},{}],127:[function(require,module,exports){
+},{}],152:[function(require,module,exports){
 'use strict';
 module.exports = function getType(val) {
     if (val instanceof Number) {
@@ -20568,7 +23640,7 @@ module.exports = function getType(val) {
     }
 };
 
-},{}],128:[function(require,module,exports){
+},{}],153:[function(require,module,exports){
 'use strict';
 module.exports = interpolate;
 
@@ -20608,11 +23680,12 @@ interpolate.array = function(from, to, t) {
     });
 };
 
-},{}],129:[function(require,module,exports){
-'use strict';
+},{}],154:[function(require,module,exports){
+'use strict';//      
+
 var parseColorString = require('csscolorparser').parseCSSColor;
 
-module.exports = function parseColor(input) {
+module.exports = function parseColor(input                                           )                                    {
     if (typeof input === 'string') {
         var rgba = parseColorString(input);
         if (!rgba) { return undefined; }
@@ -20634,26 +23707,41 @@ module.exports = function parseColor(input) {
     }
 };
 
-},{"csscolorparser":12}],130:[function(require,module,exports){
+},{"csscolorparser":12}],155:[function(require,module,exports){
 'use strict';
 module.exports = ['type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter', 'layout'];
 
-},{}],131:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 'use strict';
 // Turn jsonlint-lines-primitives objects into primitive objects
-module.exports = function unbundle(value) {
+function unbundle(value) {
     if (value instanceof Number || value instanceof String || value instanceof Boolean) {
         return value.valueOf();
     } else {
         return value;
     }
-};
+}
 
-},{}],132:[function(require,module,exports){
+function deepUnbundle(value) {
+    if (Array.isArray(value)) {
+        return value.map(deepUnbundle);
+    }
+    return unbundle(value);
+}
+
+module.exports = unbundle;
+module.exports.deep = deepUnbundle;
+
+},{}],157:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var getType = require('../util/get_type');
 var extend = require('../util/extend');
+var unbundle = require('../util/unbundle_jsonlint');
+var ref = require('../expression');
+var isExpression = ref.isExpression;
+var ref$1 = require('../function');
+var isFunction = ref$1.isFunction;
 
 // Main recursive validation function. Tracks:
 //
@@ -20667,6 +23755,7 @@ var extend = require('../util/extend');
 module.exports = function validate(options) {
 
     var validateFunction = require('./validate_function');
+    var validateExpression = require('./validate_expression');
     var validateObject = require('./validate_object');
     var VALIDATORS = {
         '*': function() {
@@ -20703,8 +23792,11 @@ module.exports = function validate(options) {
         options = extend({}, options, { value: style.constants[value] });
     }
 
-    if (valueSpec.function && getType(value) === 'object') {
+    if (valueSpec.function && isFunction(unbundle(value))) {
         return validateFunction(options);
+
+    } else if (valueSpec.function && isExpression(unbundle.deep(value))) {
+        return validateExpression(options);
 
     } else if (valueSpec.type && VALIDATORS[valueSpec.type]) {
         return VALIDATORS[valueSpec.type](options);
@@ -20716,7 +23808,7 @@ module.exports = function validate(options) {
     }
 };
 
-},{"../error/validation_error":119,"../util/extend":126,"../util/get_type":127,"./validate_array":133,"./validate_boolean":134,"./validate_color":135,"./validate_constants":136,"./validate_enum":137,"./validate_filter":138,"./validate_function":139,"./validate_layer":141,"./validate_light":143,"./validate_number":144,"./validate_object":145,"./validate_source":148,"./validate_string":149}],133:[function(require,module,exports){
+},{"../error/validation_error":122,"../expression":137,"../function":146,"../util/extend":151,"../util/get_type":152,"../util/unbundle_jsonlint":156,"./validate_array":158,"./validate_boolean":159,"./validate_color":160,"./validate_constants":161,"./validate_enum":162,"./validate_expression":163,"./validate_filter":164,"./validate_function":165,"./validate_layer":167,"./validate_light":169,"./validate_number":170,"./validate_object":171,"./validate_source":174,"./validate_string":175}],158:[function(require,module,exports){
 'use strict';
 var getType = require('../util/get_type');
 var validate = require('./validate');
@@ -20769,7 +23861,7 @@ module.exports = function validateArray(options) {
     return errors;
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],134:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152,"./validate":157}],159:[function(require,module,exports){
 'use strict';
 var getType = require('../util/get_type');
 var ValidationError = require('../error/validation_error');
@@ -20786,7 +23878,7 @@ module.exports = function validateBoolean(options) {
     return [];
 };
 
-},{"../error/validation_error":119,"../util/get_type":127}],135:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152}],160:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var getType = require('../util/get_type');
@@ -20808,7 +23900,7 @@ module.exports = function validateColor(options) {
     return [];
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"csscolorparser":12}],136:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152,"csscolorparser":12}],161:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var getType = require('../util/get_type');
@@ -20841,7 +23933,7 @@ module.exports = function validateConstants(options) {
 
 };
 
-},{"../error/validation_error":119,"../util/get_type":127}],137:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152}],162:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var unbundle = require('../util/unbundle_jsonlint');
@@ -20854,22 +23946,44 @@ module.exports = function validateEnum(options) {
 
     if (Array.isArray(valueSpec.values)) { // <=v7
         if (valueSpec.values.indexOf(unbundle(value)) === -1) {
-            errors.push(new ValidationError(key, value, 'expected one of [%s], %s found', valueSpec.values.join(', '), value));
+            errors.push(new ValidationError(key, value, 'expected one of [%s], %s found', valueSpec.values.join(', '), JSON.stringify(value)));
         }
     } else { // >=v8
         if (Object.keys(valueSpec.values).indexOf(unbundle(value)) === -1) {
-            errors.push(new ValidationError(key, value, 'expected one of [%s], %s found', Object.keys(valueSpec.values).join(', '), value));
+            errors.push(new ValidationError(key, value, 'expected one of [%s], %s found', Object.keys(valueSpec.values).join(', '), JSON.stringify(value)));
         }
     }
     return errors;
 };
 
-},{"../error/validation_error":119,"../util/unbundle_jsonlint":131}],138:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/unbundle_jsonlint":156}],163:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
+var ref = require('../expression');
+var createExpression = ref.createExpression;
+var unbundle = require('../util/unbundle_jsonlint');
+
+module.exports = function validateExpression(options) {
+    var expression = createExpression(unbundle.deep(options.value), options.valueSpec, options.expressionContext);
+    if (expression.result === 'success') {
+        return [];
+    }
+
+    return expression.errors.map(function (error) {
+        return new ValidationError(("" + (options.key) + (error.key)), options.value, error.message);
+    });
+};
+
+},{"../error/validation_error":122,"../expression":137,"../util/unbundle_jsonlint":156}],164:[function(require,module,exports){
+'use strict';
+var ValidationError = require('../error/validation_error');
+var validateExpression = require('./validate_expression');
 var validateEnum = require('./validate_enum');
 var getType = require('../util/get_type');
 var unbundle = require('../util/unbundle_jsonlint');
+var extend = require('../util/extend');
+var ref = require('../feature_filter');
+var isExpressionFilter = ref.isExpressionFilter;
 
 module.exports = function validateFilter(options) {
     var value = options.value;
@@ -20881,6 +23995,13 @@ module.exports = function validateFilter(options) {
 
     if (getType(value) !== 'array') {
         return [new ValidationError(key, value, 'array expected, %s found', getType(value))];
+    }
+
+    if (isExpressionFilter(unbundle.deep(value))) {
+        return validateExpression(extend({}, options, {
+            expressionContext: 'filter',
+            valueSpec: { value: 'boolean' }
+        }));
     }
 
     if (value.length < 1) {
@@ -20962,7 +24083,7 @@ module.exports = function validateFilter(options) {
     return errors;
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"../util/unbundle_jsonlint":131,"./validate_enum":137}],139:[function(require,module,exports){
+},{"../error/validation_error":122,"../feature_filter":145,"../util/extend":151,"../util/get_type":152,"../util/unbundle_jsonlint":156,"./validate_enum":162,"./validate_expression":163}],165:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var getType = require('../util/get_type');
@@ -21095,7 +24216,7 @@ module.exports = function validateFunction(options) {
                 valueSpec: {},
                 style: options.style,
                 styleSpec: options.styleSpec
-            }));
+            }, value));
         }
 
         return errors.concat(validate({
@@ -21107,18 +24228,20 @@ module.exports = function validateFunction(options) {
         }));
     }
 
-    function validateStopDomainValue(options) {
+    function validateStopDomainValue(options, stop) {
         var type = getType(options.value);
         var value = unbundle(options.value);
+
+        var reportValue = options.value !== null ? options.value : stop;
 
         if (!stopKeyType) {
             stopKeyType = type;
         } else if (type !== stopKeyType) {
-            return [new ValidationError(options.key, options.value, '%s stop domain type must match previous stop domain type %s', type, stopKeyType)];
+            return [new ValidationError(options.key, reportValue, '%s stop domain type must match previous stop domain type %s', type, stopKeyType)];
         }
 
         if (type !== 'number' && type !== 'string' && type !== 'boolean') {
-            return [new ValidationError(options.key, options.value, 'stop domain value must be a number, string, or boolean')];
+            return [new ValidationError(options.key, reportValue, 'stop domain value must be a number, string, or boolean')];
         }
 
         if (type !== 'number' && functionType !== 'categorical') {
@@ -21126,21 +24249,21 @@ module.exports = function validateFunction(options) {
             if (functionValueSpec['property-function'] && functionType === undefined) {
                 message += '\nIf you intended to use a categorical function, specify `"type": "categorical"`.';
             }
-            return [new ValidationError(options.key, options.value, message, type)];
+            return [new ValidationError(options.key, reportValue, message, type)];
         }
 
         if (functionType === 'categorical' && type === 'number' && (!isFinite(value) || Math.floor(value) !== value)) {
-            return [new ValidationError(options.key, options.value, 'integer expected, found %s', value)];
+            return [new ValidationError(options.key, reportValue, 'integer expected, found %s', value)];
         }
 
         if (functionType !== 'categorical' && type === 'number' && previousStopDomainValue !== undefined && value < previousStopDomainValue) {
-            return [new ValidationError(options.key, options.value, 'stop domain values must appear in ascending order')];
+            return [new ValidationError(options.key, reportValue, 'stop domain values must appear in ascending order')];
         } else {
             previousStopDomainValue = value;
         }
 
         if (functionType === 'categorical' && value in stopDomainValues) {
-            return [new ValidationError(options.key, options.value, 'stop domain values must be unique')];
+            return [new ValidationError(options.key, reportValue, 'stop domain values must be unique')];
         } else {
             stopDomainValues[value] = true;
         }
@@ -21159,7 +24282,7 @@ module.exports = function validateFunction(options) {
     }
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"../util/unbundle_jsonlint":131,"./validate":132,"./validate_array":133,"./validate_number":144,"./validate_object":145}],140:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152,"../util/unbundle_jsonlint":156,"./validate":157,"./validate_array":158,"./validate_number":170,"./validate_object":171}],166:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var validateString = require('./validate_string');
@@ -21182,7 +24305,7 @@ module.exports = function(options) {
     return errors;
 };
 
-},{"../error/validation_error":119,"./validate_string":149}],141:[function(require,module,exports){
+},{"../error/validation_error":122,"./validate_string":175}],167:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var unbundle = require('../util/unbundle_jsonlint');
@@ -21299,7 +24422,7 @@ module.exports = function validateLayer(options) {
     return errors;
 };
 
-},{"../error/validation_error":119,"../util/extend":126,"../util/unbundle_jsonlint":131,"./validate_filter":138,"./validate_layout_property":142,"./validate_object":145,"./validate_paint_property":146}],142:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/extend":151,"../util/unbundle_jsonlint":156,"./validate_filter":164,"./validate_layout_property":168,"./validate_object":171,"./validate_paint_property":172}],168:[function(require,module,exports){
 'use strict';
 var validateProperty = require('./validate_property');
 
@@ -21307,7 +24430,7 @@ module.exports = function validateLayoutProperty(options) {
     return validateProperty(options, 'layout');
 };
 
-},{"./validate_property":147}],143:[function(require,module,exports){
+},{"./validate_property":173}],169:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var getType = require('../util/get_type');
@@ -21356,7 +24479,7 @@ module.exports = function validateLight(options) {
     return errors;
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],144:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152,"./validate":157}],170:[function(require,module,exports){
 'use strict';
 var getType = require('../util/get_type');
 var ValidationError = require('../error/validation_error');
@@ -21382,7 +24505,7 @@ module.exports = function validateNumber(options) {
     return [];
 };
 
-},{"../error/validation_error":119,"../util/get_type":127}],145:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152}],171:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var getType = require('../util/get_type');
@@ -21428,7 +24551,7 @@ module.exports = function validateObject(options) {
             styleSpec: styleSpec,
             object: object,
             objectKey: objectKey
-        }));
+        }, object));
     }
 
     for (var elementSpecKey$1 in elementSpecs) {
@@ -21440,7 +24563,7 @@ module.exports = function validateObject(options) {
     return errors;
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],146:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152,"./validate":157}],172:[function(require,module,exports){
 'use strict';
 var validateProperty = require('./validate_property');
 
@@ -21448,7 +24571,7 @@ module.exports = function validatePaintProperty(options) {
     return validateProperty(options, 'paint');
 };
 
-},{"./validate_property":147}],147:[function(require,module,exports){
+},{"./validate_property":173}],173:[function(require,module,exports){
 'use strict';
 var validate = require('./validate');
 var ValidationError = require('../error/validation_error');
@@ -21503,11 +24626,12 @@ module.exports = function validateProperty(options, propertyType) {
         value: value,
         valueSpec: valueSpec,
         style: style,
-        styleSpec: styleSpec
+        styleSpec: styleSpec,
+        expressionContext: 'property'
     }));
 };
 
-},{"../error/validation_error":119,"../util/get_type":127,"./validate":132}],148:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152,"./validate":157}],174:[function(require,module,exports){
 'use strict';
 var ValidationError = require('../error/validation_error');
 var unbundle = require('../util/unbundle_jsonlint');
@@ -21593,7 +24717,7 @@ module.exports = function validateSource(options) {
     }
 };
 
-},{"../error/validation_error":119,"../util/unbundle_jsonlint":131,"./validate_enum":137,"./validate_object":145}],149:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/unbundle_jsonlint":156,"./validate_enum":162,"./validate_object":171}],175:[function(require,module,exports){
 'use strict';
 var getType = require('../util/get_type');
 var ValidationError = require('../error/validation_error');
@@ -21610,7 +24734,7 @@ module.exports = function validateString(options) {
     return [];
 };
 
-},{"../error/validation_error":119,"../util/get_type":127}],150:[function(require,module,exports){
+},{"../error/validation_error":122,"../util/get_type":152}],176:[function(require,module,exports){
 'use strict';
 var validateConstants = require('./validate/validate_constants');
 var validate = require('./validate/validate');
@@ -21684,7 +24808,7 @@ function wrapCleanErrors(inner) {
 
 module.exports = validateStyleMin;
 
-},{"./reference/latest":124,"./validate/validate":132,"./validate/validate_constants":136,"./validate/validate_filter":138,"./validate/validate_glyphs_url":140,"./validate/validate_layer":141,"./validate/validate_layout_property":142,"./validate/validate_light":143,"./validate/validate_paint_property":146,"./validate/validate_source":148}],151:[function(require,module,exports){
+},{"./reference/latest":148,"./validate/validate":157,"./validate/validate_constants":161,"./validate/validate_filter":164,"./validate/validate_glyphs_url":166,"./validate/validate_layer":167,"./validate/validate_layout_property":168,"./validate/validate_light":169,"./validate/validate_paint_property":172,"./validate/validate_source":174}],177:[function(require,module,exports){
 'use strict';//      
 
 var AnimationLoop = function AnimationLoop() {
@@ -21716,7 +24840,7 @@ AnimationLoop.prototype.cancel = function cancel (n    ) {
 
 module.exports = AnimationLoop;
 
-},{}],152:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 'use strict';//      
 
 var styleSpec = require('../style-spec/reference/latest');
@@ -21727,6 +24851,7 @@ var StyleDeclaration = require('./style_declaration');
 var StyleTransition = require('./style_transition');
 
                                                   
+                                                               
 
 var TRANSITION_SUFFIX = '-transition';
 var properties = ['anchor', 'color', 'position', 'intensity'];
@@ -21764,7 +24889,7 @@ var Light = (function (Evented) {
         for (var i = 0, list = properties; i < list.length; i += 1) {
             var prop = list[i];
 
-            this$1._declarations[prop] = new StyleDeclaration(specifications[prop], lightOpts[prop]);
+            this$1._declarations[prop] = new StyleDeclaration(specifications[prop], lightOpts[prop], prop);
         }
 
         return this;
@@ -21792,7 +24917,7 @@ var Light = (function (Evented) {
         }
     };
 
-    Light.prototype.getLightValue = function getLightValue (property        , globalProperties                ) {
+    Light.prototype.getLightValue = function getLightValue (property        , globalProperties                  ) {
         if (property === 'position') {
             var calculated      = this._transitions[property].calculate(globalProperties),
                 cartesian = util.sphericalToCartesian(calculated);
@@ -21819,7 +24944,7 @@ var Light = (function (Evented) {
             } else if (value === null || value === undefined) {
                 delete this$1._declarations[key];
             } else {
-                this$1._declarations[key] = new StyleDeclaration(specifications[key], value);
+                this$1._declarations[key] = new StyleDeclaration(specifications[key], value, key);
             }
         }
     };
@@ -21837,7 +24962,7 @@ var Light = (function (Evented) {
         var spec = specifications[property];
 
         if (declaration === null || declaration === undefined) {
-            declaration = new StyleDeclaration(spec, spec.default);
+            declaration = new StyleDeclaration(spec, spec.default, property);
         }
 
         if (oldTransition && oldTransition.declaration.json === declaration.json) { return; }
@@ -21880,7 +25005,7 @@ var Light = (function (Evented) {
 
 module.exports = Light;
 
-},{"../style-spec/reference/latest":124,"../util/evented":211,"../util/util":224,"./style_declaration":158,"./style_transition":166,"./validate_style":167}],153:[function(require,module,exports){
+},{"../style-spec/reference/latest":148,"../util/evented":240,"../util/util":253,"./style_declaration":184,"./style_transition":195,"./validate_style":196}],179:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../util/mapbox');
@@ -21922,7 +25047,7 @@ module.exports = function (fontstack        ,
     });
 };
 
-},{"../util/ajax":202,"../util/mapbox":218,"./parse_glyph_pbf":155}],154:[function(require,module,exports){
+},{"../util/ajax":231,"../util/mapbox":247,"./parse_glyph_pbf":181}],180:[function(require,module,exports){
 'use strict';//      
 
 var ajax = require('../util/ajax');
@@ -21935,14 +25060,9 @@ var RGBAImage = ref$1.RGBAImage;
                                               
                                                         
 
-module.exports = function(baseURL         ,
+module.exports = function(baseURL        ,
                           transformRequestCallback                          ,
                           callback                                  ) {
-    if (!baseURL) {
-        callback(null, {});
-        return;
-    }
-
     var json     , image, error;
     var format = browser.devicePixelRatio > 1 ? '@2x' : '';
 
@@ -21987,7 +25107,7 @@ module.exports = function(baseURL         ,
     }
 };
 
-},{"../util/ajax":202,"../util/browser":203,"../util/image":214,"../util/mapbox":218}],155:[function(require,module,exports){
+},{"../util/ajax":231,"../util/browser":232,"../util/image":243,"../util/mapbox":247}],181:[function(require,module,exports){
 'use strict';//      
 
 var ref = require('../util/image');
@@ -22040,7 +25160,7 @@ module.exports = function (data                          )                    {
 
 module.exports.GLYPH_PBF_BORDER = border;
 
-},{"../util/image":214,"pbf":39}],156:[function(require,module,exports){
+},{"../util/image":243,"pbf":39}],182:[function(require,module,exports){
 'use strict';//      
 
 var Point = require('@mapbox/point-geometry');
@@ -22093,7 +25213,7 @@ module.exports = {
     translate: translate
 };
 
-},{"@mapbox/point-geometry":2}],157:[function(require,module,exports){
+},{"@mapbox/point-geometry":2}],183:[function(require,module,exports){
 'use strict';//      
 
 var assert = require('assert');
@@ -22115,4 +25235,13456 @@ var getSourceType = require('../source/source').getType;
 var setSourceType = require('../source/source').setType;
 var QueryFeatures = require('../source/query_features');
 var SourceCache = require('../source/source_cache');
+var GeoJSONSource = require('../source/geojson_source');
 var styleSpec = require('../style-spec/reference/latest');
+var getWorkerPool = require('../util/global_worker_pool');
+var deref = require('../style-spec/deref');
+var diff = require('../style-spec/diff');
+var rtlTextPlugin = require('../source/rtl_text_plugin');
+
+                                 
+                                              
+                                             
+                                              
+                                              
+
+var supportedDiffOperations = util.pick(diff.operations, [
+    'addLayer',
+    'removeLayer',
+    'setPaintProperty',
+    'setLayoutProperty',
+    'setFilter',
+    'addSource',
+    'removeSource',
+    'setLayerZoomRange',
+    'setLight',
+    'setTransition',
+    'setGeoJSONSourceData' ]);
+
+var ignoredDiffOperations = util.pick(diff.operations, [
+    'setCenter',
+    'setZoom',
+    'setBearing',
+    'setPitch'
+]);
+
+                            
+                       
+                                     
+  
+
+                           
+                            
+                                
+                    
+  
+
+/**
+ * @private
+ */
+var Style = (function (Evented) {
+  function Style(map     , options) {
+        var this$1 = this;
+        if ( options === void 0 ) options               = {};
+
+        Evented.call(this);
+
+        this.map = map;
+        this.animationLoop = (map && map.animationLoop) || new AnimationLoop();
+        this.dispatcher = new Dispatcher(getWorkerPool(), this);
+        this.imageManager = new ImageManager();
+        this.glyphManager = new GlyphManager(map._transformRequest, options.localIdeographFontFamily);
+        this.lineAtlas = new LineAtlas(256, 512);
+
+        this._layers = {};
+        this._order  = [];
+        this.sourceCaches = {};
+        this.zoomHistory = {};
+        this._loaded = false;
+
+        util.bindAll(['_redoPlacement'], this);
+
+        this._resetUpdates();
+
+        var self = this;
+        this._rtlTextPluginCallback = rtlTextPlugin.registerForPluginAvailability(function (args) {
+            self.dispatcher.broadcast('loadRTLTextPlugin', args.pluginBlobURL, args.errorCallback);
+            for (var id in self.sourceCaches) {
+                self.sourceCaches[id].reload(); // Should be a no-op if the plugin loads before any tiles load
+            }
+        });
+
+        this.on('data', function (event) {
+            if (event.dataType !== 'source' || event.sourceDataType !== 'metadata') {
+                return;
+            }
+
+            var sourceCache = this$1.sourceCaches[event.sourceId];
+            if (!sourceCache) {
+                return;
+            }
+
+            var source = sourceCache.getSource();
+            if (!source || !source.vectorLayerIds) {
+                return;
+            }
+
+            for (var layerId in this$1._layers) {
+                var layer = this$1._layers[layerId];
+                if (layer.source === source.id) {
+                    this$1._validateLayer(layer);
+                }
+            }
+        });
+    }
+
+  if ( Evented ) Style.__proto__ = Evented;
+  Style.prototype = Object.create( Evented && Evented.prototype );
+  Style.prototype.constructor = Style;
+
+    Style.prototype.loadURL = function loadURL (url        , options) {
+        var this$1 = this;
+        if ( options === void 0 ) options   
+                           
+                            
+      = {};
+
+        this.fire('dataloading', {dataType: 'style'});
+
+        var validate = typeof options.validate === 'boolean' ?
+            options.validate : !mapbox.isMapboxURL(url);
+
+        url = mapbox.normalizeStyleURL(url, options.accessToken);
+        var request = this.map._transformRequest(url, ajax.ResourceType.Style);
+
+        ajax.getJSON(request, function (error, json) {
+            if (error) {
+                this$1.fire('error', {error: error});
+            } else if (json) {
+                this$1._load((json     ), validate);
+            }
+        });
+    };
+
+    Style.prototype.loadJSON = function loadJSON (json                    , options) {
+        var this$1 = this;
+        if ( options === void 0 ) options   
+                          
+      = {};
+
+        this.fire('dataloading', {dataType: 'style'});
+
+        browser.frame(function () {
+            this$1._load(json, options.validate !== false);
+        });
+    };
+
+    Style.prototype._load = function _load (json                    , validate         ) {
+        var this$1 = this;
+
+        if (validate && validateStyle.emitErrors(this, validateStyle(json))) {
+            return;
+        }
+
+        this._loaded = true;
+        this.stylesheet = json;
+
+        this.updatePaintProperties();
+
+        for (var id in json.sources) {
+            this$1.addSource(id, json.sources[id], {validate: false});
+        }
+
+        if (json.sprite) {
+            loadSprite(json.sprite, this.map._transformRequest, function (err, images) {
+                if (err) {
+                    this$1.fire('error', err);
+                } else if (images) {
+                    for (var id in images) {
+                        this$1.imageManager.addImage(id, images[id]);
+                    }
+                }
+
+                this$1.imageManager.setLoaded(true);
+                this$1.fire('data', {dataType: 'style'});
+            });
+        } else {
+            this.imageManager.setLoaded(true);
+        }
+
+        this.glyphManager.setURL(json.glyphs);
+
+        var layers = deref(this.stylesheet.layers);
+
+        this._order = layers.map(function (layer) { return layer.id; });
+
+        this._layers = {};
+        for (var i = 0, list = layers; i < list.length; i += 1) {
+            var layer = list[i];
+
+          layer = StyleLayer.create(layer);
+            layer.setEventedParent(this$1, {layer: {id: layer.id}});
+            this$1._layers[layer.id] = layer;
+        }
+
+        this.dispatcher.broadcast('setLayers', this._serializeLayers(this._order));
+
+        this.light = new Light(this.stylesheet.light);
+
+        this.fire('data', {dataType: 'style'});
+        this.fire('style.load');
+    };
+
+    Style.prototype._validateLayer = function _validateLayer (layer            ) {
+        var sourceCache = this.sourceCaches[layer.source];
+        if (!sourceCache) {
+            return;
+        }
+
+        var sourceLayer = layer.sourceLayer;
+        if (!sourceLayer) {
+            return;
+        }
+
+        var source = sourceCache.getSource();
+        if (source.type === 'geojson' || (source.vectorLayerIds && source.vectorLayerIds.indexOf(sourceLayer) === -1)) {
+            this.fire('error', {
+                error: new Error(
+                    "Source layer \"" + sourceLayer + "\" " +
+                    "does not exist on source \"" + (source.id) + "\" " +
+                    "as specified by style layer \"" + (layer.id) + "\""
+                )
+            });
+        }
+    };
+
+    Style.prototype.loaded = function loaded () {
+        var this$1 = this;
+
+        if (!this._loaded)
+            { return false; }
+
+        if (Object.keys(this._updatedSources).length)
+            { return false; }
+
+        for (var id in this$1.sourceCaches)
+            { if (!this$1.sourceCaches[id].loaded())
+                { return false; } }
+
+        if (!this.imageManager.isLoaded())
+            { return false; }
+
+        return true;
+    };
+
+    Style.prototype._serializeLayers = function _serializeLayers (ids               ) {
+        var this$1 = this;
+
+        return ids.map(function (id) { return this$1._layers[id].serialize(); });
+    };
+
+    Style.prototype._applyPaintPropertyUpdates = function _applyPaintPropertyUpdates (options                         ) {
+        var this$1 = this;
+
+        if (!this._loaded) { return; }
+
+        options = options || {transition: true};
+        var transition = this.stylesheet.transition || {};
+
+        var layers = this._updatedAllPaintProps ? this._layers : this._updatedPaintProps;
+
+        for (var id in layers) {
+            var layer = this$1._layers[id];
+            var props = this$1._updatedPaintProps[id];
+
+            if (this$1._updatedAllPaintProps || props.all) {
+                layer.updatePaintTransitions(options, transition, this$1.animationLoop, this$1.zoomHistory);
+            } else {
+                for (var paintName in props) {
+                    this$1._layers[id].updatePaintTransition(paintName, options, transition, this$1.animationLoop, this$1.zoomHistory);
+                }
+            }
+        }
+
+        this.light.updateLightTransitions(options, transition, this.animationLoop);
+    };
+
+    Style.prototype._recalculate = function _recalculate (z        ) {
+        var this$1 = this;
+
+        if (!this._loaded) { return; }
+
+        for (var sourceId in this$1.sourceCaches)
+            { this$1.sourceCaches[sourceId].used = false; }
+
+        this._updateZoomHistory(z);
+
+        for (var i = 0, list = this$1._order; i < list.length; i += 1) {
+            var layerId = list[i];
+
+          var layer = this$1._layers[layerId];
+
+            layer.recalculate(z);
+            if (!layer.isHidden(z) && layer.source) {
+                this$1.sourceCaches[layer.source].used = true;
+            }
+        }
+
+        this.light.recalculate(z);
+
+        var maxZoomTransitionDuration = 300;
+        if (Math.floor(this.z) !== Math.floor(z)) {
+            this.animationLoop.set(maxZoomTransitionDuration);
+        }
+
+        this.z = z;
+    };
+
+    Style.prototype._updateZoomHistory = function _updateZoomHistory (z        ) {
+
+        var zh              = (this.zoomHistory     );
+
+        if (zh.lastIntegerZoom === undefined) {
+            // first time
+            zh.lastIntegerZoom = Math.floor(z);
+            zh.lastIntegerZoomTime = 0;
+            zh.lastZoom = z;
+        }
+
+        // check whether an integer zoom level as passed since the last frame
+        // and if yes, record it with the time. Used for transitioning patterns.
+        if (Math.floor(zh.lastZoom) < Math.floor(z)) {
+            zh.lastIntegerZoom = Math.floor(z);
+            zh.lastIntegerZoomTime = Date.now();
+
+        } else if (Math.floor(zh.lastZoom) > Math.floor(z)) {
+            zh.lastIntegerZoom = Math.floor(z + 1);
+            zh.lastIntegerZoomTime = Date.now();
+        }
+
+        zh.lastZoom = z;
+    };
+
+    Style.prototype._checkLoaded = function _checkLoaded () {
+        if (!this._loaded) {
+            throw new Error('Style is not done loading');
+        }
+    };
+
+    /**
+     * Apply queued style updates in a batch
+     */
+    Style.prototype.update = function update (options                         ) {
+        var this$1 = this;
+
+        if (!this._changed) { return; }
+
+        var updatedIds = Object.keys(this._updatedLayers);
+        var removedIds = Object.keys(this._removedLayers);
+
+        if (updatedIds.length || removedIds.length || this._updatedSymbolOrder) {
+            this._updateWorkerLayers(updatedIds, removedIds);
+        }
+        for (var id in this$1._updatedSources) {
+            var action = this$1._updatedSources[id];
+            assert(action === 'reload' || action === 'clear');
+            if (action === 'reload') {
+                this$1._reloadSource(id);
+            } else if (action === 'clear') {
+                this$1._clearSource(id);
+            }
+        }
+
+        this._applyPaintPropertyUpdates(options);
+        this._resetUpdates();
+
+        this.fire('data', {dataType: 'style'});
+    };
+
+    Style.prototype._updateWorkerLayers = function _updateWorkerLayers (updatedIds               , removedIds               ) {
+        var this$1 = this;
+
+        var symbolOrder = this._updatedSymbolOrder ? this._order.filter(function (id) { return this$1._layers[id].type === 'symbol'; }) : null;
+
+        this.dispatcher.broadcast('updateLayers', {
+            layers: this._serializeLayers(updatedIds),
+            removedIds: removedIds,
+            symbolOrder: symbolOrder
+        });
+    };
+
+    Style.prototype._resetUpdates = function _resetUpdates () {
+        this._changed = false;
+
+        this._updatedLayers = {};
+        this._removedLayers = {};
+        this._updatedSymbolOrder = false;
+
+        this._updatedSources = {};
+
+        this._updatedPaintProps = {};
+        this._updatedAllPaintProps = false;
+    };
+
+    /**
+     * Update this style's state to match the given style JSON, performing only
+     * the necessary mutations.
+     *
+     * May throw an Error ('Unimplemented: METHOD') if the mapbox-gl-style-spec
+     * diff algorithm produces an operation that is not supported.
+     *
+     * @returns {boolean} true if any changes were made; false otherwise
+     * @private
+     */
+    Style.prototype.setState = function setState (nextState                    ) {
+        var this$1 = this;
+
+        this._checkLoaded();
+
+        if (validateStyle.emitErrors(this, validateStyle(nextState))) { return false; }
+
+        nextState = util.clone(nextState);
+        nextState.layers = deref(nextState.layers);
+
+        var changes = diff(this.serialize(), nextState)
+            .filter(function (op) { return !(op.command in ignoredDiffOperations); });
+
+        if (changes.length === 0) {
+            return false;
+        }
+
+        var unimplementedOps = changes.filter(function (op) { return !(op.command in supportedDiffOperations); });
+        if (unimplementedOps.length > 0) {
+            throw new Error(("Unimplemented: " + (unimplementedOps.map(function (op) { return op.command; }).join(', ')) + "."));
+        }
+
+        changes.forEach(function (op) {
+            if (op.command === 'setTransition') {
+                // `transition` is always read directly off of
+                // `this.stylesheet`, which we update below
+                return;
+            }
+            (this$1     )[op.command].apply(this$1, op.args);
+        });
+
+        this.stylesheet = nextState;
+
+        return true;
+    };
+
+    Style.prototype.addImage = function addImage (id        , image            ) {
+        if (this.imageManager.getImage(id)) {
+            return this.fire('error', {error: new Error('An image with this name already exists.')});
+        }
+        this.imageManager.addImage(id, image);
+        this.fire('data', {dataType: 'style'});
+    };
+
+    Style.prototype.removeImage = function removeImage (id        ) {
+        if (!this.imageManager.getImage(id)) {
+            return this.fire('error', {error: new Error('No image with this name exists.')});
+        }
+        this.imageManager.removeImage(id);
+        this.fire('data', {dataType: 'style'});
+    };
+
+    Style.prototype.addSource = function addSource (id        , source                     , options                       ) {
+        var this$1 = this;
+
+        this._checkLoaded();
+
+        if (this.sourceCaches[id] !== undefined) {
+            throw new Error('There is already a source with this ID');
+        }
+
+        if (!source.type) {
+            throw new Error(("The type property must be defined, but the only the following properties were given: " + (Object.keys(source).join(', ')) + "."));
+        }
+
+        var builtIns = ['vector', 'raster', 'geojson', 'video', 'image', 'canvas'];
+        var shouldValidate = builtIns.indexOf(source.type) >= 0;
+        if (shouldValidate && this._validate(validateStyle.source, ("sources." + id), source, null, options)) { return; }
+
+        var sourceCache = this.sourceCaches[id] = new SourceCache(id, source, this.dispatcher);
+        sourceCache.style = this;
+        sourceCache.setEventedParent(this, function () { return ({
+            isSourceLoaded: this$1.loaded(),
+            source: sourceCache.serialize(),
+            sourceId: id
+        }); });
+
+        sourceCache.onAdd(this.map);
+        this._changed = true;
+    };
+
+    /**
+     * Remove a source from this stylesheet, given its id.
+     * @param {string} id id of the source to remove
+     * @throws {Error} if no source is found with the given ID
+     */
+    Style.prototype.removeSource = function removeSource (id        ) {
+        this._checkLoaded();
+
+        if (this.sourceCaches[id] === undefined) {
+            throw new Error('There is no source with this ID');
+        }
+        var sourceCache = this.sourceCaches[id];
+        delete this.sourceCaches[id];
+        delete this._updatedSources[id];
+        sourceCache.fire('data', {sourceDataType: 'metadata', dataType:'source', sourceId: id});
+        sourceCache.setEventedParent(null);
+        sourceCache.clearTiles();
+
+        if (sourceCache.onRemove) { sourceCache.onRemove(this.map); }
+        this._changed = true;
+    };
+
+    /**
+    * Set the data of a GeoJSON source, given its id.
+    * @param {string} id id of the source
+    * @param {GeoJSON|string} data GeoJSON source
+    */
+    Style.prototype.setGeoJSONSourceData = function setGeoJSONSourceData (id        , data                  ) {
+        this._checkLoaded();
+
+        assert(this.sourceCaches[id] !== undefined, 'There is no source with this ID');
+        var geojsonSource                = (this.sourceCaches[id].getSource()     );
+        assert(geojsonSource.type === 'geojson');
+
+        geojsonSource.setData(data);
+        this._changed = true;
+    };
+
+    /**
+     * Get a source by id.
+     * @param {string} id id of the desired source
+     * @returns {Object} source
+     */
+    Style.prototype.getSource = function getSource (id        )         {
+        return this.sourceCaches[id] && this.sourceCaches[id].getSource();
+    };
+
+    /**
+     * Add a layer to the map style. The layer will be inserted before the layer with
+     * ID `before`, or appended if `before` is omitted.
+     * @param {StyleLayer|Object} layer
+     * @param {string=} before  ID of an existing layer to insert before
+     */
+    Style.prototype.addLayer = function addLayer (layerObject                    , before         , options                       ) {
+        this._checkLoaded();
+
+        var id = layerObject.id;
+
+        if (typeof layerObject.source === 'object') {
+            this.addSource(id, layerObject.source);
+            layerObject = util.clone(layerObject);
+            layerObject = (util.extend(layerObject, {source: id})     );
+        }
+
+        // this layer is not in the style.layers array, so we pass an impossible array index
+        if (this._validate(validateStyle.layer,
+            ("layers." + id), layerObject, {arrayIndex: -1}, options)) { return; }
+
+        var layer = StyleLayer.create(layerObject);
+        this._validateLayer(layer);
+
+        layer.setEventedParent(this, {layer: {id: id}});
+
+
+        var index = before ? this._order.indexOf(before) : this._order.length;
+        if (before && index === -1) {
+            this.fire('error', { message: new Error(("Layer with id \"" + before + "\" does not exist on this map."))});
+            return;
+        }
+
+        this._order.splice(index, 0, id);
+
+        this._layers[id] = layer;
+
+        if (this._removedLayers[id] && layer.source) {
+            // If, in the current batch, we have already removed this layer
+            // and we are now re-adding it with a different `type`, then we
+            // need to clear (rather than just reload) the underyling source's
+            // tiles.  Otherwise, tiles marked 'reloading' will have buckets /
+            // buffers that are set up for the _previous_ version of this
+            // layer, causing, e.g.:
+            // https://github.com/mapbox/mapbox-gl-js/issues/3633
+            var removed = this._removedLayers[id];
+            delete this._removedLayers[id];
+            if (removed.type !== layer.type) {
+                this._updatedSources[layer.source] = 'clear';
+            } else {
+                this._updatedSources[layer.source] = 'reload';
+                this.sourceCaches[layer.source].pause();
+            }
+        }
+        this._updateLayer(layer);
+
+        if (layer.type === 'symbol') {
+            this._updatedSymbolOrder = true;
+        }
+
+        this.updatePaintProperties(id);
+    };
+
+    /**
+     * Add a layer to the map style. The layer will be inserted before the layer with
+     * ID `before`, or appended if `before` is omitted.
+     * @param {StyleLayer|Object} layer
+     * @param {string=} before  ID of an existing layer to insert before
+     */
+    Style.prototype.moveLayer = function moveLayer (id        , before         ) {
+        this._checkLoaded();
+        this._changed = true;
+
+        var layer = this._layers[id];
+        if (!layer) {
+            this.fire('error', {
+                error: new Error(
+                    "The layer '" + id + "' does not exist in " +
+                    "the map's style and cannot be moved."
+                )
+            });
+            return;
+        }
+
+        var index = this._order.indexOf(id);
+        this._order.splice(index, 1);
+
+        var newIndex = before ? this._order.indexOf(before) : this._order.length;
+        this._order.splice(newIndex, 0, id);
+
+        if (layer.type === 'symbol') {
+            this._updatedSymbolOrder = true;
+            if (layer.source && !this._updatedSources[layer.source]) {
+                this._updatedSources[layer.source] = 'reload';
+                this.sourceCaches[layer.source].pause();
+            }
+        }
+    };
+
+    /**
+     * Remove the layer with the given id from the style.
+     *
+     * If no such layer exists, an `error` event is fired.
+     *
+     * @param {string} id id of the layer to remove
+     * @fires error
+     */
+    Style.prototype.removeLayer = function removeLayer (id        ) {
+        this._checkLoaded();
+
+        var layer = this._layers[id];
+        if (!layer) {
+            this.fire('error', {
+                error: new Error(
+                    "The layer '" + id + "' does not exist in " +
+                    "the map's style and cannot be removed."
+                )
+            });
+            return;
+        }
+
+        layer.setEventedParent(null);
+
+        var index = this._order.indexOf(id);
+        this._order.splice(index, 1);
+
+        if (layer.type === 'symbol') {
+            this._updatedSymbolOrder = true;
+        }
+
+        this._changed = true;
+        this._removedLayers[id] = layer;
+        delete this._layers[id];
+        delete this._updatedLayers[id];
+        delete this._updatedPaintProps[id];
+    };
+
+    /**
+     * Return the style layer object with the given `id`.
+     *
+     * @param {string} id - id of the desired layer
+     * @returns {?Object} a layer, if one with the given `id` exists
+     */
+    Style.prototype.getLayer = function getLayer (id        )         {
+        return this._layers[id];
+    };
+
+    Style.prototype.setLayerZoomRange = function setLayerZoomRange (layerId        , minzoom         , maxzoom         ) {
+        this._checkLoaded();
+
+        var layer = this.getLayer(layerId);
+        if (!layer) {
+            this.fire('error', {
+                error: new Error(
+                    "The layer '" + layerId + "' does not exist in " +
+                    "the map's style and cannot have zoom extent."
+                )
+            });
+            return;
+        }
+
+        if (layer.minzoom === minzoom && layer.maxzoom === maxzoom) { return; }
+
+        if (minzoom != null) {
+            layer.minzoom = minzoom;
+        }
+        if (maxzoom != null) {
+            layer.maxzoom = maxzoom;
+        }
+        this._updateLayer(layer);
+    };
+
+    Style.prototype.setFilter = function setFilter (layerId        , filter                     ) {
+        this._checkLoaded();
+
+        var layer = this.getLayer(layerId);
+        if (!layer) {
+            this.fire('error', {
+                error: new Error(
+                    "The layer '" + layerId + "' does not exist in " +
+                    "the map's style and cannot be filtered."
+                )
+            });
+            return;
+        }
+
+        if (filter !== null && filter !== undefined && this._validate(validateStyle.filter, ("layers." + (layer.id) + ".filter"), filter)) { return; }
+
+        if (util.deepEqual(layer.filter, filter)) { return; }
+        layer.filter = util.clone(filter);
+
+        this._updateLayer(layer);
+    };
+
+    /**
+     * Get a layer's filter object
+     * @param {string} layer the layer to inspect
+     * @returns {*} the layer's filter, if any
+     */
+    Style.prototype.getFilter = function getFilter (layer        ) {
+        return util.clone(this.getLayer(layer).filter);
+    };
+
+    Style.prototype.setLayoutProperty = function setLayoutProperty (layerId        , name        , value     ) {
+        this._checkLoaded();
+
+        var layer = this.getLayer(layerId);
+        if (!layer) {
+            this.fire('error', {
+                error: new Error(
+                    "The layer '" + layerId + "' does not exist in " +
+                    "the map's style and cannot be styled."
+                )
+            });
+            return;
+        }
+
+        if (util.deepEqual(layer.getLayoutProperty(name), value)) { return; }
+
+        layer.setLayoutProperty(name, value);
+        this._updateLayer(layer);
+    };
+
+    /**
+     * Get a layout property's value from a given layer
+     * @param {string} layer the layer to inspect
+     * @param {string} name the name of the layout property
+     * @returns {*} the property value
+     */
+    Style.prototype.getLayoutProperty = function getLayoutProperty (layer        , name        ) {
+        return this.getLayer(layer).getLayoutProperty(name);
+    };
+
+    Style.prototype.setPaintProperty = function setPaintProperty (layerId        , name        , value     ) {
+        this._checkLoaded();
+
+        var layer = this.getLayer(layerId);
+        if (!layer) {
+            this.fire('error', {
+                error: new Error(
+                    "The layer '" + layerId + "' does not exist in " +
+                    "the map's style and cannot be styled."
+                )
+            });
+            return;
+        }
+
+        if (util.deepEqual(layer.getPaintProperty(name), value)) { return; }
+
+        var wasFeatureConstant = layer.isPaintValueFeatureConstant(name);
+        layer.setPaintProperty(name, value);
+        var isFeatureConstant = layer.isPaintValueFeatureConstant(name);
+
+        if (!isFeatureConstant || !wasFeatureConstant) {
+            this._updateLayer(layer);
+        }
+
+        this.updatePaintProperties(layerId, name);
+    };
+
+    Style.prototype.getPaintProperty = function getPaintProperty (layer        , name        ) {
+        return this.getLayer(layer).getPaintProperty(name);
+    };
+
+    Style.prototype.getTransition = function getTransition () {
+        return util.extend({ duration: 300, delay: 0 },
+            this.stylesheet && this.stylesheet.transition);
+    };
+
+    Style.prototype.updatePaintProperties = function updatePaintProperties (layerId         , paintName         ) {
+        this._changed = true;
+        if (!layerId) {
+            this._updatedAllPaintProps = true;
+        } else {
+            var props = this._updatedPaintProps;
+            if (!props[layerId]) { props[layerId] = {}; }
+            props[layerId][paintName || 'all'] = true;
+        }
+    };
+
+    Style.prototype.serialize = function serialize () {
+        var this$1 = this;
+
+        return util.filterObject({
+            version: this.stylesheet.version,
+            name: this.stylesheet.name,
+            metadata: this.stylesheet.metadata,
+            light: this.stylesheet.light,
+            center: this.stylesheet.center,
+            zoom: this.stylesheet.zoom,
+            bearing: this.stylesheet.bearing,
+            pitch: this.stylesheet.pitch,
+            sprite: this.stylesheet.sprite,
+            glyphs: this.stylesheet.glyphs,
+            transition: this.stylesheet.transition,
+            sources: util.mapObject(this.sourceCaches, function (source) { return source.serialize(); }),
+            layers: this._order.map(function (id) { return this$1._layers[id].serialize(); })
+        }, function (value) { return value !== undefined; });
+    };
+
+    Style.prototype._updateLayer = function _updateLayer (layer            ) {
+        this._updatedLayers[layer.id] = true;
+        if (layer.source && !this._updatedSources[layer.source]) {
+            this._updatedSources[layer.source] = 'reload';
+            this.sourceCaches[layer.source].pause();
+        }
+        this._changed = true;
+    };
+
+    Style.prototype._flattenRenderedFeatures = function _flattenRenderedFeatures (sourceResults            ) {
+        var this$1 = this;
+
+        var features = [];
+        for (var l = this._order.length - 1; l >= 0; l--) {
+            var layerId = this$1._order[l];
+            for (var i = 0, list = sourceResults; i < list.length; i += 1) {
+                var sourceResult = list[i];
+
+              var layerFeatures = sourceResult[layerId];
+                if (layerFeatures) {
+                    for (var i$1 = 0, list$1 = layerFeatures; i$1 < list$1.length; i$1 += 1) {
+                        var feature = list$1[i$1];
+
+                      features.push(feature);
+                    }
+                }
+            }
+        }
+        return features;
+    };
+
+    Style.prototype.queryRenderedFeatures = function queryRenderedFeatures (queryGeometry     , params     , zoom        , bearing        ) {
+        var this$1 = this;
+
+        if (params && params.filter) {
+            this._validate(validateStyle.filter, 'queryRenderedFeatures.filter', params.filter);
+        }
+
+        var includedSources = {};
+        if (params && params.layers) {
+            if (!Array.isArray(params.layers)) {
+                this.fire('error', {error: 'parameters.layers must be an Array.'});
+                return [];
+            }
+            for (var i = 0, list = params.layers; i < list.length; i += 1) {
+                var layerId = list[i];
+
+              var layer = this$1._layers[layerId];
+                if (!layer) {
+                    // this layer is not in the style.layers array
+                    this$1.fire('error', {error: "The layer '" + layerId + "' does not exist " +
+                        "in the map's style and cannot be queried for features."});
+                    return [];
+                }
+                includedSources[layer.source] = true;
+            }
+        }
+
+        var sourceResults = [];
+        for (var id in this$1.sourceCaches) {
+            if (params.layers && !includedSources[id]) { continue; }
+            var results = QueryFeatures.rendered(this$1.sourceCaches[id], this$1._layers, queryGeometry, params, zoom, bearing);
+            sourceResults.push(results);
+        }
+        return this._flattenRenderedFeatures(sourceResults);
+    };
+
+    Style.prototype.querySourceFeatures = function querySourceFeatures (sourceID        , params                                              ) {
+        if (params && params.filter) {
+            this._validate(validateStyle.filter, 'querySourceFeatures.filter', params.filter);
+        }
+        var sourceCache = this.sourceCaches[sourceID];
+        return sourceCache ? QueryFeatures.source(sourceCache, params) : [];
+    };
+
+    Style.prototype.addSourceType = function addSourceType (name        , SourceType               , callback                ) {
+        if (getSourceType(name)) {
+            return callback(new Error(("A source type called \"" + name + "\" already exists.")));
+        }
+
+        setSourceType(name, SourceType);
+
+        if (!SourceType.workerSourceURL) {
+            return callback(null, null);
+        }
+
+        this.dispatcher.broadcast('loadWorkerSource', {
+            name: name,
+            url: SourceType.workerSourceURL
+        }, callback);
+    };
+
+    Style.prototype.getLight = function getLight () {
+        return this.light.getLight();
+    };
+
+    Style.prototype.setLight = function setLight (lightOptions                    , transitionOptions     ) {
+        this._checkLoaded();
+
+        var light = this.light.getLight();
+        var _update = false;
+        for (var key in lightOptions) {
+            if (!util.deepEqual(lightOptions[key], light[key])) {
+                _update = true;
+                break;
+            }
+        }
+        if (!_update) { return; }
+
+        var transition = this.stylesheet.transition || {};
+
+        this.light.setLight(lightOptions);
+        this.light.updateLightTransitions(transitionOptions || {transition: true}, transition, this.animationLoop);
+    };
+
+    Style.prototype._validate = function _validate (validate              , key        , value     , props     , options                       ) {
+        if (options && options.validate === false) {
+            return false;
+        }
+        return validateStyle.emitErrors(this, validate.call(validateStyle, util.extend({
+            key: key,
+            style: this.serialize(),
+            value: value,
+            styleSpec: styleSpec
+        }, props)));
+    };
+
+    Style.prototype._remove = function _remove () {
+        var this$1 = this;
+
+        rtlTextPlugin.evented.off('pluginAvailable', this._rtlTextPluginCallback);
+        for (var id in this$1.sourceCaches) {
+            this$1.sourceCaches[id].clearTiles();
+        }
+        this.dispatcher.remove();
+    };
+
+    Style.prototype._clearSource = function _clearSource (id        ) {
+        this.sourceCaches[id].clearTiles();
+    };
+
+    Style.prototype._reloadSource = function _reloadSource (id        ) {
+        this.sourceCaches[id].resume();
+        this.sourceCaches[id].reload();
+    };
+
+    Style.prototype._updateSources = function _updateSources (transform           ) {
+        var this$1 = this;
+
+        for (var id in this$1.sourceCaches) {
+            this$1.sourceCaches[id].update(transform);
+        }
+    };
+
+    Style.prototype._redoPlacement = function _redoPlacement () {
+        var this$1 = this;
+
+        for (var id in this$1.sourceCaches) {
+            this$1.sourceCaches[id].redoPlacement();
+        }
+    };
+
+    // Callbacks from web workers
+
+    Style.prototype.getImages = function getImages (mapId        , params                        , callback                                  ) {
+        this.imageManager.getImages(params.icons, callback);
+    };
+
+    Style.prototype.getGlyphs = function getGlyphs (mapId        , params                                     , callback                                               ) {
+        this.glyphManager.getGlyphs(params.stacks, callback);
+    };
+
+  return Style;
+}(Evented));
+
+module.exports = Style;
+
+},{"../render/glyph_manager":87,"../render/image_manager":89,"../render/line_atlas":90,"../source/geojson_source":101,"../source/query_features":107,"../source/rtl_text_plugin":109,"../source/source":110,"../source/source_cache":111,"../style-spec/deref":120,"../style-spec/diff":121,"../style-spec/reference/latest":148,"../util/ajax":231,"../util/browser":232,"../util/dispatcher":238,"../util/evented":240,"../util/global_worker_pool":242,"../util/mapbox":247,"../util/util":253,"./animation_loop":177,"./light":178,"./load_sprite":180,"./style_layer":185,"./validate_style":196,"assert":11}],184:[function(require,module,exports){
+'use strict';//      
+
+var parseColor = require('../style-spec/util/parse_color');
+var ref = require('../style-spec/function');
+var isFunction = ref.isFunction;
+var createFunction = ref.createFunction;
+var ref$1 = require('../style-spec/expression');
+var isExpression = ref$1.isExpression;
+var createExpression = ref$1.createExpression;
+var util = require('../util/util');
+var Curve = require('../style-spec/expression/definitions/curve');
+
+                                                                                                    
+
+function normalizeToExpression(parameters, propertySpec, name)                             {
+    if (isFunction(parameters)) {
+        return createFunction(parameters, propertySpec, name);
+    } else if (isExpression(parameters)) {
+        var expression = createExpression(parameters, propertySpec, 'property');
+        if (expression.result !== 'success') {
+            // this should have been caught in validation
+            throw new Error(expression.errors.map(function (err) { return ((err.key) + ": " + (err.message)); }).join(', '));
+        }
+
+        if (expression.context === 'property') {
+            return expression;
+        } else {
+            throw new Error(("Incorrect expression context " + (expression.context)));
+        }
+    } else {
+        if (typeof parameters === 'string' && propertySpec.type === 'color') {
+            parameters = parseColor(parameters);
+        }
+
+        return {
+            result: 'success',
+            context: 'property',
+            isFeatureConstant: true,
+            isZoomConstant: true,
+            evaluate: function evaluate() { return parameters; }
+        };
+    }
+}
+
+/**
+ * A style property declaration
+ * @private
+ */
+var StyleDeclaration = function StyleDeclaration(reference , value , name    ) {
+    this.value = util.clone(value);
+
+    // immutable representation of value. used for comparison
+    this.json = JSON.stringify(this.value);
+
+    this.minimum = reference.minimum;
+    this.expression = normalizeToExpression(this.value, reference, name);
+};
+
+StyleDeclaration.prototype.calculate = function calculate (globals              , feature      ) {
+    var value = this.expression.evaluate(globals, feature);
+    if (this.minimum !== undefined && value < this.minimum) {
+        return this.minimum;
+    }
+    return value;
+};
+
+/**
+ * Calculate the interpolation factor for the given zoom stops and current
+ * zoom level.
+ */
+StyleDeclaration.prototype.interpolationFactor = function interpolationFactor (zoom    , lower    , upper    ) {
+    if (this.expression.isZoomConstant) {
+        return 0;
+    } else {
+        return Curve.interpolationFactor(
+            this.expression.interpolation,
+            zoom,
+            lower,
+            upper
+        );
+    }
+};
+
+module.exports = StyleDeclaration;
+
+},{"../style-spec/expression":137,"../style-spec/expression/definitions/curve":130,"../style-spec/function":146,"../style-spec/util/parse_color":154,"../util/util":253}],185:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var StyleTransition = require('./style_transition');
+var StyleDeclaration = require('./style_declaration');
+var styleSpec = require('../style-spec/reference/latest');
+var validateStyle = require('./validate_style');
+var parseColor = require('./../style-spec/util/parse_color');
+var Evented = require('../util/evented');
+
+                                                             
+                                                
+                                                                        
+                                                          
+                                                  
+                                                                
+
+var TRANSITION_SUFFIX = '-transition';
+
+var StyleLayer = (function (Evented) {
+    function StyleLayer(layer                    ) {
+        var this$1 = this;
+
+        Evented.call(this);
+
+        this.id = layer.id;
+        this.metadata = layer.metadata;
+        this.type = layer.type;
+        this.minzoom = layer.minzoom;
+        this.maxzoom = layer.maxzoom;
+
+        if (layer.type !== 'background') {
+            this.source = layer.source;
+            this.sourceLayer = layer['source-layer'];
+            this.filter = layer.filter;
+        }
+
+        this.paint = {};
+        this.layout = {};
+
+        this._featureFilter = function () { return true; };
+
+        this._paintSpecifications = styleSpec[("paint_" + (this.type))];
+        this._layoutSpecifications = styleSpec[("layout_" + (this.type))];
+
+        this._paintTransitions = {}; // {[propertyName]: StyleTransition}
+        this._paintTransitionOptions = {}; // {[propertyName]: { duration:Number, delay:Number }}
+        this._paintDeclarations = {}; // {[propertyName]: StyleDeclaration}
+        this._layoutDeclarations = {}; // {[propertyName]: StyleDeclaration}
+        this._layoutFunctions = {}; // {[propertyName]: Boolean}
+
+        var paintName, layoutName;
+        var options = {validate: false};
+
+        // Resolve paint declarations
+        for (paintName in layer.paint) {
+            this$1.setPaintProperty(paintName, layer.paint[paintName], options);
+        }
+
+        // Resolve layout declarations
+        for (layoutName in layer.layout) {
+            this$1.setLayoutProperty(layoutName, layer.layout[layoutName], options);
+        }
+
+        // set initial layout/paint values
+        for (paintName in this$1._paintSpecifications) {
+            this$1.paint[paintName] = this$1.getPaintValue(paintName, {zoom: 0});
+        }
+        for (layoutName in this$1._layoutSpecifications) {
+            this$1._updateLayoutValue(layoutName);
+        }
+    }
+
+    if ( Evented ) StyleLayer.__proto__ = Evented;
+    StyleLayer.prototype = Object.create( Evented && Evented.prototype );
+    StyleLayer.prototype.constructor = StyleLayer;
+
+    StyleLayer.prototype.setLayoutProperty = function setLayoutProperty (name        , value       , options                     ) {
+        if (value == null) {
+            delete this._layoutDeclarations[name];
+        } else {
+            var key = "layers." + (this.id) + ".layout." + name;
+            if (this._validate(validateStyle.layoutProperty, key, name, value, options)) { return; }
+            this._layoutDeclarations[name] = new StyleDeclaration(this._layoutSpecifications[name], value, name);
+        }
+        this._updateLayoutValue(name);
+    };
+
+    StyleLayer.prototype.getLayoutProperty = function getLayoutProperty (name        ) {
+        return (
+            this._layoutDeclarations[name] &&
+            this._layoutDeclarations[name].value
+        );
+    };
+
+    StyleLayer.prototype.getLayoutValue = function getLayoutValue (name        , globals                  , feature          )      {
+        var specification = this._layoutSpecifications[name];
+        var declaration = this._layoutDeclarations[name];
+
+        // Avoid attempting to calculate a value for data-driven properties if `feature` is undefined.
+        if (declaration && (declaration.expression.isFeatureConstant || feature)) {
+            return declaration.calculate(globals, feature);
+        } else {
+            return specification.default;
+        }
+    };
+
+    StyleLayer.prototype.setPaintProperty = function setPaintProperty (name        , value     , options     ) {
+        var validateStyleKey = "layers." + (this.id) + ".paint." + name;
+
+        if (util.endsWith(name, TRANSITION_SUFFIX)) {
+            if (value === null || value === undefined) {
+                delete this._paintTransitionOptions[name];
+            } else {
+                if (this._validate(validateStyle.paintProperty, validateStyleKey, name, value, options)) { return; }
+                this._paintTransitionOptions[name] = value;
+            }
+        } else if (value === null || value === undefined) {
+            delete this._paintDeclarations[name];
+        } else {
+            if (this._validate(validateStyle.paintProperty, validateStyleKey, name, value, options)) { return; }
+            this._paintDeclarations[name] = new StyleDeclaration(this._paintSpecifications[name], value, name);
+        }
+    };
+
+    StyleLayer.prototype.getPaintProperty = function getPaintProperty (name        ) {
+        if (util.endsWith(name, TRANSITION_SUFFIX)) {
+            return (
+                this._paintTransitionOptions[name]
+            );
+        } else {
+            return (
+                this._paintDeclarations[name] &&
+                this._paintDeclarations[name].value
+            );
+        }
+    };
+
+    StyleLayer.prototype.getPaintValue = function getPaintValue (name        , globals                  , feature          )      {
+        var specification = this._paintSpecifications[name];
+        var transition = this._paintTransitions[name];
+
+        // Avoid attempting to calculate a value for data-driven properties if `feature` is undefined.
+        if (transition && (transition.declaration.expression.isFeatureConstant || feature)) {
+            return transition.calculate(globals, feature);
+        } else if (specification.type === 'color' && specification.default) {
+            return parseColor(specification.default);
+        } else {
+            return specification.default;
+        }
+    };
+
+    StyleLayer.prototype.getPaintInterpolationFactor = function getPaintInterpolationFactor (name        , input        , lower        , upper        ) {
+        var declaration = this._paintDeclarations[name];
+        return declaration ? declaration.interpolationFactor(input, lower, upper) : 0;
+    };
+
+    StyleLayer.prototype.isPaintValueFeatureConstant = function isPaintValueFeatureConstant (name        ) {
+        var declaration = this._paintDeclarations[name];
+        return !declaration || declaration.expression.isFeatureConstant;
+    };
+
+    StyleLayer.prototype.isPaintValueZoomConstant = function isPaintValueZoomConstant (name        ) {
+        var declaration = this._paintDeclarations[name];
+        return !declaration || declaration.expression.isZoomConstant;
+    };
+
+    StyleLayer.prototype.isHidden = function isHidden (zoom        ) {
+        if (this.minzoom && zoom < this.minzoom) { return true; }
+        if (this.maxzoom && zoom >= this.maxzoom) { return true; }
+        if (this.layout['visibility'] === 'none') { return true; }
+
+        return false;
+    };
+
+    StyleLayer.prototype.updatePaintTransitions = function updatePaintTransitions (options                        ,
+                           globalOptions                          ,
+                           animationLoop                ,
+                           zoomHistory      ) {
+        var this$1 = this;
+
+        var name;
+        for (name in this$1._paintDeclarations) { // apply new declarations
+            this$1._applyPaintDeclaration(name, this$1._paintDeclarations[name], options, globalOptions, animationLoop, zoomHistory);
+        }
+        for (name in this$1._paintTransitions) {
+            if (!(name in this$1._paintDeclarations)) // apply removed declarations
+                { this$1._applyPaintDeclaration(name, null, options, globalOptions, animationLoop, zoomHistory); }
+        }
+    };
+
+    StyleLayer.prototype.updatePaintTransition = function updatePaintTransition (name        ,
+                          options                        ,
+                          globalOptions                         ,
+                          animationLoop               ,
+                          zoomHistory     ) {
+        var declaration = this._paintDeclarations[name];
+        this._applyPaintDeclaration(name, declaration, options, globalOptions, animationLoop, zoomHistory);
+    };
+
+    // update all zoom-dependent layout/paint values
+    StyleLayer.prototype.recalculate = function recalculate (zoom        ) {
+        var this$1 = this;
+
+        for (var paintName in this$1._paintTransitions) {
+            this$1.paint[paintName] = this$1.getPaintValue(paintName, {zoom: zoom});
+        }
+        for (var layoutName in this$1._layoutFunctions) {
+            this$1.layout[layoutName] = this$1.getLayoutValue(layoutName, {zoom: zoom});
+        }
+    };
+
+    StyleLayer.prototype.serialize = function serialize () {
+        var output       = {
+            'id': this.id,
+            'type': this.type,
+            'source': this.source,
+            'source-layer': this.sourceLayer,
+            'metadata': this.metadata,
+            'minzoom': this.minzoom,
+            'maxzoom': this.maxzoom,
+            'filter': this.filter,
+            'layout': util.mapObject(this._layoutDeclarations, getDeclarationValue),
+            'paint': util.mapObject(this._paintDeclarations, getDeclarationValue)
+        };
+
+        return util.filterObject(output, function (value, key) {
+            return value !== undefined &&
+                !(key === 'layout' && !Object.keys(value).length) &&
+                !(key === 'paint' && !Object.keys(value).length);
+        });
+    };
+
+    // set paint transition based on a given paint declaration
+    StyleLayer.prototype._applyPaintDeclaration = function _applyPaintDeclaration (name        ,
+                           declaration                                ,
+                           options                        ,
+                           globalOptions                          ,
+                           animationLoop                ,
+                           zoomHistory      ) {
+        var oldTransition = options.transition ? this._paintTransitions[name] : undefined;
+        var spec = this._paintSpecifications[name];
+
+        if (declaration === null || declaration === undefined) {
+            declaration = new StyleDeclaration(spec, spec.default, name);
+        }
+
+        if (oldTransition && oldTransition.declaration.json === declaration.json) { return; }
+
+        var transitionOptions = util.extend({
+            duration: 300,
+            delay: 0
+        }, globalOptions, this.getPaintProperty(name + TRANSITION_SUFFIX));
+
+        var newTransition = this._paintTransitions[name] =
+            new StyleTransition(spec, declaration, oldTransition, transitionOptions, zoomHistory);
+
+        if (!animationLoop) {
+            return;
+        }
+        if (!newTransition.instant()) {
+            newTransition.loopID = animationLoop.set(newTransition.endTime - Date.now());
+        }
+        if (oldTransition) {
+            animationLoop.cancel(oldTransition.loopID);
+        }
+    };
+
+    // update layout value if it's constant, or mark it as zoom-dependent
+    StyleLayer.prototype._updateLayoutValue = function _updateLayoutValue (name        ) {
+        var declaration = this._layoutDeclarations[name];
+        if (!declaration || (declaration.expression.isZoomConstant && declaration.expression.isFeatureConstant)) {
+            delete this._layoutFunctions[name];
+            this.layout[name] = this.getLayoutValue(name, {zoom: 0});
+        } else {
+            this._layoutFunctions[name] = true;
+        }
+    };
+
+    StyleLayer.prototype._validate = function _validate (validate          , key        , name        , value       , options                     ) {
+        if (options && options.validate === false) {
+            return false;
+        }
+        return validateStyle.emitErrors(this, validate.call(validateStyle, {
+            key: key,
+            layerType: this.type,
+            objectKey: name,
+            value: value,
+            styleSpec: styleSpec,
+            // Workaround for https://github.com/mapbox/mapbox-gl-js/issues/2407
+            style: {glyphs: true, sprite: true}
+        }));
+    };
+
+    StyleLayer.prototype.has3DPass = function has3DPass () {
+        return false;
+    };
+
+    StyleLayer.prototype.resize = function resize (gl                       ) { // eslint-disable-line
+        // noop
+    };
+
+    return StyleLayer;
+}(Evented));
+
+module.exports = StyleLayer;
+
+var subclasses = {
+    'circle': require('./style_layer/circle_style_layer'),
+    'heatmap': require('./style_layer/heatmap_style_layer'),
+    'fill': require('./style_layer/fill_style_layer'),
+    'fill-extrusion': require('./style_layer/fill_extrusion_style_layer'),
+    'line': require('./style_layer/line_style_layer'),
+    'symbol': require('./style_layer/symbol_style_layer'),
+    'background': require('./style_layer/background_style_layer'),
+    'raster': require('./style_layer/raster_style_layer')
+};
+
+StyleLayer.create = function(layer                    ) {
+    return new subclasses[layer.type](layer);
+};
+
+function getDeclarationValue(declaration) {
+    return declaration.value;
+}
+
+},{"../style-spec/reference/latest":148,"../util/evented":240,"../util/util":253,"./../style-spec/util/parse_color":154,"./style_declaration":184,"./style_layer/background_style_layer":186,"./style_layer/circle_style_layer":187,"./style_layer/fill_extrusion_style_layer":188,"./style_layer/fill_style_layer":189,"./style_layer/heatmap_style_layer":190,"./style_layer/line_style_layer":191,"./style_layer/raster_style_layer":192,"./style_layer/symbol_style_layer":193,"./style_transition":195,"./validate_style":196}],186:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+
+var BackgroundStyleLayer = (function (StyleLayer) {
+    function BackgroundStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) BackgroundStyleLayer.__proto__ = StyleLayer;
+    BackgroundStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    BackgroundStyleLayer.prototype.constructor = BackgroundStyleLayer;
+
+    BackgroundStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.getPaintValue('background-opacity', { zoom: zoom }) === 0;
+    };
+
+    return BackgroundStyleLayer;
+}(StyleLayer));
+
+module.exports = BackgroundStyleLayer;
+
+},{"../style_layer":185}],187:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+var CircleBucket = require('../../data/bucket/circle_bucket');
+var ref = require('../../util/intersection_tests');
+var multiPolygonIntersectsBufferedMultiPoint = ref.multiPolygonIntersectsBufferedMultiPoint;
+var ref$1 = require('../query_utils');
+var getMaximumPaintValue = ref$1.getMaximumPaintValue;
+var translateDistance = ref$1.translateDistance;
+var translate = ref$1.translate;
+
+                                                                
+                                                
+
+var CircleStyleLayer = (function (StyleLayer) {
+    function CircleStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) CircleStyleLayer.__proto__ = StyleLayer;
+    CircleStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    CircleStyleLayer.prototype.constructor = CircleStyleLayer;
+
+    CircleStyleLayer.prototype.createBucket = function createBucket (parameters                  ) {
+        return new CircleBucket(parameters);
+    };
+
+    CircleStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.isPaintValueFeatureConstant('circle-opacity') &&
+            this.getPaintValue('circle-opacity', { zoom: zoom }) === 0 &&
+            (this.isPaintValueFeatureConstant('circle-stroke-width') &&
+                this.getPaintValue('circle-stroke-width', { zoom: zoom }) === 0) ||
+            (this.isPaintValueFeatureConstant('circle-stroke-opacity') &&
+                this.getPaintValue('circle-stroke-opacity', { zoom: zoom }) === 0);
+    };
+
+    CircleStyleLayer.prototype.queryRadius = function queryRadius (bucket        )         {
+        var circleBucket               = (bucket     );
+        return getMaximumPaintValue('circle-radius', this, circleBucket) +
+            translateDistance(this.paint['circle-translate']);
+    };
+
+    CircleStyleLayer.prototype.queryIntersectsFeature = function queryIntersectsFeature (queryGeometry                     ,
+                           feature                   ,
+                           geometry                     ,
+                           zoom        ,
+                           bearing        ,
+                           pixelsToTileUnits        )          {
+        var translatedPolygon = translate(queryGeometry,
+            this.getPaintValue('circle-translate', {zoom: zoom}, feature),
+            this.getPaintValue('circle-translate-anchor', {zoom: zoom}, feature),
+            bearing, pixelsToTileUnits);
+        var circleRadius = this.getPaintValue('circle-radius', {zoom: zoom}, feature) * pixelsToTileUnits;
+        return multiPolygonIntersectsBufferedMultiPoint(translatedPolygon, geometry, circleRadius);
+    };
+
+    return CircleStyleLayer;
+}(StyleLayer));
+
+module.exports = CircleStyleLayer;
+
+},{"../../data/bucket/circle_bucket":53,"../../util/intersection_tests":244,"../query_utils":182,"../style_layer":185}],188:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+var FillExtrusionBucket = require('../../data/bucket/fill_extrusion_bucket');
+var ref = require('../../util/intersection_tests');
+var multiPolygonIntersectsMultiPolygon = ref.multiPolygonIntersectsMultiPolygon;
+var ref$1 = require('../query_utils');
+var translateDistance = ref$1.translateDistance;
+var translate = ref$1.translate;
+
+                                                                           
+                                                        
+                                                
+
+var FillExtrusionStyleLayer = (function (StyleLayer) {
+    function FillExtrusionStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) FillExtrusionStyleLayer.__proto__ = StyleLayer;
+    FillExtrusionStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    FillExtrusionStyleLayer.prototype.constructor = FillExtrusionStyleLayer;
+
+    FillExtrusionStyleLayer.prototype.getPaintValue = function getPaintValue (name        , globals                  , feature          ) {
+        var value = StyleLayer.prototype.getPaintValue.call(this, name, globals, feature);
+        if (name === 'fill-extrusion-color' && value) {
+            value[3] = 1;
+        }
+        return value;
+    };
+
+    FillExtrusionStyleLayer.prototype.createBucket = function createBucket (parameters                  ) {
+        return new FillExtrusionBucket(parameters);
+    };
+
+    FillExtrusionStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.getPaintValue('fill-extrusion-opacity', { zoom: zoom }) === 0;
+    };
+
+    FillExtrusionStyleLayer.prototype.queryRadius = function queryRadius ()         {
+        return translateDistance(this.paint['fill-extrusion-translate']);
+    };
+
+    FillExtrusionStyleLayer.prototype.queryIntersectsFeature = function queryIntersectsFeature (queryGeometry                     ,
+                           feature                   ,
+                           geometry                     ,
+                           zoom        ,
+                           bearing        ,
+                           pixelsToTileUnits        )          {
+        var translatedPolygon = translate(queryGeometry,
+            this.getPaintValue('fill-extrusion-translate', {zoom: zoom}, feature),
+            this.getPaintValue('fill-extrusion-translate-anchor', {zoom: zoom}, feature),
+            bearing, pixelsToTileUnits);
+        return multiPolygonIntersectsMultiPolygon(translatedPolygon, geometry);
+    };
+
+    FillExtrusionStyleLayer.prototype.has3DPass = function has3DPass () {
+        return this.paint['fill-extrusion-opacity'] !== 0 && this.layout['visibility'] !== 'none';
+    };
+
+    FillExtrusionStyleLayer.prototype.resize = function resize (gl                       ) {
+        if (this.viewportFrame) {
+            var ref = this.viewportFrame;
+            var texture = ref.texture;
+            var fbo = ref.fbo;
+            gl.deleteTexture(texture);
+            gl.deleteFramebuffer(fbo);
+            this.viewportFrame = null;
+        }
+    };
+
+    return FillExtrusionStyleLayer;
+}(StyleLayer));
+
+module.exports = FillExtrusionStyleLayer;
+
+},{"../../data/bucket/fill_extrusion_bucket":55,"../../util/intersection_tests":244,"../query_utils":182,"../style_layer":185}],189:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+var FillBucket = require('../../data/bucket/fill_bucket');
+var ref = require('../../util/intersection_tests');
+var multiPolygonIntersectsMultiPolygon = ref.multiPolygonIntersectsMultiPolygon;
+var ref$1 = require('../query_utils');
+var translateDistance = ref$1.translateDistance;
+var translate = ref$1.translate;
+
+                                                                           
+                                                        
+                                                
+
+var FillStyleLayer = (function (StyleLayer) {
+    function FillStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) FillStyleLayer.__proto__ = StyleLayer;
+    FillStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    FillStyleLayer.prototype.constructor = FillStyleLayer;
+
+    FillStyleLayer.prototype.getPaintValue = function getPaintValue (name        , globals                  , feature          ) {
+        var this$1 = this;
+
+        if (name === 'fill-outline-color') {
+            // Special-case handling of undefined fill-outline-color values
+            if (this.getPaintProperty('fill-outline-color') === undefined) {
+                return StyleLayer.prototype.getPaintValue.call(this, 'fill-color', globals, feature);
+            }
+
+            // Handle transitions from fill-outline-color: undefined
+            var transition = this._paintTransitions['fill-outline-color'];
+            while (transition) {
+                var declaredValue = (
+                    transition &&
+                    transition.declaration &&
+                    transition.declaration.value
+                );
+
+                if (!declaredValue) {
+                    return StyleLayer.prototype.getPaintValue.call(this$1, 'fill-color', globals, feature);
+                }
+
+                transition = transition.oldTransition;
+            }
+        }
+
+        return StyleLayer.prototype.getPaintValue.call(this, name, globals, feature);
+    };
+
+    FillStyleLayer.prototype.getPaintInterpolationFactor = function getPaintInterpolationFactor (name   ) {
+        var args = [], len = arguments.length - 1;
+        while ( len-- > 0 ) args[ len ] = arguments[ len + 1 ];
+
+        if (name === 'fill-outline-color' && this.getPaintProperty('fill-outline-color') === undefined) {
+            return StyleLayer.prototype.getPaintInterpolationFactor.apply(this, [ 'fill-color' ].concat( args ));
+        } else {
+            return StyleLayer.prototype.getPaintInterpolationFactor.apply(this, [ name ].concat( args ));
+        }
+    };
+
+    FillStyleLayer.prototype.isPaintValueFeatureConstant = function isPaintValueFeatureConstant (name        ) {
+        if (name === 'fill-outline-color' && this.getPaintProperty('fill-outline-color') === undefined) {
+            return StyleLayer.prototype.isPaintValueFeatureConstant.call(this, 'fill-color');
+        } else {
+            return StyleLayer.prototype.isPaintValueFeatureConstant.call(this, name);
+        }
+    };
+
+    FillStyleLayer.prototype.isPaintValueZoomConstant = function isPaintValueZoomConstant (name        ) {
+        if (name === 'fill-outline-color' && this.getPaintProperty('fill-outline-color') === undefined) {
+            return StyleLayer.prototype.isPaintValueZoomConstant.call(this, 'fill-color');
+        } else {
+            return StyleLayer.prototype.isPaintValueZoomConstant.call(this, name);
+        }
+    };
+
+    FillStyleLayer.prototype.createBucket = function createBucket (parameters                  ) {
+        return new FillBucket(parameters);
+    };
+
+    FillStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.isPaintValueFeatureConstant('fill-opacity') &&
+            this.getPaintValue('fill-opacity', { zoom: zoom }) === 0;
+    };
+
+    FillStyleLayer.prototype.queryRadius = function queryRadius ()         {
+        return translateDistance(this.paint['fill-translate']);
+    };
+
+    FillStyleLayer.prototype.queryIntersectsFeature = function queryIntersectsFeature (queryGeometry                     ,
+                           feature                   ,
+                           geometry                     ,
+                           zoom        ,
+                           bearing        ,
+                           pixelsToTileUnits        )          {
+        var translatedPolygon = translate(queryGeometry,
+            this.getPaintValue('fill-translate', {zoom: zoom}, feature),
+            this.getPaintValue('fill-translate-anchor', {zoom: zoom}, feature),
+            bearing, pixelsToTileUnits);
+        return multiPolygonIntersectsMultiPolygon(translatedPolygon, geometry);
+    };
+
+    return FillStyleLayer;
+}(StyleLayer));
+
+module.exports = FillStyleLayer;
+
+},{"../../data/bucket/fill_bucket":54,"../../util/intersection_tests":244,"../query_utils":182,"../style_layer":185}],190:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+var HeatmapBucket = require('../../data/bucket/heatmap_bucket');
+var RGBAImage = require('../../util/image').RGBAImage;
+
+                                                
+
+var HeatmapStyleLayer = (function (StyleLayer) {
+    function HeatmapStyleLayer(layer                    ) {
+        StyleLayer.call(this, layer);
+        this.colorRampData = new Uint8Array(256 * 4);
+
+        // make sure color ramp texture is generated for default heatmap color too
+        if (!this.getPaintProperty('heatmap-color')) {
+            this.setPaintProperty('heatmap-color', this._paintSpecifications['heatmap-color'].default, '');
+        }
+    }
+
+    if ( StyleLayer ) HeatmapStyleLayer.__proto__ = StyleLayer;
+    HeatmapStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    HeatmapStyleLayer.prototype.constructor = HeatmapStyleLayer;
+
+    // we can't directly override setPaintProperty because it's asynchronous in the sense that
+    // getPaintValue call immediately after it won't return relevant values, it needs to wait
+    // until all paint transition have been updated (which usually happens once per frame)
+    HeatmapStyleLayer.prototype.createBucket = function createBucket (options     ) {
+        return new HeatmapBucket(options);
+    };
+
+    HeatmapStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.getPaintValue('heatmap-opacity', { zoom: zoom }) === 0;
+    };
+
+    HeatmapStyleLayer.prototype._applyPaintDeclaration = function _applyPaintDeclaration (name     , declaration     , options     , globalOptions     , animationLoop     , zoomHistory     ) {
+        var this$1 = this;
+
+        StyleLayer.prototype._applyPaintDeclaration.call(this, name, declaration, options, globalOptions, animationLoop, zoomHistory);
+        if (name === 'heatmap-color') {
+            var len = this.colorRampData.length;
+            for (var i = 4; i < len; i += 4) {
+                var pxColor = this$1.getPaintValue('heatmap-color', {heatmapDensity: i / len, zoom: -1});
+                var alpha = pxColor[3];
+                // the colors are being unpremultiplied because getPaintValue returns
+                // premultiplied values, and the Texture class expects unpremultiplied ones
+                this$1.colorRampData[i + 0] = Math.floor(pxColor[0] * 255 / alpha);
+                this$1.colorRampData[i + 1] = Math.floor(pxColor[1] * 255 / alpha);
+                this$1.colorRampData[i + 2] = Math.floor(pxColor[2] * 255 / alpha);
+                this$1.colorRampData[i + 3] = Math.floor(alpha * 255);
+            }
+            this.colorRamp = RGBAImage.create({width: 256, height: 1}, this.colorRampData);
+            this.colorRampTexture = null;
+        }
+    };
+
+    HeatmapStyleLayer.prototype.resize = function resize (gl                       ) {
+        if (this.heatmapTexture) {
+            gl.deleteTexture(this.heatmapTexture);
+            this.heatmapTexture = null;
+        }
+        if (this.heatmapFbo) {
+            gl.deleteFramebuffer(this.heatmapFbo);
+            this.heatmapFbo = null;
+        }
+    };
+
+    return HeatmapStyleLayer;
+}(StyleLayer));
+
+module.exports = HeatmapStyleLayer;
+
+},{"../../data/bucket/heatmap_bucket":56,"../../util/image":243,"../style_layer":185}],191:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+
+var StyleLayer = require('../style_layer');
+var LineBucket = require('../../data/bucket/line_bucket');
+var ref = require('../../util/intersection_tests');
+var multiPolygonIntersectsBufferedMultiLine = ref.multiPolygonIntersectsBufferedMultiLine;
+var ref$1 = require('../query_utils');
+var getMaximumPaintValue = ref$1.getMaximumPaintValue;
+var translateDistance = ref$1.translateDistance;
+var translate = ref$1.translate;
+
+                                                                
+
+var LineStyleLayer = (function (StyleLayer) {
+    function LineStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) LineStyleLayer.__proto__ = StyleLayer;
+    LineStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    LineStyleLayer.prototype.constructor = LineStyleLayer;
+
+    LineStyleLayer.prototype.createBucket = function createBucket (parameters                  ) {
+        return new LineBucket(parameters);
+    };
+
+    LineStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.isPaintValueFeatureConstant('line-opacity') &&
+            this.getPaintValue('line-opacity', { zoom: zoom }) === 0;
+    };
+
+    LineStyleLayer.prototype.queryRadius = function queryRadius (bucket        )         {
+        var lineBucket             = (bucket     );
+        var width = getLineWidth(
+            getMaximumPaintValue('line-width', this, lineBucket),
+            getMaximumPaintValue('line-gap-width', this, lineBucket));
+        var offset = getMaximumPaintValue('line-offset', this, lineBucket);
+        return width / 2 + Math.abs(offset) + translateDistance(this.paint['line-translate']);
+    };
+
+    LineStyleLayer.prototype.queryIntersectsFeature = function queryIntersectsFeature (queryGeometry                     ,
+                           feature                   ,
+                           geometry                     ,
+                           zoom        ,
+                           bearing        ,
+                           pixelsToTileUnits        )          {
+        var translatedPolygon = translate(queryGeometry,
+            this.getPaintValue('line-translate', {zoom: zoom}, feature),
+            this.getPaintValue('line-translate-anchor', {zoom: zoom}, feature),
+            bearing, pixelsToTileUnits);
+        var halfWidth = pixelsToTileUnits / 2 * getLineWidth(
+            this.getPaintValue('line-width', {zoom: zoom}, feature),
+            this.getPaintValue('line-gap-width', {zoom: zoom}, feature));
+        var lineOffset = this.getPaintValue('line-offset', {zoom: zoom}, feature);
+        if (lineOffset) {
+            geometry = offsetLine(geometry, lineOffset * pixelsToTileUnits);
+        }
+        return multiPolygonIntersectsBufferedMultiLine(translatedPolygon, geometry, halfWidth);
+    };
+
+    return LineStyleLayer;
+}(StyleLayer));
+
+module.exports = LineStyleLayer;
+
+function getLineWidth(lineWidth, lineGapWidth) {
+    if (lineGapWidth > 0) {
+        return lineGapWidth + 2 * lineWidth;
+    } else {
+        return lineWidth;
+    }
+}
+
+function offsetLine(rings, offset) {
+    var newRings = [];
+    var zero = new Point(0, 0);
+    for (var k = 0; k < rings.length; k++) {
+        var ring = rings[k];
+        var newRing = [];
+        for (var i = 0; i < ring.length; i++) {
+            var a = ring[i - 1];
+            var b = ring[i];
+            var c = ring[i + 1];
+            var aToB = i === 0 ? zero : b.sub(a)._unit()._perp();
+            var bToC = i === ring.length - 1 ? zero : c.sub(b)._unit()._perp();
+            var extrude = aToB._add(bToC)._unit();
+
+            var cosHalfAngle = extrude.x * bToC.x + extrude.y * bToC.y;
+            extrude._mult(1 / cosHalfAngle);
+
+            newRing.push(extrude._mult(offset)._add(b));
+        }
+        newRings.push(newRing);
+    }
+    return newRings;
+}
+
+},{"../../data/bucket/line_bucket":57,"../../util/intersection_tests":244,"../query_utils":182,"../style_layer":185,"@mapbox/point-geometry":2}],192:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+
+var RasterStyleLayer = (function (StyleLayer) {
+    function RasterStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) RasterStyleLayer.__proto__ = StyleLayer;
+    RasterStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    RasterStyleLayer.prototype.constructor = RasterStyleLayer;
+
+    RasterStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        ) {
+        return this.getPaintValue('raster-opacity', { zoom: zoom }) === 0;
+    };
+
+    return RasterStyleLayer;
+}(StyleLayer));
+
+module.exports = RasterStyleLayer;
+
+},{"../style_layer":185}],193:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('../style_layer');
+var SymbolBucket = require('../../data/bucket/symbol_bucket');
+var assert = require('assert');
+
+                                                                           
+                                                        
+
+var SymbolStyleLayer = (function (StyleLayer) {
+    function SymbolStyleLayer () {
+        StyleLayer.apply(this, arguments);
+    }
+
+    if ( StyleLayer ) SymbolStyleLayer.__proto__ = StyleLayer;
+    SymbolStyleLayer.prototype = Object.create( StyleLayer && StyleLayer.prototype );
+    SymbolStyleLayer.prototype.constructor = SymbolStyleLayer;
+
+    SymbolStyleLayer.prototype.getLayoutValue = function getLayoutValue (name        , globals                  , feature          )      {
+        var value = StyleLayer.prototype.getLayoutValue.call(this, name, globals, feature);
+        if (value !== 'auto') {
+            return value;
+        }
+
+        switch (name) {
+        case 'text-rotation-alignment':
+        case 'icon-rotation-alignment':
+            return this.getLayoutValue('symbol-placement', globals, feature) === 'line' ? 'map' : 'viewport';
+        case 'text-pitch-alignment':
+            return this.getLayoutValue('text-rotation-alignment', globals, feature);
+        case 'icon-pitch-alignment':
+            return this.getLayoutValue('icon-rotation-alignment', globals, feature);
+        default:
+            return value;
+        }
+    };
+
+    SymbolStyleLayer.prototype.getLayoutDeclaration = function getLayoutDeclaration (name        ) {
+        return this._layoutDeclarations[name];
+    };
+
+    SymbolStyleLayer.prototype.isLayoutValueFeatureConstant = function isLayoutValueFeatureConstant (name        ) {
+        var declaration = this._layoutDeclarations[name];
+        return !declaration || declaration.expression.isFeatureConstant;
+    };
+
+    SymbolStyleLayer.prototype.isLayoutValueZoomConstant = function isLayoutValueZoomConstant (name        ) {
+        var declaration = this._layoutDeclarations[name];
+        return !declaration || declaration.expression.isZoomConstant;
+    };
+
+    SymbolStyleLayer.prototype.createBucket = function createBucket (parameters                  ) {
+        // Eventually we need to make SymbolBucket conform to the Bucket interface.
+        // Hack around it with casts for now.
+        return (new SymbolBucket((parameters     ))     );
+    };
+
+    SymbolStyleLayer.prototype.isOpacityZero = function isOpacityZero (zoom        , property        ) {
+        return this.isPaintValueFeatureConstant(property) &&
+            this.getPaintValue(property, { zoom: zoom }) === 0;
+    };
+
+    SymbolStyleLayer.prototype.queryRadius = function queryRadius ()         {
+        return 0;
+    };
+
+    SymbolStyleLayer.prototype.queryIntersectsFeature = function queryIntersectsFeature ()          {
+        assert(false); // Should take a different path in FeatureIndex
+        return false;
+    };
+
+    return SymbolStyleLayer;
+}(StyleLayer));
+
+module.exports = SymbolStyleLayer;
+
+},{"../../data/bucket/symbol_bucket":58,"../style_layer":185,"assert":11}],194:[function(require,module,exports){
+'use strict';//      
+
+var StyleLayer = require('./style_layer');
+var util = require('../util/util');
+var featureFilter = require('../style-spec/feature_filter');
+var groupByLayout = require('../style-spec/group_by_layout');
+
+                                                            
+
+var StyleLayerIndex = function StyleLayerIndex(layerConfigs                        ) {
+    if (layerConfigs) {
+        this.replace(layerConfigs);
+    }
+};
+
+StyleLayerIndex.prototype.replace = function replace (layerConfigs                       ) {
+        var this$1 = this;
+
+    this.symbolOrder = [];
+    for (var i = 0, list = layerConfigs; i < list.length; i += 1) {
+        var layerConfig = list[i];
+
+            if (layerConfig.type === 'symbol') {
+            this$1.symbolOrder.push(layerConfig.id);
+        }
+    }
+    this._layerConfigs = {};
+    this._layers = {};
+    this.update(layerConfigs, []);
+};
+
+StyleLayerIndex.prototype.update = function update (layerConfigs                       , removedIds           , symbolOrder            ) {
+        var this$1 = this;
+
+    for (var i = 0, list = layerConfigs; i < list.length; i += 1) {
+        var layerConfig = list[i];
+
+            this$1._layerConfigs[layerConfig.id] = layerConfig;
+
+        var layer = this$1._layers[layerConfig.id] = StyleLayer.create(layerConfig);
+        layer.updatePaintTransitions({transition: false});
+        layer._featureFilter = featureFilter(layer.filter);
+    }
+    for (var i$1 = 0, list$1 = removedIds; i$1 < list$1.length; i$1 += 1) {
+        var id = list$1[i$1];
+
+            delete this$1._layerConfigs[id];
+        delete this$1._layers[id];
+    }
+    if (symbolOrder) {
+        this.symbolOrder = symbolOrder;
+    }
+
+    this.familiesBySource = {};
+
+    var groups = groupByLayout(util.values(this._layerConfigs));
+
+    for (var i$2 = 0, list$2 = groups; i$2 < list$2.length; i$2 += 1) {
+        var layerConfigs$1 = list$2[i$2];
+
+            var layers = layerConfigs$1.map(function (layerConfig) { return this$1._layers[layerConfig.id]; });
+
+        var layer$1 = layers[0];
+        if (layer$1.layout && layer$1.layout.visibility === 'none') {
+            continue;
+        }
+
+        var sourceId = layer$1.source || '';
+        var sourceGroup = this$1.familiesBySource[sourceId];
+        if (!sourceGroup) {
+            sourceGroup = this$1.familiesBySource[sourceId] = {};
+        }
+
+        var sourceLayerId = layer$1.sourceLayer || '_geojsonTileLayer';
+        var sourceLayerFamilies = sourceGroup[sourceLayerId];
+        if (!sourceLayerFamilies) {
+            sourceLayerFamilies = sourceGroup[sourceLayerId] = [];
+        }
+
+        sourceLayerFamilies.push(layers);
+    }
+};
+
+module.exports = StyleLayerIndex;
+
+},{"../style-spec/feature_filter":145,"../style-spec/group_by_layout":147,"../util/util":253,"./style_layer":185}],195:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var interpolate = require('../style-spec/util/interpolate');
+
+                                                        
+                                                                        
+
+var fakeZoomHistory = { lastIntegerZoom: 0, lastIntegerZoomTime: 0, lastZoom: 0 };
+
+/*
+ * Represents a transition between two declarations
+ */
+var StyleTransition = function StyleTransition(reference ,
+            declaration              ,
+            oldTransition              ,
+            options                     ,
+            zoomHistory ) {
+    this.declaration = declaration;
+    this.startTime = this.endTime = (new Date()).getTime();
+
+    this.oldTransition = oldTransition;
+    this.duration = options.duration || 0;
+    this.delay = options.delay || 0;
+
+    this.zoomTransitioned = reference.function === 'piecewise-constant' && reference.transition;
+    this.interp = this.zoomTransitioned ? interpZoomTransitioned : interpolate[reference.type];
+    this.zoomHistory = zoomHistory || fakeZoomHistory;
+
+    if (!this.instant()) {
+        this.endTime = this.startTime + this.duration + this.delay;
+    }
+
+    if (oldTransition && oldTransition.endTime <= this.startTime) {
+        // Old transition is done running, so we can
+        // delete its reference to its old transition.
+        delete oldTransition.oldTransition;
+    }
+};
+
+StyleTransition.prototype.instant = function instant () {
+    return !this.oldTransition || !this.interp || (this.duration === 0 && this.delay === 0);
+};
+
+/*
+ * Return the value of the transitioning property.
+ */
+StyleTransition.prototype.calculate = function calculate (globals              , feature      , time     ) {
+    var value = this._calculateTargetValue(globals, feature);
+
+    if (this.instant())
+        { return value; }
+
+    time = time || Date.now();
+
+    if (time >= this.endTime)
+        { return value; }
+
+    var oldValue = (this.oldTransition ).calculate(globals, feature, this.startTime);
+    var t = util.easeCubicInOut((time - this.startTime - this.delay) / this.duration);
+    return this.interp(oldValue, value, t);
+};
+
+StyleTransition.prototype._calculateTargetValue = function _calculateTargetValue (globals              , feature      ) {
+    if (!this.zoomTransitioned)
+        { return this.declaration.calculate(globals, feature); }
+
+    // calculate zoom transition between discrete values, such as images and dasharrays.
+    var z = globals.zoom;
+    var lastIntegerZoom = this.zoomHistory.lastIntegerZoom;
+
+    var fromScale = z > lastIntegerZoom ? 2 : 0.5;
+    var from = this.declaration.calculate({zoom: z > lastIntegerZoom ? z - 1 : z + 1}, feature);
+    var to = this.declaration.calculate({zoom: z}, feature);
+
+    var timeFraction = Math.min((Date.now() - this.zoomHistory.lastIntegerZoomTime) / this.duration, 1);
+    var zoomFraction = Math.abs(z - lastIntegerZoom);
+    var t = interpolate(timeFraction, 1, zoomFraction);
+
+    if (from === undefined || to === undefined)
+        { return undefined; }
+
+    return { from: from, fromScale: fromScale, to: to, toScale: 1, t: t };
+};
+
+module.exports = StyleTransition;
+
+// interpolate between two values that transition with zoom, such as images and dasharrays
+function interpZoomTransitioned(from, to, t) {
+    if (from === undefined || to === undefined)
+        { return undefined; }
+
+    return {
+        from: from.to,
+        fromScale: from.toScale,
+        to: to.to,
+        toScale: to.toScale,
+        t: t
+    };
+}
+
+},{"../style-spec/util/interpolate":153,"../util/util":253}],196:[function(require,module,exports){
+'use strict';//      
+
+module.exports = require('../style-spec/validate_style.min');
+
+                                           
+
+module.exports.emitErrors = function (emitter         , errors                           ) {
+    if (errors && errors.length) {
+        for (var i = 0, list = errors; i < list.length; i += 1) {
+            var ref = list[i];
+            var message = ref.message;
+
+            emitter.fire('error', { error: new Error(message) });
+        }
+        return true;
+    } else {
+        return false;
+    }
+};
+
+},{"../style-spec/validate_style.min":176}],197:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+
+var Anchor = (function (Point) {
+    function Anchor(x        , y        , angle        , segment         ) {
+        Point.call(this, x, y);
+        this.angle = angle;
+        if (segment !== undefined) {
+            this.segment = segment;
+        }
+    }
+
+    if ( Point ) Anchor.__proto__ = Point;
+    Anchor.prototype = Object.create( Point && Point.prototype );
+    Anchor.prototype.constructor = Anchor;
+
+    Anchor.prototype.clone = function clone () {
+        return new Anchor(this.x, this.y, this.angle, this.segment);
+    };
+
+    return Anchor;
+}(Point));
+
+module.exports = Anchor;
+
+},{"@mapbox/point-geometry":2}],198:[function(require,module,exports){
+'use strict';//      
+
+module.exports = checkMaxAngle;
+
+                                                
+                                   
+
+/**
+ * Labels placed around really sharp angles aren't readable. Check if any
+ * part of the potential label has a combined angle that is too big.
+ *
+ * @param line
+ * @param anchor The point on the line around which the label is anchored.
+ * @param labelLength The length of the label in geometry units.
+ * @param windowSize The check fails if the combined angles within a part of the line that is `windowSize` long is too big.
+ * @param maxAngle The maximum combined angle that any window along the label is allowed to have.
+ *
+ * @returns {boolean} whether the label should be placed
+ * @private
+ */
+function checkMaxAngle(line              , anchor        , labelLength        , windowSize        , maxAngle        ) {
+
+    // horizontal labels always pass
+    if (anchor.segment === undefined) { return true; }
+
+    var p = anchor;
+    var index = anchor.segment + 1;
+    var anchorDistance = 0;
+
+    // move backwards along the line to the first segment the label appears on
+    while (anchorDistance > -labelLength / 2) {
+        index--;
+
+        // there isn't enough room for the label after the beginning of the line
+        if (index < 0) { return false; }
+
+        anchorDistance -= line[index].dist(p);
+        p = line[index];
+    }
+
+    anchorDistance += line[index].dist(line[index + 1]);
+    index++;
+
+    // store recent corners and their total angle difference
+    var recentCorners = [];
+    var recentAngleDelta = 0;
+
+    // move forwards by the length of the label and check angles along the way
+    while (anchorDistance < labelLength / 2) {
+        var prev = line[index - 1];
+        var current = line[index];
+        var next = line[index + 1];
+
+        // there isn't enough room for the label before the end of the line
+        if (!next) { return false; }
+
+        var angleDelta = prev.angleTo(current) - current.angleTo(next);
+        // restrict angle to -pi..pi range
+        angleDelta = Math.abs(((angleDelta + 3 * Math.PI) % (Math.PI * 2)) - Math.PI);
+
+        recentCorners.push({
+            distance: anchorDistance,
+            angleDelta: angleDelta
+        });
+        recentAngleDelta += angleDelta;
+
+        // remove corners that are far enough away from the list of recent anchors
+        while (anchorDistance - recentCorners[0].distance > windowSize) {
+            recentAngleDelta -= recentCorners.shift().angleDelta;
+        }
+
+        // the sum of angles within the window area exceeds the maximum allowed value. check fails.
+        if (recentAngleDelta > maxAngle) { return false; }
+
+        index++;
+        anchorDistance += current.dist(next);
+    }
+
+    // no part of the line had an angle greater than the maximum allowed. check passes.
+    return true;
+}
+
+},{}],199:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+
+module.exports = clipLine;
+
+/**
+ * Returns the part of a multiline that intersects with the provided rectangular box.
+ *
+ * @param lines
+ * @param x1 the left edge of the box
+ * @param y1 the top edge of the box
+ * @param x2 the right edge of the box
+ * @param y2 the bottom edge of the box
+ * @returns lines
+ * @private
+ */
+function clipLine(lines                     , x1        , y1        , x2        , y2        )                      {
+    var clippedLines = [];
+
+    for (var l = 0; l < lines.length; l++) {
+        var line = lines[l];
+        var clippedLine = (void 0);
+
+        for (var i = 0; i < line.length - 1; i++) {
+            var p0 = line[i];
+            var p1 = line[i + 1];
+
+
+            if (p0.x < x1 && p1.x < x1) {
+                continue;
+            } else if (p0.x < x1) {
+                p0 = new Point(x1, p0.y + (p1.y - p0.y) * ((x1 - p0.x) / (p1.x - p0.x)))._round();
+            } else if (p1.x < x1) {
+                p1 = new Point(x1, p0.y + (p1.y - p0.y) * ((x1 - p0.x) / (p1.x - p0.x)))._round();
+            }
+
+            if (p0.y < y1 && p1.y < y1) {
+                continue;
+            } else if (p0.y < y1) {
+                p0 = new Point(p0.x + (p1.x - p0.x) * ((y1 - p0.y) / (p1.y - p0.y)), y1)._round();
+            } else if (p1.y < y1) {
+                p1 = new Point(p0.x + (p1.x - p0.x) * ((y1 - p0.y) / (p1.y - p0.y)), y1)._round();
+            }
+
+            if (p0.x >= x2 && p1.x >= x2) {
+                continue;
+            } else if (p0.x >= x2) {
+                p0 = new Point(x2, p0.y + (p1.y - p0.y) * ((x2 - p0.x) / (p1.x - p0.x)))._round();
+            } else if (p1.x >= x2) {
+                p1 = new Point(x2, p0.y + (p1.y - p0.y) * ((x2 - p0.x) / (p1.x - p0.x)))._round();
+            }
+
+            if (p0.y >= y2 && p1.y >= y2) {
+                continue;
+            } else if (p0.y >= y2) {
+                p0 = new Point(p0.x + (p1.x - p0.x) * ((y2 - p0.y) / (p1.y - p0.y)), y2)._round();
+            } else if (p1.y >= y2) {
+                p1 = new Point(p0.x + (p1.x - p0.x) * ((y2 - p0.y) / (p1.y - p0.y)), y2)._round();
+            }
+
+            if (!clippedLine || !p0.equals(clippedLine[clippedLine.length - 1])) {
+                clippedLine = [p0];
+                clippedLines.push(clippedLine);
+            }
+
+            clippedLine.push(p1);
+        }
+    }
+
+    return clippedLines;
+}
+
+},{"@mapbox/point-geometry":2}],200:[function(require,module,exports){
+'use strict';//      
+
+var createStructArrayType = require('../util/struct_array');
+var Point = require('@mapbox/point-geometry');
+
+                            
+                       
+                         
+                         
+                    
+                    
+               
+               
+               
+               
+                               
+                     
+                         
+                             
+                        
+                  
+                  
+                  
+                  
+                          
+  
+
+/**
+ * A collision box represents an area of the map that that is covered by a
+ * label. CollisionFeature uses one or more of these collision boxes to
+ * represent all the area covered by a single label. They are used to
+ * prevent collisions between labels.
+ *
+ * A collision box actually represents a 3d volume. The first two dimensions,
+ * x and y, are specified with `anchor` along with `x1`, `y1`, `x2`, `y2`.
+ * The third dimension, zoom, is limited by `maxScale` which determines
+ * how far in the z dimensions the box extends.
+ *
+ * As you zoom in on a map, all points on the map get further and further apart
+ * but labels stay roughly the same size. Labels cover less real world area on
+ * the map at higher zoom levels than they do at lower zoom levels. This is why
+ * areas are are represented with an anchor point and offsets from that point
+ * instead of just using four absolute points.
+ *
+ * Line labels are represented by a set of these boxes spaced out along a line.
+ * When you zoom in, line labels cover less real world distance along the line
+ * than they used to. Collision boxes near the edges that used to cover label
+ * no longer do. If a box doesn't cover the label anymore it should be ignored
+ * when doing collision checks. `maxScale` is how much you can scale the map
+ * before the label isn't within the box anymore.
+ * For example
+ * lower zoom:
+ * https://cloud.githubusercontent.com/assets/1421652/8060094/4d975f76-0e91-11e5-84b1-4edeb30a5875.png
+ * slightly higher zoom:
+ * https://cloud.githubusercontent.com/assets/1421652/8060061/26ae1c38-0e91-11e5-8c5a-9f380bf29f0a.png
+ * In the zoomed in image the two grey boxes on either side don't cover the
+ * label anymore. Their maxScale is smaller than the current scale.
+ *
+ *
+ * @class CollisionBoxArray
+ * @private
+ */
+
+var CollisionBoxArray = createStructArrayType({
+    members: [
+        // the box is centered around the anchor point
+        { type: 'Int16', name: 'anchorPointX' },
+        { type: 'Int16', name: 'anchorPointY' },
+
+        // the offset of the box from the label's anchor point
+        { type: 'Int16', name: 'offsetX' },
+        { type: 'Int16', name: 'offsetY' },
+
+        // distances to the edges from the anchor
+        { type: 'Int16', name: 'x1' },
+        { type: 'Int16', name: 'y1' },
+        { type: 'Int16', name: 'x2' },
+        { type: 'Int16', name: 'y2' },
+
+        // the box is only valid for scales < maxScale.
+        // The box does not block other boxes at scales >= maxScale;
+        { type: 'Float32', name: 'unadjustedMaxScale' },
+        { type: 'Float32', name: 'maxScale' },
+
+        // the index of the feature in the original vectortile
+        { type: 'Uint32', name: 'featureIndex' },
+        // the source layer the feature appears in
+        { type: 'Uint16', name: 'sourceLayerIndex' },
+        // the bucket the feature appears in
+        { type: 'Uint16', name: 'bucketIndex' },
+
+        // rotated and scaled bbox used for indexing
+        { type: 'Int16', name: 'bbox0' },
+        { type: 'Int16', name: 'bbox1' },
+        { type: 'Int16', name: 'bbox2' },
+        { type: 'Int16', name: 'bbox3' },
+
+        { type: 'Float32', name: 'placementScale' }
+    ]
+});
+
+// https://github.com/facebook/flow/issues/285
+(Object.defineProperty     )(CollisionBoxArray.prototype.StructType.prototype, 'anchorPoint', {
+    get: function get() { return new Point(this.anchorPointX, this.anchorPointY); }
+});
+
+module.exports = CollisionBoxArray;
+
+},{"../util/struct_array":250,"@mapbox/point-geometry":2}],201:[function(require,module,exports){
+'use strict';//      
+
+                                                     
+                                                
+                                   
+
+/**
+ * A CollisionFeature represents the area of the tile covered by a single label.
+ * It is used with CollisionTile to check if the label overlaps with any
+ * previous labels. A CollisionFeature is mostly just a set of CollisionBox
+ * objects.
+ *
+ * @private
+ */
+var CollisionFeature = function CollisionFeature(collisionBoxArray               ,
+            line          ,
+            anchor    ,
+            featureIndex    ,
+            sourceLayerIndex    ,
+            bucketIndex    ,
+            shaped    ,
+            boxScale    ,
+            padding    ,
+            alignLine     ,
+            straight     ) {
+    var y1 = shaped.top * boxScale - padding;
+    var y2 = shaped.bottom * boxScale + padding;
+    var x1 = shaped.left * boxScale - padding;
+    var x2 = shaped.right * boxScale + padding;
+
+    this.boxStartIndex = collisionBoxArray.length;
+
+    if (alignLine) {
+
+        var height = y2 - y1;
+        var length = x2 - x1;
+
+        if (height > 0) {
+            // set minimum box height to avoid very many small labels
+            height = Math.max(10 * boxScale, height);
+
+            if (straight) {
+                // used for icon labels that are aligned with the line, but don't curve along it
+                var vector = line[anchor.segment + 1].sub(line[(anchor.segment )])._unit()._mult(length);
+                var straightLine = [anchor.sub(vector), anchor.add(vector)];
+                this._addLineCollisionBoxes(collisionBoxArray, straightLine, anchor, 0, length, height, featureIndex, sourceLayerIndex, bucketIndex);
+            } else {
+                // used for text labels that curve along a line
+                this._addLineCollisionBoxes(collisionBoxArray, line, anchor, (anchor.segment ), length, height, featureIndex, sourceLayerIndex, bucketIndex);
+            }
+        }
+
+    } else {
+        collisionBoxArray.emplaceBack(anchor.x, anchor.y, 0, 0, x1, y1, x2, y2, Infinity, Infinity, featureIndex, sourceLayerIndex, bucketIndex,
+            0, 0, 0, 0, 0);
+    }
+
+    this.boxEndIndex = collisionBoxArray.length;
+};
+
+/**
+ * Create a set of CollisionBox objects for a line.
+ *
+ * @param labelLength The length of the label in geometry units.
+ * @param anchor The point along the line around which the label is anchored.
+ * @param boxSize The size of the collision boxes that will be created.
+ * @private
+ */
+CollisionFeature.prototype._addLineCollisionBoxes = function _addLineCollisionBoxes (collisionBoxArray               ,
+                       line          ,
+                       anchor    ,
+                       segment    ,
+                       labelLength    ,
+                       boxSize    ,
+                       featureIndex    ,
+                       sourceLayerIndex    ,
+                       bucketIndex    ) {
+    var step = boxSize / 2;
+    var nBoxes = Math.floor(labelLength / step);
+    // We calculate line collision boxes out to 300% of what would normally be our
+    // max size, to allow collision detection to work on labels that expand as
+    // they move into the distance
+    var nPitchPaddingBoxes = Math.floor(nBoxes / 2);
+
+    // offset the center of the first box by half a box so that the edge of the
+    // box is at the edge of the label.
+    var firstBoxOffset = -boxSize / 2;
+
+    var p = anchor;
+    var index = segment + 1;
+    var anchorDistance = firstBoxOffset;
+    var labelStartDistance = -labelLength / 2;
+    var paddingStartDistance = labelStartDistance - labelLength / 8;
+
+    // move backwards along the line to the first segment the label appears on
+    do {
+        index--;
+
+        if (index < 0) {
+            if (anchorDistance > labelStartDistance) {
+                // there isn't enough room for the label after the beginning of the line
+                // checkMaxAngle should have already caught this
+                return;
+            } else {
+                // The line doesn't extend far enough back for all of our padding,
+                // but we got far enough to show the label under most conditions.
+                index = 0;
+                break;
+            }
+        } else {
+            anchorDistance -= line[index].dist(p);
+            p = line[index];
+        }
+    } while (anchorDistance > paddingStartDistance);
+
+    var segmentLength = line[index].dist(line[index + 1]);
+
+    for (var i = -nPitchPaddingBoxes; i < nBoxes + nPitchPaddingBoxes; i++) {
+
+        // the distance the box will be from the anchor
+        var boxOffset = i * step;
+        var boxDistanceToAnchor = labelStartDistance + boxOffset;
+
+        // make the distance between pitch padding boxes bigger
+        if (boxOffset < 0) { boxDistanceToAnchor += boxOffset; }
+        if (boxOffset > labelLength) { boxDistanceToAnchor += boxOffset - labelLength; }
+
+        if (boxDistanceToAnchor < anchorDistance) {
+            // The line doesn't extend far enough back for this box, skip it
+            // (This could allow for line collisions on distant tiles)
+            continue;
+        }
+
+        // the box is not on the current segment. Move to the next segment.
+        while (anchorDistance + segmentLength < boxDistanceToAnchor) {
+            anchorDistance += segmentLength;
+            index++;
+
+            // There isn't enough room before the end of the line.
+            if (index + 1 >= line.length) { return; }
+
+            segmentLength = line[index].dist(line[index + 1]);
+        }
+
+        // the distance the box will be from the beginning of the segment
+        var segmentBoxDistance = boxDistanceToAnchor - anchorDistance;
+
+        var p0 = line[index];
+        var p1 = line[index + 1];
+        var boxAnchorPoint = p1.sub(p0)._unit()._mult(segmentBoxDistance)._add(p0)._round();
+
+        // Distance from label anchor point to inner (towards center) edge of this box
+        // The tricky thing here is that box positioning doesn't change with scale,
+        // but box size does change with scale.
+        // Technically, distanceToInnerEdge should be:
+        // Math.max(Math.abs(boxDistanceToAnchor - firstBoxOffset) - (step / scale), 0);
+        // But using that formula would make solving for maxScale more difficult, so we
+        // approximate with scale=2.
+        // This makes our calculation spot-on at scale=2, and on the conservative side for
+        // lower scales
+        var distanceToInnerEdge = Math.max(Math.abs(boxDistanceToAnchor - firstBoxOffset) - step / 2, 0);
+        var maxScale = labelLength / 2 / distanceToInnerEdge;
+
+        // The box maxScale calculations are designed to be conservative on collisions in the scale range
+        // [1,2]. At scale=1, each box has 50% overlap, and at scale=2, the boxes are lined up edge
+        // to edge (beyond scale 2, gaps start to appear, which could potentially allow missed collisions).
+        // We add "pitch padding" boxes to the left and right to handle effective underzooming
+        // (scale < 1) when labels are in the distance. The overlap approximation could cause us to use
+        // these boxes when the scale is greater than 1, but we prevent that because we know
+        // they're only necessary for scales less than one.
+        // This preserves the pre-pitch-padding behavior for unpitched maps.
+        if (i < 0 || i >= nBoxes) {
+            maxScale = Math.min(maxScale, 0.99);
+        }
+
+        collisionBoxArray.emplaceBack(boxAnchorPoint.x, boxAnchorPoint.y,
+            boxAnchorPoint.x - anchor.x, boxAnchorPoint.y - anchor.y,
+            -boxSize / 2, -boxSize / 2, boxSize / 2, boxSize / 2, maxScale, maxScale,
+            featureIndex, sourceLayerIndex, bucketIndex,
+            0, 0, 0, 0, 0);
+    }
+};
+
+module.exports = CollisionFeature;
+
+},{}],202:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+var EXTENT = require('../data/extent');
+var Grid = require('grid-index');
+var intersectionTests = require('../util/intersection_tests');
+
+                                                                     
+
+                                        
+                  
+                  
+                                   
+                                 
+                      
+                            
+   
+
+/**
+ * A collision tile used to prevent symbols from overlapping. It keep tracks of
+ * where previous symbols have been placed and is used to check if a new
+ * symbol overlaps with any previously added symbols.
+ *
+ * @private
+ */
+var CollisionTile = function CollisionTile(
+     angle     ,
+     pitch     ,
+     cameraToCenterDistance     ,
+     cameraToTileDistance     ,
+     collisionBoxArray  ,
+     grid,
+     ignoredGrid
+ ) {
+     if ( grid === void 0 ) grid    = new Grid(EXTENT, 12, 6);
+     if ( ignoredGrid === void 0 ) ignoredGrid    = new Grid(EXTENT, 12, 0);
+
+     this.angle = angle;
+     this.pitch = pitch;
+     this.cameraToCenterDistance = cameraToCenterDistance;
+     this.cameraToTileDistance = cameraToTileDistance;
+
+     this.grid = grid;
+     this.ignoredGrid = ignoredGrid;
+
+     this.perspectiveRatio = 1 + 0.5 * ((cameraToTileDistance / cameraToCenterDistance) - 1);
+
+     // High perspective ratio means we're effectively "underzooming"
+     // the tile. Adjust the minScale and maxScale range accordingly
+     // to constrain the number of collision calculations
+     this.minScale = .5 / this.perspectiveRatio;
+     this.maxScale = 2 / this.perspectiveRatio;
+
+     var sin = Math.sin(this.angle),
+         cos = Math.cos(this.angle);
+     this.rotationMatrix = [cos, -sin, sin, cos];
+     this.reverseRotationMatrix = [cos, sin, -sin, cos];
+
+     // Stretch boxes in y direction to account for the map tilt.
+     // The amount the map is squished depends on the y position.
+     // We can only approximate here based on the y position of the tile
+     // The shaders calculate a more accurate "incidence_stretch"
+     // at render time to calculate an effective scale for collision
+     // purposes, but we still want to use the yStretch approximation
+     // here because we can't adjust the aspect ratio of the collision
+     // boxes at render time.
+     this.yStretch = Math.max(1, cameraToTileDistance / (cameraToCenterDistance * Math.cos(pitch / 180 * Math.PI)));
+
+     this.collisionBoxArray = collisionBoxArray;
+     if (collisionBoxArray.length === 0) {
+         // the first time collisionBoxArray is passed to a CollisionTile
+
+         // tempCollisionBox
+         collisionBoxArray.emplaceBack();
+
+         //left
+         collisionBoxArray.emplaceBack(0, 0, 0, 0, 0, -EXTENT, 0, EXTENT, Infinity, Infinity,
+             0, 0, 0, 0, 0, 0, 0, 0, 0);
+         // right
+         collisionBoxArray.emplaceBack(EXTENT, 0, 0, 0, 0, -EXTENT, 0, EXTENT, Infinity, Infinity,
+             0, 0, 0, 0, 0, 0, 0, 0, 0);
+         // top
+         collisionBoxArray.emplaceBack(0, 0, 0, 0, -EXTENT, 0, EXTENT, 0, Infinity, Infinity,
+             0, 0, 0, 0, 0, 0, 0, 0, 0);
+         // bottom
+         collisionBoxArray.emplaceBack(0, EXTENT, 0, 0, -EXTENT, 0, EXTENT, 0, Infinity, Infinity,
+             0, 0, 0, 0, 0, 0, 0, 0, 0);
+     }
+
+     this.tempCollisionBox = collisionBoxArray.get(0);
+     this.edges = [
+         collisionBoxArray.get(1),
+         collisionBoxArray.get(2),
+         collisionBoxArray.get(3),
+         collisionBoxArray.get(4)
+     ];
+ };
+
+ CollisionTile.deserialize = function deserialize (serialized                      , collisionBoxArray  ) {
+     return new CollisionTile(
+         serialized.angle,
+         serialized.pitch,
+         serialized.cameraToCenterDistance,
+         serialized.cameraToTileDistance,
+         collisionBoxArray,
+         new Grid(serialized.grid),
+         new Grid(serialized.ignoredGrid)
+     );
+ };
+
+CollisionTile.prototype.serialize = function serialize (transferables                   )                       {
+     var grid = this.grid.toArrayBuffer();
+     var ignoredGrid = this.ignoredGrid.toArrayBuffer();
+     if (transferables) {
+         transferables.push(grid);
+         transferables.push(ignoredGrid);
+     }
+     return {
+         angle: this.angle,
+         pitch: this.pitch,
+         cameraToCenterDistance: this.cameraToCenterDistance,
+         cameraToTileDistance: this.cameraToTileDistance,
+         grid: grid,
+         ignoredGrid: ignoredGrid
+     };
+ };
+
+ /**
+  * Find the scale at which the collisionFeature can be shown without
+  * overlapping with other features.
+  * @private
+  */
+ CollisionTile.prototype.placeCollisionFeature = function placeCollisionFeature (collisionFeature                                           ,
+                       allowOverlap      ,
+                       avoidEdges      )      {
+        var this$1 = this;
+
+
+     var collisionBoxArray = this.collisionBoxArray;
+     var minPlacementScale = this.minScale;
+     var rotationMatrix = this.rotationMatrix;
+     var yStretch = this.yStretch;
+
+     for (var b = collisionFeature.boxStartIndex; b < collisionFeature.boxEndIndex; b++) {
+
+         var box            = (collisionBoxArray.get(b)  );
+
+         var anchorPoint = box.anchorPoint._matMult(rotationMatrix);
+         var x = anchorPoint.x;
+         var y = anchorPoint.y;
+
+         // When the 'perspectiveRatio' is high, we're effectively underzooming
+         // the tile because it's in the distance.
+         // In order to detect collisions that only happen while underzoomed,
+         // we have to query a larger portion of the grid.
+         // This extra work is offset by having a lower 'maxScale' bound
+         // Note that this adjustment ONLY affects the bounding boxes
+         // in the grid. It doesn't affect the boxes used for the
+         // minPlacementScale calculations.
+         var x1 = x + box.x1 * this$1.perspectiveRatio;
+         var y1 = y + box.y1 * yStretch * this$1.perspectiveRatio;
+         var x2 = x + box.x2 * this$1.perspectiveRatio;
+         var y2 = y + box.y2 * yStretch * this$1.perspectiveRatio;
+
+         box.bbox0 = x1;
+         box.bbox1 = y1;
+         box.bbox2 = x2;
+         box.bbox3 = y2;
+
+         // When the map is pitched the distance covered by a line changes.
+         // Adjust the max scale by (approximatePitchedLength / approximateRegularLength)
+         // to compensate for this.
+
+         var offset = new Point(box.offsetX, box.offsetY)._matMult(rotationMatrix);
+         var xSqr = offset.x * offset.x;
+         var ySqr = offset.y * offset.y;
+         var yStretchSqr = ySqr * yStretch * yStretch;
+         var adjustmentFactor = Math.sqrt((xSqr + yStretchSqr) / (xSqr + ySqr)) || 1;
+         box.maxScale = box.unadjustedMaxScale * adjustmentFactor;
+
+         if (!allowOverlap) {
+             var blockingBoxes = this$1.grid.query(x1, y1, x2, y2);
+
+             for (var i = 0; i < blockingBoxes.length; i++) {
+                 var blocking            = (collisionBoxArray.get(blockingBoxes[i])  );
+                 var blockingAnchorPoint = blocking.anchorPoint._matMult(rotationMatrix);
+
+                 minPlacementScale = this$1.getPlacementScale(minPlacementScale, anchorPoint, box, blockingAnchorPoint, blocking);
+                 if (minPlacementScale >= this$1.maxScale) {
+                     return minPlacementScale;
+                 }
+             }
+         }
+
+         if (avoidEdges) {
+             var rotatedCollisionBox = (void 0);
+
+             if (this$1.angle) {
+                 var reverseRotationMatrix = this$1.reverseRotationMatrix;
+                 var tl = new Point(box.x1, box.y1).matMult(reverseRotationMatrix);
+                 var tr = new Point(box.x2, box.y1).matMult(reverseRotationMatrix);
+                 var bl = new Point(box.x1, box.y2).matMult(reverseRotationMatrix);
+                 var br = new Point(box.x2, box.y2).matMult(reverseRotationMatrix);
+
+                 rotatedCollisionBox = this$1.tempCollisionBox;
+                 rotatedCollisionBox.anchorPointX = box.anchorPoint.x;
+                 rotatedCollisionBox.anchorPointY = box.anchorPoint.y;
+                 rotatedCollisionBox.x1 = Math.min(tl.x, tr.x, bl.x, br.x);
+                 rotatedCollisionBox.y1 = Math.min(tl.y, tr.x, bl.x, br.x);
+                 rotatedCollisionBox.x2 = Math.max(tl.x, tr.x, bl.x, br.x);
+                 rotatedCollisionBox.y2 = Math.max(tl.y, tr.x, bl.x, br.x);
+                 rotatedCollisionBox.maxScale = box.maxScale;
+             } else {
+                 rotatedCollisionBox = box;
+             }
+
+             for (var k = 0; k < this.edges.length; k++) {
+                 var edgeBox = this$1.edges[k];
+                 minPlacementScale = this$1.getPlacementScale(minPlacementScale, box.anchorPoint, rotatedCollisionBox, edgeBox.anchorPoint, edgeBox);
+                 if (minPlacementScale >= this$1.maxScale) {
+                     return minPlacementScale;
+                 }
+             }
+         }
+     }
+
+     return minPlacementScale;
+ };
+
+ CollisionTile.prototype.queryRenderedSymbols = function queryRenderedSymbols (queryGeometry                  , scale     )        {
+     var sourceLayerFeatures = {};
+     var result = [];
+
+     if (queryGeometry.length === 0 || (this.grid.keys.length === 0 && this.ignoredGrid.keys.length === 0)) {
+         return result;
+     }
+
+     var collisionBoxArray = this.collisionBoxArray;
+     var rotationMatrix = this.rotationMatrix;
+     var yStretch = this.yStretch;
+
+     // Generate a rotated geometry out of the original query geometry.
+     // Scale has already been handled by the prior conversions.
+     var rotatedQuery = [];
+     var minX = Infinity;
+     var minY = Infinity;
+     var maxX = -Infinity;
+     var maxY = -Infinity;
+     for (var i = 0; i < queryGeometry.length; i++) {
+         var ring = queryGeometry[i];
+         for (var k = 0; k < ring.length; k++) {
+             var p = ring[k].matMult(rotationMatrix);
+             minX = Math.min(minX, p.x);
+             minY = Math.min(minY, p.y);
+             maxX = Math.max(maxX, p.x);
+             maxY = Math.max(maxY, p.y);
+             rotatedQuery.push(p);
+         }
+     }
+
+     var features = this.grid.query(minX, minY, maxX, maxY);
+     var ignoredFeatures = this.ignoredGrid.query(minX, minY, maxX, maxY);
+     for (var i$1 = 0; i$1 < ignoredFeatures.length; i$1++) {
+         features.push(ignoredFeatures[i$1]);
+     }
+
+     // "perspectiveRatio" is a tile-based approximation of how much larger symbols will
+     // be in the distance. It won't line up exactly with the actually rendered symbols
+     // Being exact would require running the collision detection logic in symbol_sdf.vertex
+     // in the CPU
+     var perspectiveScale = scale / this.perspectiveRatio;
+
+     // Account for the rounding done when updating symbol shader variables.
+     var roundedScale = Math.pow(2, Math.ceil(Math.log(perspectiveScale) / Math.LN2 * 10) / 10);
+
+     for (var i$2 = 0; i$2 < features.length; i$2++) {
+         var blocking            = (collisionBoxArray.get(features[i$2])  );
+         var sourceLayer = blocking.sourceLayerIndex;
+         var featureIndex = blocking.featureIndex;
+
+         // Skip already seen features.
+         if (sourceLayerFeatures[sourceLayer] === undefined) {
+             sourceLayerFeatures[sourceLayer] = {};
+         }
+         if (sourceLayerFeatures[sourceLayer][featureIndex]) { continue; }
+
+         // Check if feature is rendered (collision free) at current scale.
+         if (roundedScale < blocking.placementScale || roundedScale > blocking.maxScale) { continue; }
+
+         // Check if query intersects with the feature box at current scale.
+         var anchor = blocking.anchorPoint.matMult(rotationMatrix);
+         var x1 = anchor.x + blocking.x1 / perspectiveScale;
+         var y1 = anchor.y + blocking.y1 / perspectiveScale * yStretch;
+         var x2 = anchor.x + blocking.x2 / perspectiveScale;
+         var y2 = anchor.y + blocking.y2 / perspectiveScale * yStretch;
+         var bbox = [
+             new Point(x1, y1),
+             new Point(x2, y1),
+             new Point(x2, y2),
+             new Point(x1, y2)
+         ];
+         if (!intersectionTests.polygonIntersectsPolygon(rotatedQuery, bbox)) { continue; }
+
+         sourceLayerFeatures[sourceLayer][featureIndex] = true;
+         result.push(features[i$2]);
+     }
+
+     return result;
+ };
+
+ CollisionTile.prototype.getPlacementScale = function getPlacementScale (minPlacementScale     ,
+                   anchorPoint    ,
+                   box           ,
+                   blockingAnchorPoint    ,
+                   blocking           )      {
+
+     // Find the lowest scale at which the two boxes can fit side by side without overlapping.
+     // Original algorithm:
+     var anchorDiffX = anchorPoint.x - blockingAnchorPoint.x;
+     var anchorDiffY = anchorPoint.y - blockingAnchorPoint.y;
+     var s1 = (blocking.x1 - box.x2) / anchorDiffX; // scale at which new box is to the left of old box
+     var s2 = (blocking.x2 - box.x1) / anchorDiffX; // scale at which new box is to the right of old box
+     var s3 = (blocking.y1 - box.y2) * this.yStretch / anchorDiffY; // scale at which new box is to the top of old box
+     var s4 = (blocking.y2 - box.y1) * this.yStretch / anchorDiffY; // scale at which new box is to the bottom of old box
+
+     if (isNaN(s1) || isNaN(s2)) { s1 = s2 = 1; }
+     if (isNaN(s3) || isNaN(s4)) { s3 = s4 = 1; }
+
+     var collisionFreeScale = Math.min(Math.max(s1, s2), Math.max(s3, s4));
+     var blockingMaxScale = blocking.maxScale;
+     var boxMaxScale = box.maxScale;
+
+     if (collisionFreeScale > blockingMaxScale) {
+         // After a box's maxScale the label has shrunk enough that the box is no longer needed to cover it,
+         // so unblock the new box at the scale that the old box disappears.
+         collisionFreeScale = blockingMaxScale;
+     }
+
+     if (collisionFreeScale > boxMaxScale) {
+         // If the box can only be shown after it is visible, then the box can never be shown.
+         // But the label can be shown after this box is not visible.
+         collisionFreeScale = boxMaxScale;
+     }
+
+     if (collisionFreeScale > minPlacementScale &&
+             collisionFreeScale >= blocking.placementScale) {
+         // If this collision occurs at a lower scale than previously found collisions
+         // and the collision occurs while the other label is visible
+
+         // this this is the lowest scale at which the label won't collide with anything
+         minPlacementScale = collisionFreeScale;
+     }
+
+     return minPlacementScale;
+ };
+
+
+ /**
+  * Remember this collisionFeature and what scale it was placed at to block
+  * later features from overlapping with it.
+  * @private
+  */
+ CollisionTile.prototype.insertCollisionFeature = function insertCollisionFeature (collisionFeature                                           ,
+                        minPlacementScale     ,
+                        ignorePlacement      ) {
+        var this$1 = this;
+
+     var grid = ignorePlacement ? this.ignoredGrid : this.grid;
+     var collisionBoxArray = this.collisionBoxArray;
+
+     for (var k = collisionFeature.boxStartIndex; k < collisionFeature.boxEndIndex; k++) {
+         var box            = (collisionBoxArray.get(k)  );
+         box.placementScale = minPlacementScale;
+         if (minPlacementScale < this$1.maxScale &&
+             (this$1.perspectiveRatio === 1 || box.maxScale >= 1)) {
+             // Boxes with maxScale < 1 are only relevant in pitched maps,
+             // so filter them out in unpitched maps to keep the grid sparse
+             grid.insert(k, box.bbox0, box.bbox1, box.bbox2, box.bbox3);
+         }
+     }
+ };
+
+module.exports = CollisionTile;
+
+},{"../data/extent":59,"../util/intersection_tests":244,"@mapbox/point-geometry":2,"grid-index":24}],203:[function(require,module,exports){
+'use strict';//      
+
+var interpolate = require('../style-spec/util/interpolate');
+var Anchor = require('../symbol/anchor');
+var checkMaxAngle = require('./check_max_angle');
+
+                                                
+                                                       
+
+module.exports = getAnchors;
+
+function getAnchors(line              ,
+                    spacing        ,
+                    maxAngle        ,
+                    shapedText          ,
+                    shapedIcon                 ,
+                    glyphSize        ,
+                    boxScale        ,
+                    overscaling        ,
+                    tileExtent        ) {
+
+    // Resample a line to get anchor points for labels and check that each
+    // potential label passes text-max-angle check and has enough froom to fit
+    // on the line.
+
+    var angleWindowSize = shapedText ?
+        3 / 5 * glyphSize * boxScale :
+        0;
+
+    var labelLength = Math.max(
+        shapedText ? shapedText.right - shapedText.left : 0,
+        shapedIcon ? shapedIcon.right - shapedIcon.left : 0);
+
+    // Is the line continued from outside the tile boundary?
+    var isLineContinued = line[0].x === 0 || line[0].x === tileExtent || line[0].y === 0 || line[0].y === tileExtent;
+
+    // Is the label long, relative to the spacing?
+    // If so, adjust the spacing so there is always a minimum space of `spacing / 4` between label edges.
+    if (spacing - labelLength * boxScale  < spacing / 4) {
+        spacing = labelLength * boxScale + spacing / 4;
+    }
+
+    // Offset the first anchor by:
+    // Either half the label length plus a fixed extra offset if the line is not continued
+    // Or half the spacing if the line is continued.
+
+    // For non-continued lines, add a bit of fixed extra offset to avoid collisions at T intersections.
+    var fixedExtraOffset = glyphSize * 2;
+
+    var offset = !isLineContinued ?
+        ((labelLength / 2 + fixedExtraOffset) * boxScale * overscaling) % spacing :
+        (spacing / 2 * overscaling) % spacing;
+
+    return resample(line, offset, spacing, angleWindowSize, maxAngle, labelLength * boxScale, isLineContinued, false, tileExtent);
+}
+
+
+function resample(line, offset, spacing, angleWindowSize, maxAngle, labelLength, isLineContinued, placeAtMiddle, tileExtent) {
+
+    var halfLabelLength = labelLength / 2;
+    var lineLength = 0;
+    for (var k = 0; k < line.length - 1; k++) {
+        lineLength += line[k].dist(line[k + 1]);
+    }
+
+    var distance = 0,
+        markedDistance = offset - spacing;
+
+    var anchors = [];
+
+    for (var i = 0; i < line.length - 1; i++) {
+
+        var a = line[i],
+            b = line[i + 1];
+
+        var segmentDist = a.dist(b),
+            angle = b.angleTo(a);
+
+        while (markedDistance + spacing < distance + segmentDist) {
+            markedDistance += spacing;
+
+            var t = (markedDistance - distance) / segmentDist,
+                x = interpolate(a.x, b.x, t),
+                y = interpolate(a.y, b.y, t);
+
+            // Check that the point is within the tile boundaries and that
+            // the label would fit before the beginning and end of the line
+            // if placed at this point.
+            if (x >= 0 && x < tileExtent && y >= 0 && y < tileExtent &&
+                    markedDistance - halfLabelLength >= 0 &&
+                    markedDistance + halfLabelLength <= lineLength) {
+                var anchor = new Anchor(x, y, angle, i);
+                anchor._round();
+
+                if (!angleWindowSize || checkMaxAngle(line, anchor, labelLength, angleWindowSize, maxAngle)) {
+                    anchors.push(anchor);
+                }
+            }
+        }
+
+        distance += segmentDist;
+    }
+
+    if (!placeAtMiddle && !anchors.length && !isLineContinued) {
+        // The first attempt at finding anchors at which labels can be placed failed.
+        // Try again, but this time just try placing one anchor at the middle of the line.
+        // This has the most effect for short lines in overscaled tiles, since the
+        // initial offset used in overscaled tiles is calculated to align labels with positions in
+        // parent tiles instead of placing the label as close to the beginning as possible.
+        anchors = resample(line, distance / 2, spacing, angleWindowSize, maxAngle, labelLength, isLineContinued, true, tileExtent);
+    }
+
+    return anchors;
+}
+
+},{"../style-spec/util/interpolate":153,"../symbol/anchor":197,"./check_max_angle":198}],204:[function(require,module,exports){
+'use strict';//      
+
+                                                                
+
+module.exports = function (features                      ) {
+    var leftIndex                     = {};
+    var rightIndex                     = {};
+    var mergedFeatures = [];
+    var mergedIndex = 0;
+
+    function add(k) {
+        mergedFeatures.push(features[k]);
+        mergedIndex++;
+    }
+
+    function mergeFromRight(leftKey        , rightKey        , geom) {
+        var i = rightIndex[leftKey];
+        delete rightIndex[leftKey];
+        rightIndex[rightKey] = i;
+
+        mergedFeatures[i].geometry[0].pop();
+        mergedFeatures[i].geometry[0] = mergedFeatures[i].geometry[0].concat(geom[0]);
+        return i;
+    }
+
+    function mergeFromLeft(leftKey        , rightKey        , geom) {
+        var i = leftIndex[rightKey];
+        delete leftIndex[rightKey];
+        leftIndex[leftKey] = i;
+
+        mergedFeatures[i].geometry[0].shift();
+        mergedFeatures[i].geometry[0] = geom[0].concat(mergedFeatures[i].geometry[0]);
+        return i;
+    }
+
+    function getKey(text, geom, onRight) {
+        var point = onRight ? geom[0][geom[0].length - 1] : geom[0][0];
+        return (text + ":" + (point.x) + ":" + (point.y));
+    }
+
+    for (var k = 0; k < features.length; k++) {
+        var feature = features[k];
+        var geom = feature.geometry;
+        var text = feature.text;
+
+        if (!text) {
+            add(k);
+            continue;
+        }
+
+        var leftKey = getKey(text, geom),
+            rightKey = getKey(text, geom, true);
+
+        if ((leftKey in rightIndex) && (rightKey in leftIndex) && (rightIndex[leftKey] !== leftIndex[rightKey])) {
+            // found lines with the same text adjacent to both ends of the current line, merge all three
+            var j = mergeFromLeft(leftKey, rightKey, geom);
+            var i = mergeFromRight(leftKey, rightKey, mergedFeatures[j].geometry);
+
+            delete leftIndex[leftKey];
+            delete rightIndex[rightKey];
+
+            rightIndex[getKey(text, mergedFeatures[i].geometry, true)] = i;
+            mergedFeatures[j].geometry = (null     );
+
+        } else if (leftKey in rightIndex) {
+            // found mergeable line adjacent to the start of the current line, merge
+            mergeFromRight(leftKey, rightKey, geom);
+
+        } else if (rightKey in leftIndex) {
+            // found mergeable line adjacent to the end of the current line, merge
+            mergeFromLeft(leftKey, rightKey, geom);
+
+        } else {
+            // no adjacent lines, add as a new item
+            add(k);
+            leftIndex[leftKey] = mergedIndex - 1;
+            rightIndex[rightKey] = mergedIndex - 1;
+        }
+    }
+
+    return mergedFeatures.filter(function (f) { return f.geometry; });
+};
+
+},{}],205:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+var ref = require('@mapbox/gl-matrix');
+var mat4 = ref.mat4;
+var vec4 = ref.vec4;
+var symbolSize = require('./symbol_size');
+var ref$1 = require('../data/bucket/symbol_bucket');
+var addDynamicAttributes = ref$1.addDynamicAttributes;
+
+                                             
+                                                                            
+                                              
+                                                             
+
+module.exports = {
+    updateLineLabels: updateLineLabels,
+    getLabelPlaneMatrix: getLabelPlaneMatrix,
+    getGlCoordMatrix: getGlCoordMatrix
+};
+
+/*
+ * # Overview of coordinate spaces
+ *
+ * ## Tile coordinate spaces
+ * Each label has an anchor. Some labels have corresponding line geometries.
+ * The points for both anchors and lines are stored in tile units. Each tile has it's own
+ * coordinate space going from (0, 0) at the top left to (EXTENT, EXTENT) at the bottom right.
+ *
+ * ## GL coordinate space
+ * At the end of everything, the vertex shader needs to produce a position in GL coordinate space,
+ * which is (-1, 1) at the top left and (1, -1) in the bottom right.
+ *
+ * ## Map pixel coordinate spaces
+ * Each tile has a pixel coordinate space. It's just the tile units scaled so that one unit is
+ * whatever counts as 1 pixel at the current zoom.
+ * This space is used for pitch-alignment=map, rotation-alignment=map
+ *
+ * ## Rotated map pixel coordinate spaces
+ * Like the above, but rotated so axis of the space are aligned with the viewport instead of the tile.
+ * This space is used for pitch-alignment=map, rotation-alignment=viewport
+ *
+ * ## Viewport pixel coordinate space
+ * (0, 0) is at the top left of the canvas and (pixelWidth, pixelHeight) is at the bottom right corner
+ * of the canvas. This space is used for pitch-alignment=viewport
+ *
+ *
+ * # Vertex projection
+ * It goes roughly like this:
+ * 1. project the anchor and line from tile units into the correct label coordinate space
+ *      - map pixel space           pitch-alignment=map         rotation-alignment=map
+ *      - rotated map pixel space   pitch-alignment=map         rotation-alignment=viewport
+ *      - viewport pixel space      pitch-alignment=viewport    rotation-alignment=*
+ * 2. if the label follows a line, find the point along the line that is the correct distance from the anchor.
+ * 3. add the glyph's corner offset to the point from step 3
+ * 4. convert from the label coordinate space to gl coordinates
+ *
+ * For horizontal labels we want to do step 1 in the shader for performance reasons (no cpu work).
+ *      This is what `u_label_plane_matrix` is used for.
+ * For labels aligned with lines we have to steps 1 and 2 on the cpu since we need access to the line geometry.
+ *      This is what `updateLineLabels(...)` does.
+ *      Since the conversion is handled on the cpu we just set `u_label_plane_matrix` to an identity matrix.
+ *
+ * Steps 3 and 4 are done in the shaders for all labels.
+ */
+
+/*
+ * Returns a matrix for converting from tile units to the correct label coordinate space.
+ */
+function getLabelPlaneMatrix(posMatrix      ,
+                             pitchWithMap         ,
+                             rotateWithMap         ,
+                             transform           ,
+                             pixelsToTileUnits        ) {
+    var m = mat4.identity(new Float32Array(16));
+    if (pitchWithMap) {
+        mat4.identity(m);
+        mat4.scale(m, m, [1 / pixelsToTileUnits, 1 / pixelsToTileUnits, 1]);
+        if (!rotateWithMap) {
+            mat4.rotateZ(m, m, transform.angle);
+        }
+    } else {
+        mat4.scale(m, m, [transform.width / 2, -transform.height / 2, 1]);
+        mat4.translate(m, m, [1, -1, 0]);
+        mat4.multiply(m, m, posMatrix);
+    }
+    return m;
+}
+
+/*
+ * Returns a matrix for converting from the correct label coordinate space to gl coords.
+ */
+function getGlCoordMatrix(posMatrix      ,
+                          pitchWithMap         ,
+                          rotateWithMap         ,
+                          transform           ,
+                          pixelsToTileUnits        ) {
+    var m = mat4.identity(new Float32Array(16));
+    if (pitchWithMap) {
+        mat4.multiply(m, m, posMatrix);
+        mat4.scale(m, m, [pixelsToTileUnits, pixelsToTileUnits, 1]);
+        if (!rotateWithMap) {
+            mat4.rotateZ(m, m, -transform.angle);
+        }
+    } else {
+        mat4.scale(m, m, [1, -1, 1]);
+        mat4.translate(m, m, [-1, -1, 0]);
+        mat4.scale(m, m, [2 / transform.width, 2 / transform.height, 1]);
+    }
+    return m;
+}
+
+function project(point       , matrix      ) {
+    var pos = [point.x, point.y, 0, 1];
+    vec4.transformMat4(pos, pos, matrix);
+    var w = pos[3];
+    return {
+        point: new Point(pos[0] / w, pos[1] / w),
+        signedDistanceFromCamera: w
+    };
+}
+
+function isVisible(anchorPos                                  ,
+                   placementZoom        ,
+                   clippingBuffer                  ,
+                   painter         ) {
+    var x = anchorPos[0] / anchorPos[3];
+    var y = anchorPos[1] / anchorPos[3];
+    var inPaddedViewport = (
+        x >= -clippingBuffer[0] &&
+        x <= clippingBuffer[0] &&
+        y >= -clippingBuffer[1] &&
+        y <= clippingBuffer[1]);
+    return inPaddedViewport && painter.frameHistory.isVisible(placementZoom);
+}
+
+/*
+ *  Update the `dynamicLayoutVertexBuffer` for the buffer with the correct glyph positions for the current map view.
+ *  This is only run on labels that are aligned with lines. Horizontal labels are handled entirely in the shader.
+ */
+function updateLineLabels(bucket              ,
+                          posMatrix      ,
+                          painter         ,
+                          isText         ,
+                          labelPlaneMatrix      ,
+                          glCoordMatrix      ,
+                          pitchWithMap         ,
+                          keepUpright         ,
+                          pixelsToTileUnits        ,
+                          layer                  ) {
+
+    var sizeData = isText ? bucket.textSizeData : bucket.iconSizeData;
+    var partiallyEvaluatedSize = symbolSize.evaluateSizeForZoom(sizeData, painter.transform, layer, isText);
+
+    var clippingBuffer = [256 / painter.width * 2 + 1, 256 / painter.height * 2 + 1];
+
+    var dynamicLayoutVertexArray = isText ?
+        bucket.text.dynamicLayoutVertexArray :
+        bucket.icon.dynamicLayoutVertexArray;
+    dynamicLayoutVertexArray.clear();
+
+    var lineVertexArray = bucket.lineVertexArray;
+    var placedSymbols = isText ? bucket.placedGlyphArray : bucket.placedIconArray;
+
+    for (var s = 0; s < placedSymbols.length; s++) {
+        var symbol      = placedSymbols.get(s);
+
+        var anchorPos = [symbol.anchorX, symbol.anchorY, 0, 1];
+        vec4.transformMat4(anchorPos, anchorPos, posMatrix);
+
+        // Don't bother calculating the correct point for invisible labels.
+        if (!isVisible(anchorPos, symbol.placementZoom, clippingBuffer, painter)) {
+            hideGlyphs(symbol.numGlyphs, dynamicLayoutVertexArray);
+            continue;
+        }
+
+        var cameraToAnchorDistance = anchorPos[3];
+        var perspectiveRatio = 1 + 0.5 * ((cameraToAnchorDistance / painter.transform.cameraToCenterDistance) - 1);
+
+        var fontSize = symbolSize.evaluateSizeForFeature(sizeData, partiallyEvaluatedSize, symbol);
+        var pitchScaledFontSize = pitchWithMap ?
+            fontSize * perspectiveRatio :
+            fontSize / perspectiveRatio;
+
+        var tileAnchorPoint = new Point(symbol.anchorX, symbol.anchorY);
+        var anchorPoint = project(tileAnchorPoint, labelPlaneMatrix).point;
+        var projectionCache = {};
+
+        var placeUnflipped = placeGlyphsAlongLine(symbol, pitchScaledFontSize, false /*unflipped*/, keepUpright, posMatrix, labelPlaneMatrix, glCoordMatrix,
+            bucket.glyphOffsetArray, lineVertexArray, dynamicLayoutVertexArray, anchorPoint, tileAnchorPoint, projectionCache);
+
+        if (placeUnflipped.notEnoughRoom ||
+            (placeUnflipped.needsFlipping &&
+             placeGlyphsAlongLine(symbol, pitchScaledFontSize, true /*flipped*/, keepUpright, posMatrix, labelPlaneMatrix, glCoordMatrix,
+                 bucket.glyphOffsetArray, lineVertexArray, dynamicLayoutVertexArray, anchorPoint, tileAnchorPoint, projectionCache).notEnoughRoom)) {
+            hideGlyphs(symbol.numGlyphs, dynamicLayoutVertexArray);
+        }
+    }
+
+    if (isText) {
+        bucket.text.dynamicLayoutVertexBuffer.updateData(dynamicLayoutVertexArray.serialize());
+    } else {
+        bucket.icon.dynamicLayoutVertexBuffer.updateData(dynamicLayoutVertexArray.serialize());
+    }
+}
+
+function placeGlyphsAlongLine(symbol,
+                              fontSize        ,
+                              flip         ,
+                              keepUpright         ,
+                              posMatrix      ,
+                              labelPlaneMatrix      ,
+                              glCoordMatrix      ,
+                              glyphOffsetArray     ,
+                              lineVertexArray     ,
+                              dynamicLayoutVertexArray,
+                              anchorPoint       ,
+                              tileAnchorPoint       ,
+                              projectionCache                   ) {
+    var fontScale = fontSize / 24;
+    var lineOffsetX = symbol.lineOffsetX * fontSize;
+    var lineOffsetY = symbol.lineOffsetY * fontSize;
+
+    var placedGlyphs;
+    if (symbol.numGlyphs > 1) {
+        var glyphEndIndex = symbol.glyphStartIndex + symbol.numGlyphs;
+
+        // Place the first and the last glyph in the label first, so we can figure out
+        // the overall orientation of the label and determine whether it needs to be flipped in keepUpright mode
+        var firstGlyphOffset = glyphOffsetArray.get(symbol.glyphStartIndex).offsetX;
+        var lastGlyphOffset = glyphOffsetArray.get(glyphEndIndex - 1).offsetX;
+        var lineStartIndex = symbol.lineStartIndex;
+        var lineEndIndex = symbol.lineStartIndex + symbol.lineLength;
+
+        var firstPlacedGlyph = placeGlyphAlongLine(fontScale * firstGlyphOffset, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
+            lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache);
+        if (!firstPlacedGlyph)
+            { return { notEnoughRoom: true }; }
+
+        var lastPlacedGlyph = placeGlyphAlongLine(fontScale * lastGlyphOffset, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
+            lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache);
+        if (!lastPlacedGlyph)
+            { return { notEnoughRoom: true }; }
+
+        var firstPoint = project(firstPlacedGlyph.point, glCoordMatrix).point;
+        var lastPoint = project(lastPlacedGlyph.point, glCoordMatrix).point;
+
+        if (keepUpright && !flip &&
+            (symbol.vertical ? firstPoint.y < lastPoint.y : firstPoint.x > lastPoint.x)) {
+            return { needsFlipping: true };
+        }
+
+        placedGlyphs = [firstPlacedGlyph];
+        for (var glyphIndex = symbol.glyphStartIndex + 1; glyphIndex < glyphEndIndex - 1; glyphIndex++) {
+            var glyph = glyphOffsetArray.get(glyphIndex);
+
+            // Since first and last glyph fit on the line, we're sure that the rest of the glyphs can be placed
+            placedGlyphs.push(placeGlyphAlongLine(fontScale * glyph.offsetX, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
+                lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache));
+        }
+        placedGlyphs.push(lastPlacedGlyph);
+    } else {
+        // Only a single glyph to place
+        // So, determine whether to flip based on projected angle of the line segment it's on
+        if (keepUpright && !flip) {
+            var a = project(tileAnchorPoint, posMatrix).point;
+            var tileSegmentEnd = lineVertexArray.get(symbol.lineStartIndex + symbol.segment + 1);
+            var projectedVertex = project(tileSegmentEnd, posMatrix);
+            // We know the anchor will be in the viewport, but the end of the line segment may be
+            // behind the plane of the camera, in which case we can use a point at any arbitrary (closer)
+            // point on the segment.
+            var b = (projectedVertex.signedDistanceFromCamera > 0) ?
+                projectedVertex.point :
+                projectTruncatedLineSegment(tileAnchorPoint, new Point(tileSegmentEnd.x, tileSegmentEnd.y), a, 1, posMatrix);
+
+            if (symbol.vertical ? b.y > a.y : b.x < a.x) {
+                return { needsFlipping: true };
+            }
+        }
+        var glyph$1 = glyphOffsetArray.get(symbol.glyphStartIndex);
+        var singleGlyph = placeGlyphAlongLine(fontScale * glyph$1.offsetX, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
+            symbol.lineStartIndex, symbol.lineStartIndex + symbol.lineLength, lineVertexArray, labelPlaneMatrix, projectionCache);
+        if (!singleGlyph)
+            { return { notEnoughRoom: true }; }
+
+        placedGlyphs = [singleGlyph];
+    }
+
+    var placementZoom = symbol.placementZoom;
+    for (var i = 0, list = placedGlyphs; i < list.length; i += 1) {
+        var glyph$2 = list[i];
+
+        addDynamicAttributes(dynamicLayoutVertexArray, glyph$2.point, glyph$2.angle, placementZoom);
+    }
+    return {};
+}
+
+function projectTruncatedLineSegment(previousTilePoint       , currentTilePoint       , previousProjectedPoint       , minimumLength        , projectionMatrix      ) {
+    // We are assuming "previousTilePoint" won't project to a point within one unit of the camera plane
+    // If it did, that would mean our label extended all the way out from within the viewport to a (very distant)
+    // point near the plane of the camera. We wouldn't be able to render the label anyway once it crossed the
+    // plane of the camera.
+    var projectedUnitVertex = project(previousTilePoint.add(previousTilePoint.sub(currentTilePoint)._unit()), projectionMatrix).point;
+    var projectedUnitSegment = previousProjectedPoint.sub(projectedUnitVertex);
+
+    return previousProjectedPoint.add(projectedUnitSegment._mult(minimumLength / projectedUnitSegment.mag()));
+}
+
+function placeGlyphAlongLine(offsetX        ,
+                             lineOffsetX        ,
+                             lineOffsetY        ,
+                             flip         ,
+                             anchorPoint       ,
+                             tileAnchorPoint       ,
+                             anchorSegment        ,
+                             lineStartIndex        ,
+                             lineEndIndex        ,
+                             lineVertexArray     ,
+                             labelPlaneMatrix      ,
+                             projectionCache                   ) {
+
+    var combinedOffsetX = flip ?
+        offsetX - lineOffsetX :
+        offsetX + lineOffsetX;
+
+    var dir = combinedOffsetX > 0 ? 1 : -1;
+
+    var angle = 0;
+    if (flip) {
+        // The label needs to be flipped to keep text upright.
+        // Iterate in the reverse direction.
+        dir *= -1;
+        angle = Math.PI;
+    }
+
+    if (dir < 0) { angle += Math.PI; }
+
+    var currentIndex = dir > 0 ?
+        lineStartIndex + anchorSegment :
+        lineStartIndex + anchorSegment + 1;
+
+    var current = anchorPoint;
+    var prev = anchorPoint;
+    var distanceToPrev = 0;
+    var currentSegmentDistance = 0;
+    var absOffsetX = Math.abs(combinedOffsetX);
+
+    while (distanceToPrev + currentSegmentDistance <= absOffsetX) {
+        currentIndex += dir;
+
+        // offset does not fit on the projected line
+        if (currentIndex < lineStartIndex || currentIndex >= lineEndIndex)
+            { return null; }
+
+        prev = current;
+
+        current = projectionCache[currentIndex];
+        if (current === undefined) {
+            var projection = project(lineVertexArray.get(currentIndex), labelPlaneMatrix);
+            if (projection.signedDistanceFromCamera > 0) {
+                current = projectionCache[currentIndex] = projection.point;
+            } else {
+                // The vertex is behind the plane of the camera, so we can't project it
+                // Instead, we'll create a vertex along the line that's far enough to include the glyph
+                var previousTilePoint = distanceToPrev === 0 ?
+                    tileAnchorPoint :
+                    new Point(lineVertexArray.get(currentIndex - dir).x, lineVertexArray.get(currentIndex - dir).y);
+                var currentTilePoint = new Point(lineVertexArray.get(currentIndex).x, lineVertexArray.get(currentIndex).y);
+                // Don't cache because the new vertex might not be far enough out for future glyphs on the same segment
+                current = projectTruncatedLineSegment(previousTilePoint, currentTilePoint, prev, absOffsetX - distanceToPrev + 1, labelPlaneMatrix);
+            }
+        }
+
+        distanceToPrev += currentSegmentDistance;
+        currentSegmentDistance = prev.dist(current);
+    }
+
+    // The point is on the current segment. Interpolate to find it.
+    var segmentInterpolationT = (absOffsetX - distanceToPrev) / currentSegmentDistance;
+    var prevToCurrent = current.sub(prev);
+    var p = prevToCurrent.mult(segmentInterpolationT)._add(prev);
+
+    // offset the point from the line to text-offset and icon-offset
+    p._add(prevToCurrent._unit()._perp()._mult(lineOffsetY * dir));
+
+    var segmentAngle = angle + Math.atan2(current.y - prev.y, current.x - prev.x);
+
+    return {
+        point: p,
+        angle: segmentAngle
+    };
+}
+
+var offscreenPoint = new Point(-Infinity, -Infinity);
+
+// Hide them by moving them offscreen. We still need to add them to the buffer
+// because the dynamic buffer is paired with a static buffer that doesn't get updated.
+function hideGlyphs(num, dynamicLayoutVertexArray) {
+    for (var i = 0; i < num; i++) {
+        addDynamicAttributes(dynamicLayoutVertexArray, offscreenPoint, 0, 25);
+    }
+}
+
+},{"../data/bucket/symbol_bucket":58,"./symbol_size":208,"@mapbox/gl-matrix":1,"@mapbox/point-geometry":2}],206:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+var ref = require('../style/parse_glyph_pbf');
+var GLYPH_PBF_BORDER = ref.GLYPH_PBF_BORDER;
+
+                                   
+                                                       
+                                                   
+                                                      
+                                                         
+
+module.exports = {
+    getIconQuads: getIconQuads,
+    getGlyphQuads: getGlyphQuads
+};
+
+/**
+ * A textured quad for rendering a single icon or glyph.
+ *
+ * The zoom range the glyph can be shown is defined by minScale and maxScale.
+ *
+ * @param tl The offset of the top left corner from the anchor.
+ * @param tr The offset of the top right corner from the anchor.
+ * @param bl The offset of the bottom left corner from the anchor.
+ * @param br The offset of the bottom right corner from the anchor.
+ * @param tex The texture coordinates.
+ *
+ * @private
+ */
+                          
+              
+              
+              
+              
+          
+                  
+                  
+                  
+                 
+      
+                            
+                                 
+  
+
+/**
+ * Create the quads used for rendering an icon.
+ * @private
+ */
+function getIconQuads(anchor        ,
+                      shapedIcon                ,
+                      layer            ,
+                      alongLine         ,
+                      shapedText         ,
+                      globalProperties        ,
+                      feature         )                    {
+    var image = shapedIcon.image;
+    var layout = layer.layout;
+
+    // If you have a 10px icon that isn't perfectly aligned to the pixel grid it will cover 11 actual
+    // pixels. The quad needs to be padded to account for this, otherwise they'll look slightly clipped
+    // on one edge in some cases.
+    var border = 1;
+
+    var top = shapedIcon.top - border / image.pixelRatio;
+    var left = shapedIcon.left - border / image.pixelRatio;
+    var bottom = shapedIcon.bottom + border / image.pixelRatio;
+    var right = shapedIcon.right + border / image.pixelRatio;
+    var tl, tr, br, bl;
+
+    // text-fit mode
+    if (layout['icon-text-fit'] !== 'none' && shapedText) {
+        var iconWidth = (right - left),
+            iconHeight = (bottom - top),
+            size = layout['text-size'] / 24,
+            textLeft = shapedText.left * size,
+            textRight = shapedText.right * size,
+            textTop = shapedText.top * size,
+            textBottom = shapedText.bottom * size,
+            textWidth = textRight - textLeft,
+            textHeight = textBottom - textTop,
+            padT = layout['icon-text-fit-padding'][0],
+            padR = layout['icon-text-fit-padding'][1],
+            padB = layout['icon-text-fit-padding'][2],
+            padL = layout['icon-text-fit-padding'][3],
+            offsetY = layout['icon-text-fit'] === 'width' ? (textHeight - iconHeight) * 0.5 : 0,
+            offsetX = layout['icon-text-fit'] === 'height' ? (textWidth - iconWidth) * 0.5 : 0,
+            width = layout['icon-text-fit'] === 'width' || layout['icon-text-fit'] === 'both' ? textWidth : iconWidth,
+            height = layout['icon-text-fit'] === 'height' || layout['icon-text-fit'] === 'both' ? textHeight : iconHeight;
+        tl = new Point(textLeft + offsetX - padL,         textTop + offsetY - padT);
+        tr = new Point(textLeft + offsetX + padR + width, textTop + offsetY - padT);
+        br = new Point(textLeft + offsetX + padR + width, textTop + offsetY + padB + height);
+        bl = new Point(textLeft + offsetX - padL,         textTop + offsetY + padB + height);
+    // Normal icon size mode
+    } else {
+        tl = new Point(left, top);
+        tr = new Point(right, top);
+        br = new Point(right, bottom);
+        bl = new Point(left, bottom);
+    }
+
+    var angle = layer.getLayoutValue('icon-rotate', globalProperties, feature) * Math.PI / 180;
+
+    if (angle) {
+        var sin = Math.sin(angle),
+            cos = Math.cos(angle),
+            matrix = [cos, -sin, sin, cos];
+
+        tl._matMult(matrix);
+        tr._matMult(matrix);
+        bl._matMult(matrix);
+        br._matMult(matrix);
+    }
+
+    // Icon quad is padded, so texture coordinates also need to be padded.
+    var textureRect = {
+        x: image.textureRect.x - border,
+        y: image.textureRect.y - border,
+        w: image.textureRect.w + border * 2,
+        h: image.textureRect.h + border * 2
+    };
+
+    return [{tl: tl, tr: tr, bl: bl, br: br, tex: textureRect, writingMode: undefined, glyphOffset: [0, 0]}];
+}
+
+/**
+ * Create the quads used for rendering a text label.
+ * @private
+ */
+function getGlyphQuads(anchor        ,
+                       shaping         ,
+                       layer            ,
+                       alongLine         ,
+                       globalProperties        ,
+                       feature         ,
+                       positions                           )                    {
+
+    var oneEm = 24;
+    var textRotate = layer.getLayoutValue('text-rotate', globalProperties, feature) * Math.PI / 180;
+    var textOffset = layer.getLayoutValue('text-offset', globalProperties, feature).map(function (t){ return t * oneEm; });
+
+    var positionedGlyphs = shaping.positionedGlyphs;
+    var quads = [];
+
+
+    for (var k = 0; k < positionedGlyphs.length; k++) {
+        var positionedGlyph = positionedGlyphs[k];
+        var glyph = positions[positionedGlyph.glyph];
+        if (!glyph) { continue; }
+
+        var rect = glyph.rect;
+        if (!rect) { continue; }
+
+        // The rects have an addditional buffer that is not included in their size.
+        var glyphPadding = 1.0;
+        var rectBuffer = GLYPH_PBF_BORDER + glyphPadding;
+
+        var halfAdvance = glyph.metrics.advance / 2;
+
+        var glyphOffset = alongLine ?
+            [positionedGlyph.x + halfAdvance, positionedGlyph.y] :
+            [0, 0];
+
+        var builtInOffset = alongLine ?
+            [0, 0] :
+            [positionedGlyph.x + halfAdvance + textOffset[0], positionedGlyph.y + textOffset[1]];
+
+
+        var x1 = glyph.metrics.left - rectBuffer - halfAdvance + builtInOffset[0];
+        var y1 = -glyph.metrics.top - rectBuffer + builtInOffset[1];
+        var x2 = x1 + rect.w;
+        var y2 = y1 + rect.h;
+
+        var tl = new Point(x1, y1);
+        var tr = new Point(x2, y1);
+        var bl  = new Point(x1, y2);
+        var br = new Point(x2, y2);
+
+        if (alongLine && positionedGlyph.vertical) {
+            // Vertical-supporting glyphs are laid out in 24x24 point boxes (1 square em)
+            // In horizontal orientation, the y values for glyphs are below the midline
+            // and we use a "yOffset" of -17 to pull them up to the middle.
+            // By rotating counter-clockwise around the point at the center of the left
+            // edge of a 24x24 layout box centered below the midline, we align the center
+            // of the glyphs with the horizontal midline, so the yOffset is no longer
+            // necessary, but we also pull the glyph to the left along the x axis
+            var center = new Point(-halfAdvance, halfAdvance);
+            var verticalRotation = -Math.PI / 2;
+            var xOffsetCorrection = new Point(5, 0);
+            tl._rotateAround(verticalRotation, center)._add(xOffsetCorrection);
+            tr._rotateAround(verticalRotation, center)._add(xOffsetCorrection);
+            bl._rotateAround(verticalRotation, center)._add(xOffsetCorrection);
+            br._rotateAround(verticalRotation, center)._add(xOffsetCorrection);
+        }
+
+        if (textRotate) {
+            var sin = Math.sin(textRotate),
+                cos = Math.cos(textRotate),
+                matrix = [cos, -sin, sin, cos];
+
+            tl._matMult(matrix);
+            tr._matMult(matrix);
+            bl._matMult(matrix);
+            br._matMult(matrix);
+        }
+
+        quads.push({tl: tl, tr: tr, bl: bl, br: br, tex: rect, writingMode: shaping.writingMode, glyphOffset: glyphOffset});
+    }
+
+    return quads;
+}
+
+},{"../style/parse_glyph_pbf":181,"@mapbox/point-geometry":2}],207:[function(require,module,exports){
+'use strict';//      
+
+var scriptDetection = require('../util/script_detection');
+var verticalizePunctuation = require('../util/verticalize_punctuation');
+var rtlTextPlugin = require('../source/rtl_text_plugin');
+
+                                                     
+                                                         
+
+var WritingMode = {
+    horizontal: 1,
+    vertical: 2
+};
+
+module.exports = {
+    shapeText: shapeText,
+    shapeIcon: shapeIcon,
+    WritingMode: WritingMode
+};
+
+// The position of a glyph relative to the text's anchor point.
+                               
+                  
+              
+              
+                     
+  
+
+// A collection of positioned glyphs and some metadata
+                       
+                                             
+                
+                   
+                 
+                  
+                      
+  
+
+                                                                                                                               
+                                               
+
+function breakLines(text        , lineBreakPoints               ) {
+    var lines = [];
+    var start = 0;
+    for (var i = 0, list = lineBreakPoints; i < list.length; i += 1) {
+        var lineBreak = list[i];
+
+      lines.push(text.substring(start, lineBreak));
+        start = lineBreak;
+    }
+
+    if (start < text.length) {
+        lines.push(text.substring(start, text.length));
+    }
+    return lines;
+}
+
+function shapeText(text        ,
+                   glyphs                         ,
+                   maxWidth        ,
+                   lineHeight        ,
+                   textAnchor              ,
+                   textJustify             ,
+                   spacing        ,
+                   translate                  ,
+                   verticalHeight        ,
+                   writingMode       )                  {
+    var logicalInput = text.trim();
+    if (writingMode === WritingMode.vertical) {
+        logicalInput = verticalizePunctuation(logicalInput);
+    }
+
+    var positionedGlyphs = [];
+    var shaping = {
+        positionedGlyphs: positionedGlyphs,
+        text: logicalInput,
+        top: translate[1],
+        bottom: translate[1],
+        left: translate[0],
+        right: translate[0],
+        writingMode: writingMode
+    };
+
+    var lines               ;
+
+    var processBidirectionalText = rtlTextPlugin.processBidirectionalText;
+    if (processBidirectionalText) {
+        lines = processBidirectionalText(logicalInput, determineLineBreaks(logicalInput, spacing, maxWidth, glyphs));
+    } else {
+        lines = breakLines(logicalInput, determineLineBreaks(logicalInput, spacing, maxWidth, glyphs));
+    }
+
+    shapeLines(shaping, glyphs, lines, lineHeight, textAnchor, textJustify, writingMode, spacing, verticalHeight);
+
+    if (!positionedGlyphs.length)
+        { return false; }
+
+    return shaping;
+}
+
+var whitespace                      = {};
+whitespace[0x09] = true;
+whitespace[0x0a] = true;
+whitespace[0x0b] = true;
+whitespace[0x0c] = true;
+whitespace[0x0d] = true;
+whitespace[0x20] = true;
+
+var breakable                      = {};
+breakable[0x0a] = true;
+breakable[0x20] = true;
+breakable[0x26] = true;
+breakable[0x28] = true;
+breakable[0x29] = true;
+breakable[0x2b] = true;
+breakable[0x2d] = true;
+breakable[0x2f] = true;
+breakable[0xad] = true;
+breakable[0xb7] = true;
+breakable[0x200b] = true;
+breakable[0x2010] = true;
+breakable[0x2013] = true;
+breakable[0x2027] = true;
+
+function determineAverageLineWidth(logicalInput        ,
+                                   spacing        ,
+                                   maxWidth        ,
+                                   glyphs                         ) {
+    var totalWidth = 0;
+
+    for (var index = 0; index < logicalInput.length; index++) {
+        var glyph = glyphs[logicalInput.charCodeAt(index)];
+        if (!glyph)
+            { continue; }
+        totalWidth += glyph.metrics.advance + spacing;
+    }
+
+    var lineCount = Math.max(1, Math.ceil(totalWidth / maxWidth));
+    return totalWidth / lineCount;
+}
+
+function calculateBadness(lineWidth        ,
+                          targetWidth        ,
+                          penalty        ,
+                          isLastBreak         ) {
+    var raggedness = Math.pow(lineWidth - targetWidth, 2);
+    if (isLastBreak) {
+        // Favor finals lines shorter than average over longer than average
+        if (lineWidth < targetWidth) {
+            return raggedness / 2;
+        } else {
+            return raggedness * 2;
+        }
+    }
+
+    return raggedness + Math.abs(penalty) * penalty;
+}
+
+function calculatePenalty(codePoint        , nextCodePoint        ) {
+    var penalty = 0;
+    // Force break on newline
+    if (codePoint === 0x0a) {
+        penalty -= 10000;
+    }
+    // Penalize open parenthesis at end of line
+    if (codePoint === 0x28 || codePoint === 0xff08) {
+        penalty += 50;
+    }
+
+    // Penalize close parenthesis at beginning of line
+    if (nextCodePoint === 0x29 || nextCodePoint === 0xff09) {
+        penalty += 50;
+    }
+    return penalty;
+}
+
+              
+                  
+              
+                       
+                   
+  
+
+function evaluateBreak(breakIndex        ,
+                       breakX        ,
+                       targetWidth        ,
+                       potentialBreaks              ,
+                       penalty        ,
+                       isLastBreak         )        {
+    // We could skip evaluating breaks where the line length (breakX - priorBreak.x) > maxWidth
+    //  ...but in fact we allow lines longer than maxWidth (if there's no break points)
+    //  ...and when targetWidth and maxWidth are close, strictly enforcing maxWidth can give
+    //     more lopsided results.
+
+    var bestPriorBreak         = null;
+    var bestBreakBadness = calculateBadness(breakX, targetWidth, penalty, isLastBreak);
+
+    for (var i = 0, list = potentialBreaks; i < list.length; i += 1) {
+        var potentialBreak = list[i];
+
+      var lineWidth = breakX - potentialBreak.x;
+        var breakBadness =
+            calculateBadness(lineWidth, targetWidth, penalty, isLastBreak) + potentialBreak.badness;
+        if (breakBadness <= bestBreakBadness) {
+            bestPriorBreak = potentialBreak;
+            bestBreakBadness = breakBadness;
+        }
+    }
+
+    return {
+        index: breakIndex,
+        x: breakX,
+        priorBreak: bestPriorBreak,
+        badness: bestBreakBadness
+    };
+}
+
+function leastBadBreaks(lastLineBreak        )                {
+    if (!lastLineBreak) {
+        return [];
+    }
+    return leastBadBreaks(lastLineBreak.priorBreak).concat(lastLineBreak.index);
+}
+
+function determineLineBreaks(logicalInput        ,
+                             spacing        ,
+                             maxWidth        ,
+                             glyphs                         )                {
+    if (!maxWidth)
+        { return []; }
+
+    if (!logicalInput)
+        { return []; }
+
+    var potentialLineBreaks = [];
+    var targetWidth = determineAverageLineWidth(logicalInput, spacing, maxWidth, glyphs);
+
+    var currentX = 0;
+
+    for (var i = 0; i < logicalInput.length; i++) {
+        var codePoint = logicalInput.charCodeAt(i);
+        var glyph = glyphs[codePoint];
+
+        if (glyph && !whitespace[codePoint])
+            { currentX += glyph.metrics.advance + spacing; }
+
+        // Ideographic characters, spaces, and word-breaking punctuation that often appear without
+        // surrounding spaces.
+        if ((i < logicalInput.length - 1) &&
+            (breakable[codePoint] ||
+                scriptDetection.charAllowsIdeographicBreaking(codePoint))) {
+
+            potentialLineBreaks.push(
+                evaluateBreak(
+                    i + 1,
+                    currentX,
+                    targetWidth,
+                    potentialLineBreaks,
+                    calculatePenalty(codePoint, logicalInput.charCodeAt(i + 1)),
+                    false));
+        }
+    }
+
+    return leastBadBreaks(
+        evaluateBreak(
+            logicalInput.length,
+            currentX,
+            targetWidth,
+            potentialLineBreaks,
+            0,
+            true));
+}
+
+function getAnchorAlignment(anchor              ) {
+    var horizontalAlign = 0.5, verticalAlign = 0.5;
+
+    switch (anchor) {
+    case 'right':
+    case 'top-right':
+    case 'bottom-right':
+        horizontalAlign = 1;
+        break;
+    case 'left':
+    case 'top-left':
+    case 'bottom-left':
+        horizontalAlign = 0;
+        break;
+    }
+
+    switch (anchor) {
+    case 'bottom':
+    case 'bottom-right':
+    case 'bottom-left':
+        verticalAlign = 1;
+        break;
+    case 'top':
+    case 'top-right':
+    case 'top-left':
+        verticalAlign = 0;
+        break;
+    }
+
+    return { horizontalAlign: horizontalAlign, verticalAlign: verticalAlign };
+}
+
+function shapeLines(shaping         ,
+                    glyphs                         ,
+                    lines               ,
+                    lineHeight        ,
+                    textAnchor              ,
+                    textJustify             ,
+                    writingMode       ,
+                    spacing        ,
+                    verticalHeight        ) {
+    // the y offset *should* be part of the font metadata
+    var yOffset = -17;
+
+    var x = 0;
+    var y = yOffset;
+
+    var maxLineLength = 0;
+    var positionedGlyphs = shaping.positionedGlyphs;
+
+    var justify =
+        textJustify === 'right' ? 1 :
+        textJustify === 'left' ? 0 : 0.5;
+
+    for (var i$1 = 0, list = lines; i$1 < list.length; i$1 += 1) {
+        var line = list[i$1];
+
+      line = line.trim();
+
+        if (!line.length) {
+            y += lineHeight; // Still need a line feed after empty line
+            continue;
+        }
+
+        var lineStartIndex = positionedGlyphs.length;
+        for (var i = 0; i < line.length; i++) {
+            var codePoint = line.charCodeAt(i);
+            var glyph = glyphs[codePoint];
+
+            if (!glyph) { continue; }
+
+            if (!scriptDetection.charHasUprightVerticalOrientation(codePoint) || writingMode === WritingMode.horizontal) {
+                positionedGlyphs.push({glyph: codePoint, x: x, y: y, vertical: false});
+                x += glyph.metrics.advance + spacing;
+            } else {
+                positionedGlyphs.push({glyph: codePoint, x: x, y: 0, vertical: true});
+                x += verticalHeight + spacing;
+            }
+        }
+
+        // Only justify if we placed at least one glyph
+        if (positionedGlyphs.length !== lineStartIndex) {
+            var lineLength = x - spacing;
+            maxLineLength = Math.max(lineLength, maxLineLength);
+
+            justifyLine(positionedGlyphs, glyphs, lineStartIndex, positionedGlyphs.length - 1, justify);
+        }
+
+        x = 0;
+        y += lineHeight;
+    }
+
+    var ref = getAnchorAlignment(textAnchor);
+    var horizontalAlign = ref.horizontalAlign;
+    var verticalAlign = ref.verticalAlign;
+    align(positionedGlyphs, justify, horizontalAlign, verticalAlign, maxLineLength, lineHeight, lines.length);
+
+    // Calculate the bounding box
+    var height = lines.length * lineHeight;
+
+    shaping.top += -verticalAlign * height;
+    shaping.bottom = shaping.top + height;
+    shaping.left += -horizontalAlign * maxLineLength;
+    shaping.right = shaping.left + maxLineLength;
+}
+
+// justify right = 1, left = 0, center = 0.5
+function justifyLine(positionedGlyphs                        ,
+                     glyphs                         ,
+                     start        ,
+                     end        ,
+                     justify             ) {
+    if (!justify)
+        { return; }
+
+    var glyph = glyphs[positionedGlyphs[end].glyph];
+    if (glyph) {
+        var lastAdvance = glyph.metrics.advance;
+        var lineIndent = (positionedGlyphs[end].x + lastAdvance) * justify;
+
+        for (var j = start; j <= end; j++) {
+            positionedGlyphs[j].x -= lineIndent;
+        }
+    }
+}
+
+function align(positionedGlyphs                        ,
+               justify        ,
+               horizontalAlign        ,
+               verticalAlign        ,
+               maxLineLength        ,
+               lineHeight        ,
+               lineCount        ) {
+    var shiftX = (justify - horizontalAlign) * maxLineLength;
+    var shiftY = (-verticalAlign * lineCount + 0.5) * lineHeight;
+
+    for (var j = 0; j < positionedGlyphs.length; j++) {
+        positionedGlyphs[j].x += shiftX;
+        positionedGlyphs[j].y += shiftY;
+    }
+}
+
+                              
+                         
+                
+                   
+                 
+                 
+  
+
+function shapeIcon(image               , iconOffset                  , iconAnchor              )                 {
+    var ref = getAnchorAlignment(iconAnchor);
+    var horizontalAlign = ref.horizontalAlign;
+    var verticalAlign = ref.verticalAlign;
+    var dx = iconOffset[0];
+    var dy = iconOffset[1];
+    var x1 = dx - image.displaySize[0] * horizontalAlign;
+    var x2 = x1 + image.displaySize[0];
+    var y1 = dy - image.displaySize[1] * verticalAlign;
+    var y2 = y1 + image.displaySize[1];
+    return {image: image, top: y1, bottom: y2, left: x1, right: x2};
+}
+
+},{"../source/rtl_text_plugin":109,"../util/script_detection":248,"../util/verticalize_punctuation":255}],208:[function(require,module,exports){
+'use strict';//      
+
+var interpolate = require('../style-spec/util/interpolate');
+var util = require('../util/util');
+
+                                                                            
+                                                               
+
+module.exports = {
+    getSizeData: getSizeData,
+    evaluateSizeForFeature: evaluateSizeForFeature,
+    evaluateSizeForZoom: evaluateSizeForZoom
+};
+
+                        
+                             
+                      
+     
+                           
+                       
+                                        
+                                        
+     
+                          
+     
+                              
+                                       
+  
+
+// For {text,icon}-size, get the bucket-level data that will be needed by
+// the painter to set symbol-size-related uniforms
+function getSizeData(tileZoom        , layer                  , sizeProperty        )           {
+    var declaration                   = layer.getLayoutDeclaration(sizeProperty);
+    var isFeatureConstant = !declaration || declaration.expression.isFeatureConstant;
+
+    if (!declaration || declaration.expression.isZoomConstant) {
+        return isFeatureConstant ? {
+            functionType: 'constant',
+            layoutSize: layer.getLayoutValue(sizeProperty, {zoom: tileZoom + 1})
+        } : { functionType: 'source' };
+    }
+
+    // calculate covering zoom stops for zoom-dependent values
+    var levels = declaration.expression.zoomStops;
+
+    var lower = 0;
+    while (lower < levels.length && levels[lower] <= tileZoom) { lower++; }
+    lower = Math.max(0, lower - 1);
+    var upper = lower;
+    while (upper < levels.length && levels[upper] < tileZoom + 1) { upper++; }
+    upper = Math.min(levels.length - 1, upper);
+
+    var coveringZoomRange                   = [levels[lower], levels[upper]];
+
+    if (!isFeatureConstant) {
+        return {
+            functionType: 'composite',
+            coveringZoomRange: coveringZoomRange
+        };
+    } else {
+        // for camera functions, also save off the function values
+        // evaluated at the covering zoom levels
+        return {
+            functionType: 'camera',
+            layoutSize: layer.getLayoutValue(sizeProperty, {zoom: tileZoom + 1}),
+            coveringZoomRange: coveringZoomRange,
+            coveringStopValues: [
+                layer.getLayoutValue(sizeProperty, {zoom: levels[lower]}),
+                layer.getLayoutValue(sizeProperty, {zoom: levels[upper]})
+            ]
+        };
+    }
+}
+
+function evaluateSizeForFeature(sizeData          ,
+                                partiallyEvaluatedSize                                   ,
+                                symbol                                         ) {
+    var part = partiallyEvaluatedSize;
+    if (sizeData.functionType === 'source') {
+        return symbol.lowerSize / 10;
+    } else if (sizeData.functionType === 'composite') {
+        return interpolate.number(symbol.lowerSize / 10, symbol.upperSize / 10, part.uSizeT);
+    } else {
+        return part.uSize;
+    }
+}
+
+function evaluateSizeForZoom(sizeData          ,
+                             tr                  ,
+                             layer                  ,
+                             isText         ) {
+    var sizeUniforms = {};
+    if (sizeData.functionType === 'composite') {
+        var declaration = layer.getLayoutDeclaration(
+            isText ? 'text-size' : 'icon-size');
+        var t = declaration.interpolationFactor(
+            tr.zoom,
+            sizeData.coveringZoomRange[0],
+            sizeData.coveringZoomRange[1]);
+        sizeUniforms.uSizeT = util.clamp(t, 0, 1);
+    } else if (sizeData.functionType === 'camera') {
+        // Even though we could get the exact value of the camera function
+        // at z = tr.zoom, we intentionally do not: instead, we interpolate
+        // between the camera function values at a pair of zoom stops covering
+        // [tileZoom, tileZoom + 1] in order to be consistent with this
+        // restriction on composite functions
+        var declaration$1 = layer.getLayoutDeclaration(
+            isText ? 'text-size' : 'icon-size');
+        var t$1 = declaration$1.interpolationFactor(
+            tr.zoom,
+            sizeData.coveringZoomRange[0],
+            sizeData.coveringZoomRange[1]);
+
+        var lowerValue = sizeData.coveringStopValues[0];
+        var upperValue = sizeData.coveringStopValues[1];
+        sizeUniforms.uSize = lowerValue + (upperValue - lowerValue) * util.clamp(t$1, 0, 1);
+    } else if (sizeData.functionType === 'constant') {
+        sizeUniforms.uSize = sizeData.layoutSize;
+    }
+    return sizeUniforms;
+}
+
+},{"../style-spec/util/interpolate":153,"../util/util":253}],209:[function(require,module,exports){
+'use strict';//      
+
+var rtlTextPlugin = require('../source/rtl_text_plugin');
+
+                                                   
+                                                      
+
+module.exports = function(text        , layer            , globalProperties        , feature         ) {
+    var transform = layer.getLayoutValue('text-transform', globalProperties, feature);
+    if (transform === 'uppercase') {
+        text = text.toLocaleUpperCase();
+    } else if (transform === 'lowercase') {
+        text = text.toLocaleLowerCase();
+    }
+
+    if (rtlTextPlugin.applyArabicShaping) {
+        text = rtlTextPlugin.applyArabicShaping(text);
+    }
+
+    return text;
+};
+
+},{"../source/rtl_text_plugin":109}],210:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../util/dom');
+var Point = require('@mapbox/point-geometry');
+
+                             
+
+var handlers = {
+    scrollZoom: require('./handler/scroll_zoom'),
+    boxZoom: require('./handler/box_zoom'),
+    dragRotate: require('./handler/drag_rotate'),
+    dragPan: require('./handler/drag_pan'),
+    keyboard: require('./handler/keyboard'),
+    doubleClickZoom: require('./handler/dblclick_zoom'),
+    touchZoomRotate: require('./handler/touch_zoom_rotate')
+};
+
+module.exports = function bindHandlers(map     , options    ) {
+    var el = map.getCanvasContainer();
+    var contextMenuEvent = null;
+    var mouseDown = false;
+    var startPos = null;
+    var tapped = null;
+
+    for (var name in handlers) {
+        (map     )[name] = new handlers[name](map, options);
+        if (options.interactive && options[name]) {
+            (map     )[name].enable(options[name]);
+        }
+    }
+
+    el.addEventListener('mouseout', onMouseOut, false);
+    el.addEventListener('mousedown', onMouseDown, false);
+    el.addEventListener('mouseup', onMouseUp, false);
+    el.addEventListener('mousemove', onMouseMove, false);
+    el.addEventListener('touchstart', onTouchStart, false);
+    el.addEventListener('touchend', onTouchEnd, false);
+    el.addEventListener('touchmove', onTouchMove, false);
+    el.addEventListener('touchcancel', onTouchCancel, false);
+    el.addEventListener('click', onClick, false);
+    el.addEventListener('dblclick', onDblClick, false);
+    el.addEventListener('contextmenu', onContextMenu, false);
+
+    function onMouseOut(e            ) {
+        fireMouseEvent('mouseout', e);
+    }
+
+    function onMouseDown(e            ) {
+        if (!map.doubleClickZoom.isActive()) {
+            map.stop();
+        }
+
+        startPos = DOM.mousePos(el, e);
+        fireMouseEvent('mousedown', e);
+
+        mouseDown = true;
+    }
+
+    function onMouseUp(e            ) {
+        var rotating = map.dragRotate && map.dragRotate.isActive();
+
+        if (contextMenuEvent && !rotating) {
+            // This will be the case for Mac
+            fireMouseEvent('contextmenu', contextMenuEvent);
+        }
+
+        contextMenuEvent = null;
+        mouseDown = false;
+        fireMouseEvent('mouseup', e);
+    }
+
+    function onMouseMove(e            ) {
+        if (map.dragPan && map.dragPan.isActive()) { return; }
+        if (map.dragRotate && map.dragRotate.isActive()) { return; }
+
+        var target      = e.toElement || e.target;
+        while (target && target !== el) { target = target.parentNode; }
+        if (target !== el) { return; }
+
+        fireMouseEvent('mousemove', e);
+    }
+
+    function onTouchStart(e            ) {
+        map.stop();
+        fireTouchEvent('touchstart', e);
+
+        if (!e.touches || e.touches.length > 1) { return; }
+
+        if (!tapped) {
+            tapped = setTimeout(onTouchTimeout, 300);
+
+        } else {
+            clearTimeout(tapped);
+            tapped = null;
+            fireMouseEvent('dblclick', e);
+        }
+    }
+
+    function onTouchMove(e            ) {
+        fireTouchEvent('touchmove', e);
+    }
+
+    function onTouchEnd(e            ) {
+        fireTouchEvent('touchend', e);
+    }
+
+    function onTouchCancel(e            ) {
+        fireTouchEvent('touchcancel', e);
+    }
+
+    function onTouchTimeout() {
+        tapped = null;
+    }
+
+    function onClick(e            ) {
+        var pos = DOM.mousePos(el, e);
+
+        if (pos.equals((startPos     ))) {
+            fireMouseEvent('click', e);
+        }
+    }
+
+    function onDblClick(e            ) {
+        fireMouseEvent('dblclick', e);
+        e.preventDefault();
+    }
+
+    function onContextMenu(e            ) {
+        var rotating = map.dragRotate && map.dragRotate.isActive();
+        if (!mouseDown && !rotating) {
+            // Windows: contextmenu fired on mouseup, so fire event now
+            fireMouseEvent('contextmenu', e);
+        } else if (mouseDown) {
+            // Mac: contextmenu fired on mousedown; we save it until mouseup for consistency's sake
+            contextMenuEvent = e;
+        }
+
+        e.preventDefault();
+    }
+
+    function fireMouseEvent(type, e) {
+        var pos = DOM.mousePos(el, e);
+
+        return map.fire(type, {
+            lngLat: map.unproject(pos),
+            point: pos,
+            originalEvent: e
+        });
+    }
+
+    function fireTouchEvent(type, e) {
+        var touches = DOM.touchPos(el, e);
+        var singular = touches.reduce(function (prev, curr, i, arr) {
+            return prev.add(curr.div(arr.length));
+        }, new Point(0, 0));
+
+        return map.fire(type, {
+            lngLat: map.unproject(singular),
+            point: singular,
+            lngLats: touches.map(function (t) { return map.unproject(t); }, this),
+            points: touches,
+            originalEvent: e
+        });
+    }
+};
+
+},{"../util/dom":239,"./handler/box_zoom":219,"./handler/dblclick_zoom":220,"./handler/drag_pan":221,"./handler/drag_rotate":222,"./handler/keyboard":223,"./handler/scroll_zoom":224,"./handler/touch_zoom_rotate":225,"@mapbox/point-geometry":2}],211:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var interpolate = require('../style-spec/util/interpolate');
+var browser = require('../util/browser');
+var LngLat = require('../geo/lng_lat');
+var LngLatBounds = require('../geo/lng_lat_bounds');
+var Point = require('@mapbox/point-geometry');
+var Evented = require('../util/evented');
+
+                                              
+                                               
+                                                            
+
+/**
+ * Options common to {@link Map#jumpTo}, {@link Map#easeTo}, and {@link Map#flyTo},
+ * controlling the destination's location, zoom level, bearing, and pitch.
+ * All properties are optional. Unspecified
+ * options will default to the map's current value for that property.
+ *
+ * @typedef {Object} CameraOptions
+ * @property {LngLatLike} center The destination's center.
+ * @property {number} zoom The destination's zoom level.
+ * @property {number} bearing The destination's bearing (rotation), measured in degrees counter-clockwise from north.
+ * @property {number} pitch The destination's pitch (tilt), measured in degrees.
+ * @property {LngLatLike} around If a `zoom` is specified, `around` determines the zoom center (defaults to the center of the map).
+ */
+                      
+                        
+                  
+                     
+                   
+                       
+  
+
+/**
+ * Options common to map movement methods that involve animation, such as {@link Map#panBy} and
+ * {@link Map#easeTo}, controlling the duration and easing function of the animation. All properties
+ * are optional.
+ *
+ * @typedef {Object} AnimationOptions
+ * @property {number} duration The animation's duration, measured in milliseconds.
+ * @property {Function} easing A function taking a time in the range 0..1 and returning a number where 0 is
+ *   the initial state and 1 is the final state.
+ * @property {PointLike} offset of the target center relative to real map container center at the end of animation.
+ * @property {boolean} animate If `false`, no animation will occur.
+ */
+                         
+                      
+                                
+                       
+                     
+  
+
+/**
+ * Options for setting padding on a call to {@link Map#fitBounds}. All properties of this object must be
+ * non-negative integers.
+ *
+ * @typedef {Object} PaddingOptions
+ * @property {number} top Padding in pixels from the top of the map canvas.
+ * @property {number} bottom Padding in pixels from the bottom of the map canvas.
+ * @property {number} left Padding in pixels from the left of the map canvas.
+ * @property {number} right Padding in pixels from the right of the map canvas.
+ */
+
+var Camera = (function (Evented) {
+  function Camera(transform           , options                       ) {
+        Evented.call(this);
+        this.moving = false;
+        this.transform = transform;
+        this._bearingSnap = options.bearingSnap;
+    }
+
+  if ( Evented ) Camera.__proto__ = Evented;
+  Camera.prototype = Object.create( Evented && Evented.prototype );
+  Camera.prototype.constructor = Camera;
+
+    /**
+     * Returns the map's geographical centerpoint.
+     *
+     * @memberof Map#
+     * @returns The map's geographical centerpoint.
+     */
+    Camera.prototype.getCenter = function getCenter ()         { return this.transform.center; };
+
+    /**
+     * Sets the map's geographical centerpoint. Equivalent to `jumpTo({center: center})`.
+     *
+     * @memberof Map#
+     * @param center The centerpoint to set.
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     * @example
+     * map.setCenter([-74, 38]);
+     * @see [Move symbol with the keyboard](https://www.mapbox.com/mapbox-gl-js/example/rotating-controllable-marker/)
+     */
+    Camera.prototype.setCenter = function setCenter (center            , eventData         ) {
+        return this.jumpTo({center: center}, eventData);
+    };
+
+    /**
+     * Pans the map by the specified offest.
+     *
+     * @memberof Map#
+     * @param offset `x` and `y` coordinates by which to pan the map.
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     * @see [Navigate the map with game-like controls](https://www.mapbox.com/mapbox-gl-js/example/game-controls/)
+     */
+    Camera.prototype.panBy = function panBy (offset           , options                   , eventData         ) {
+        offset = Point.convert(offset).mult(-1);
+        return this.panTo(this.transform.center, util.extend({offset: offset}, options), eventData);
+    };
+
+    /**
+     * Pans the map to the specified location, with an animated transition.
+     *
+     * @memberof Map#
+     * @param lnglat The location to pan the map to.
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.panTo = function panTo (lnglat            , options                   , eventData         ) {
+        return this.easeTo(util.extend({
+            center: lnglat
+        }, options), eventData);
+    };
+
+    /**
+     * Returns the map's current zoom level.
+     *
+     * @memberof Map#
+     * @returns The map's current zoom level.
+     */
+    Camera.prototype.getZoom = function getZoom ()         { return this.transform.zoom; };
+
+    /**
+     * Sets the map's zoom level. Equivalent to `jumpTo({zoom: zoom})`.
+     *
+     * @memberof Map#
+     * @param zoom The zoom level to set (0-20).
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires move
+     * @fires zoom
+     * @fires moveend
+     * @fires zoomend
+     * @returns {Map} `this`
+     * @example
+     * // zoom the map to 5
+     * map.setZoom(5);
+     */
+    Camera.prototype.setZoom = function setZoom (zoom        , eventData         ) {
+        this.jumpTo({zoom: zoom}, eventData);
+        return this;
+    };
+
+    /**
+     * Zooms the map to the specified zoom level, with an animated transition.
+     *
+     * @memberof Map#
+     * @param zoom The zoom level to transition to.
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires move
+     * @fires zoom
+     * @fires moveend
+     * @fires zoomend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.zoomTo = function zoomTo (zoom        , options                    , eventData         ) {
+        return this.easeTo(util.extend({
+            zoom: zoom
+        }, options), eventData);
+    };
+
+    /**
+     * Increases the map's zoom level by 1.
+     *
+     * @memberof Map#
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires move
+     * @fires zoom
+     * @fires moveend
+     * @fires zoomend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.zoomIn = function zoomIn (options                   , eventData         ) {
+        this.zoomTo(this.getZoom() + 1, options, eventData);
+        return this;
+    };
+
+    /**
+     * Decreases the map's zoom level by 1.
+     *
+     * @memberof Map#
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires move
+     * @fires zoom
+     * @fires moveend
+     * @fires zoomend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.zoomOut = function zoomOut (options                   , eventData         ) {
+        this.zoomTo(this.getZoom() - 1, options, eventData);
+        return this;
+    };
+
+    /**
+     * Returns the map's current bearing (rotation).
+     *
+     * @memberof Map#
+     * @returns The map's current bearing, measured in degrees counter-clockwise from north.
+     * @see [Navigate the map with game-like controls](https://www.mapbox.com/mapbox-gl-js/example/game-controls/)
+     */
+    Camera.prototype.getBearing = function getBearing ()         { return this.transform.bearing; };
+
+    /**
+     * Sets the maps' bearing (rotation). Equivalent to `jumpTo({bearing: bearing})`.
+     *
+     * @memberof Map#
+     * @param bearing The bearing to set, measured in degrees counter-clockwise from north.
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     * @example
+     * // rotate the map to 90 degrees
+     * map.setBearing(90);
+     */
+    Camera.prototype.setBearing = function setBearing (bearing        , eventData         ) {
+        this.jumpTo({bearing: bearing}, eventData);
+        return this;
+    };
+
+    /**
+     * Rotates the map to the specified bearing, with an animated transition.
+     *
+     * @memberof Map#
+     * @param bearing The bearing to rotate the map to, measured in degrees counter-clockwise from north.
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.rotateTo = function rotateTo (bearing        , options                   , eventData         ) {
+        return this.easeTo(util.extend({
+            bearing: bearing
+        }, options), eventData);
+    };
+
+    /**
+     * Rotates the map to a bearing of 0 (due north), with an animated transition.
+     *
+     * @memberof Map#
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.resetNorth = function resetNorth (options                   , eventData         ) {
+        this.rotateTo(0, util.extend({duration: 1000}, options), eventData);
+        return this;
+    };
+
+    /**
+     * Snaps the map's bearing to 0 (due north), if the current bearing is close enough to it (i.e. within the `bearingSnap` threshold).
+     *
+     * @memberof Map#
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.snapToNorth = function snapToNorth (options                   , eventData         ) {
+        if (Math.abs(this.getBearing()) < this._bearingSnap) {
+            return this.resetNorth(options, eventData);
+        }
+        return this;
+    };
+
+    /**
+     * Returns the map's current pitch (tilt).
+     *
+     * @memberof Map#
+     * @returns The map's current pitch, measured in degrees away from the plane of the screen.
+     */
+    Camera.prototype.getPitch = function getPitch ()         { return this.transform.pitch; };
+
+    /**
+     * Sets the map's pitch (tilt). Equivalent to `jumpTo({pitch: pitch})`.
+     *
+     * @memberof Map#
+     * @param pitch The pitch to set, measured in degrees away from the plane of the screen (0-60).
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires pitchstart
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.setPitch = function setPitch (pitch        , eventData         ) {
+        this.jumpTo({pitch: pitch}, eventData);
+        return this;
+    };
+
+
+    /**
+     * Pans and zooms the map to contain its visible area within the specified geographical bounds.
+     * This function will also reset the map's bearing to 0 if bearing is nonzero.
+     *
+     * @memberof Map#
+     * @param bounds Center these bounds in the viewport and use the highest
+     *      zoom level up to and including `Map#getMaxZoom()` that fits them in the viewport.
+     * @param options
+     * @param {number | PaddingOptions} [options.padding] The amount of padding in pixels to add to the given bounds.
+     * @param {boolean} [options.linear=false] If `true`, the map transitions using
+     *     {@link Map#easeTo}. If `false`, the map transitions using {@link Map#flyTo}. See
+     *     those functions and {@link AnimationOptions} for information about options available.
+     * @param {Function} [options.easing] An easing function for the animated transition. See {@link AnimationOptions}.
+     * @param {PointLike} [options.offset=[0, 0]] The center of the given bounds relative to the map's center, measured in pixels.
+     * @param {number} [options.maxZoom] The maximum zoom level to allow when the map view transitions to the specified bounds.
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires moveend
+     * @returns {Map} `this`
+	 * @example
+     * var bbox = [[-79, 43], [-73, 45]];
+     * map.fitBounds(bbox, {
+     *   padding: {top: 10, bottom:25, left: 15, right: 5}
+     * });
+     * @see [Fit a map to a bounding box](https://www.mapbox.com/mapbox-gl-js/example/fitbounds/)
+     */
+    Camera.prototype.fitBounds = function fitBounds (bounds                  , options                                   , eventData         ) {
+
+        options = util.extend({
+            padding: {
+                top: 0,
+                bottom: 0,
+                right: 0,
+                left: 0
+            },
+            offset: [0, 0],
+            maxZoom: this.transform.maxZoom
+        }, options);
+
+        if (typeof options.padding === 'number') {
+            var p = options.padding;
+            options.padding = {
+                top: p,
+                bottom: p,
+                right: p,
+                left: p
+            };
+        }
+        if (!util.deepEqual(Object.keys(options.padding).sort(function (a, b) {
+            if (a < b) { return -1; }
+            if (a > b) { return 1; }
+            return 0;
+        }), ["bottom", "left", "right", "top"])) {
+            util.warnOnce("options.padding must be a positive number, or an Object with keys 'bottom', 'left', 'right', 'top'");
+            return this;
+        }
+
+        bounds = LngLatBounds.convert(bounds);
+
+        // we separate the passed padding option into two parts, the part that does not affect the map's center
+        // (lateral and vertical padding), and the part that does (paddingOffset). We add the padding offset
+        // to the options `offset` object where it can alter the map's center in the subsequent calls to
+        // `easeTo` and `flyTo`.
+        var paddingOffset = [options.padding.left - options.padding.right, options.padding.top - options.padding.bottom],
+            lateralPadding = Math.min(options.padding.right, options.padding.left),
+            verticalPadding = Math.min(options.padding.top, options.padding.bottom);
+        options.offset = [options.offset[0] + paddingOffset[0], options.offset[1] + paddingOffset[1]];
+
+        var offset = Point.convert(options.offset),
+            tr = this.transform,
+            nw = tr.project(bounds.getNorthWest()),
+            se = tr.project(bounds.getSouthEast()),
+            size = se.sub(nw),
+            scaleX = (tr.width - lateralPadding * 2 - Math.abs(offset.x) * 2) / size.x,
+            scaleY = (tr.height - verticalPadding * 2 - Math.abs(offset.y) * 2) / size.y;
+
+        if (scaleY < 0 || scaleX < 0) {
+            util.warnOnce('Map cannot fit within canvas with the given bounds, padding, and/or offset.');
+            return this;
+        }
+
+        options.center = tr.unproject(nw.add(se).div(2));
+        options.zoom = Math.min(tr.scaleZoom(tr.scale * Math.min(scaleX, scaleY)), options.maxZoom);
+        options.bearing = 0;
+
+        return options.linear ?
+            this.easeTo(options, eventData) :
+            this.flyTo(options, eventData);
+    };
+
+    /**
+     * Changes any combination of center, zoom, bearing, and pitch, without
+     * an animated transition. The map will retain its current values for any
+     * details not specified in `options`.
+     *
+     * @memberof Map#
+     * @param options
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires pitchstart
+     * @fires rotate
+     * @fires move
+     * @fires zoom
+     * @fires pitch
+     * @fires moveend
+     * @fires zoomend
+     * @fires pitchend
+     * @returns {Map} `this`
+     */
+    Camera.prototype.jumpTo = function jumpTo (options               , eventData         ) {
+        this.stop();
+
+        var tr = this.transform;
+        var zoomChanged = false,
+            bearingChanged = false,
+            pitchChanged = false;
+
+        if ('zoom' in options && tr.zoom !== +options.zoom) {
+            zoomChanged = true;
+            tr.zoom = +options.zoom;
+        }
+
+        if (options.center !== undefined) {
+            tr.center = LngLat.convert(options.center);
+        }
+
+        if ('bearing' in options && tr.bearing !== +options.bearing) {
+            bearingChanged = true;
+            tr.bearing = +options.bearing;
+        }
+
+        if ('pitch' in options && tr.pitch !== +options.pitch) {
+            pitchChanged = true;
+            tr.pitch = +options.pitch;
+        }
+
+        this.fire('movestart', eventData)
+            .fire('move', eventData);
+
+        if (zoomChanged) {
+            this.fire('zoomstart', eventData)
+                .fire('zoom', eventData)
+                .fire('zoomend', eventData);
+        }
+
+        if (bearingChanged) {
+            this.fire('rotate', eventData);
+        }
+
+        if (pitchChanged) {
+            this.fire('pitchstart', eventData)
+                .fire('pitch', eventData)
+                .fire('pitchend', eventData);
+        }
+
+        return this.fire('moveend', eventData);
+    };
+
+    /**
+     * Changes any combination of center, zoom, bearing, and pitch, with an animated transition
+     * between old and new values. The map will retain its current values for any
+     * details not specified in `options`.
+     *
+     * @memberof Map#
+     * @param options Options describing the destination and animation of the transition.
+     *            Accepts {@link CameraOptions} and {@link AnimationOptions}.
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires pitchstart
+     * @fires rotate
+     * @fires move
+     * @fires zoom
+     * @fires pitch
+     * @fires moveend
+     * @fires zoomend
+     * @fires pitchend
+     * @returns {Map} `this`
+     * @see [Navigate the map with game-like controls](https://www.mapbox.com/mapbox-gl-js/example/game-controls/)
+     */
+    Camera.prototype.easeTo = function easeTo (options                                                              , eventData         ) {
+        var this$1 = this;
+
+        this.stop();
+
+        options = util.extend({
+            offset: [0, 0],
+            duration: 500,
+            easing: util.ease
+        }, options);
+
+        if (options.animate === false) { options.duration = 0; }
+
+        if (options.smoothEasing && options.duration !== 0) {
+            options.easing = this._smoothOutEasing(options.duration);
+        }
+
+        var tr = this.transform,
+            startZoom = this.getZoom(),
+            startBearing = this.getBearing(),
+            startPitch = this.getPitch(),
+
+            zoom = 'zoom' in options ? +options.zoom : startZoom,
+            bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing,
+            pitch = 'pitch' in options ? +options.pitch : startPitch;
+
+        var pointAtOffset = tr.centerPoint.add(Point.convert(options.offset));
+        var locationAtOffset = tr.pointLocation(pointAtOffset);
+        var center = LngLat.convert(options.center || locationAtOffset);
+        this._normalizeCenter(center);
+
+        var from = tr.project(locationAtOffset);
+        var delta = tr.project(center).sub(from);
+        var finalScale = tr.zoomScale(zoom - startZoom);
+
+        var around, aroundPoint;
+
+        if (options.around) {
+            around = LngLat.convert(options.around);
+            aroundPoint = tr.locationPoint(around);
+        }
+
+        this.zooming = (zoom !== startZoom);
+        this.rotating = (startBearing !== bearing);
+        this.pitching = (pitch !== startPitch);
+
+        this._prepareEase(eventData, options.noMoveStart);
+
+        clearTimeout(this._onEaseEnd);
+
+        this._ease(function (k) {
+            if (this.zooming) {
+                tr.zoom = interpolate(startZoom, zoom, k);
+            }
+            if (this.rotating) {
+                tr.bearing = interpolate(startBearing, bearing, k);
+            }
+            if (this.pitching) {
+                tr.pitch = interpolate(startPitch, pitch, k);
+            }
+
+            if (around) {
+                tr.setLocationAtPoint(around, aroundPoint);
+            } else {
+                var scale = tr.zoomScale(tr.zoom - startZoom);
+                var base = zoom > startZoom ?
+                    Math.min(2, finalScale) :
+                    Math.max(0.5, finalScale);
+                var speedup = Math.pow(base, 1 - k);
+                var newCenter = tr.unproject(from.add(delta.mult(k * speedup)).mult(scale));
+                tr.setLocationAtPoint(tr.renderWorldCopies ? newCenter.wrap() : newCenter, pointAtOffset);
+            }
+
+            this._fireMoveEvents(eventData);
+
+        }, function () {
+            if (options.delayEndEvents) {
+                this$1._onEaseEnd = setTimeout(function () { return this$1._easeToEnd(eventData); }, options.delayEndEvents);
+            } else {
+                this$1._easeToEnd(eventData);
+            }
+        }, options);
+
+        return this;
+    };
+
+    Camera.prototype._prepareEase = function _prepareEase (eventData         , noMoveStart         ) {
+        this.moving = true;
+
+        if (!noMoveStart) {
+            this.fire('movestart', eventData);
+        }
+        if (this.zooming) {
+            this.fire('zoomstart', eventData);
+        }
+        if (this.pitching) {
+            this.fire('pitchstart', eventData);
+        }
+    };
+
+    Camera.prototype._fireMoveEvents = function _fireMoveEvents (eventData         ) {
+        this.fire('move', eventData);
+        if (this.zooming) {
+            this.fire('zoom', eventData);
+        }
+        if (this.rotating) {
+            this.fire('rotate', eventData);
+        }
+        if (this.pitching) {
+            this.fire('pitch', eventData);
+        }
+    };
+
+    Camera.prototype._easeToEnd = function _easeToEnd (eventData         ) {
+        var wasZooming = this.zooming;
+        var wasPitching = this.pitching;
+        this.moving = false;
+        this.zooming = false;
+        this.rotating = false;
+        this.pitching = false;
+
+        if (wasZooming) {
+            this.fire('zoomend', eventData);
+        }
+        if (wasPitching) {
+            this.fire('pitchend', eventData);
+        }
+        this.fire('moveend', eventData);
+    };
+
+    /**
+     * Changes any combination of center, zoom, bearing, and pitch, animating the transition along a curve that
+     * evokes flight. The animation seamlessly incorporates zooming and panning to help
+     * the user maintain her bearings even after traversing a great distance.
+     *
+     * @memberof Map#
+     * @param {Object} options Options describing the destination and animation of the transition.
+     *     Accepts {@link CameraOptions}, {@link AnimationOptions},
+     *     and the following additional options.
+     * @param {number} [options.curve=1.42] The zooming "curve" that will occur along the
+     *     flight path. A high value maximizes zooming for an exaggerated animation, while a low
+     *     value minimizes zooming for an effect closer to {@link Map#easeTo}. 1.42 is the average
+     *     value selected by participants in the user study discussed in
+     *     [van Wijk (2003)](https://www.win.tue.nl/~vanwijk/zoompan.pdf). A value of
+     *     `Math.pow(6, 0.25)` would be equivalent to the root mean squared average velocity. A
+     *     value of 1 would produce a circular motion.
+     * @param {number} [options.minZoom] The zero-based zoom level at the peak of the flight path. If
+     *     `options.curve` is specified, this option is ignored.
+     * @param {number} [options.speed=1.2] The average speed of the animation defined in relation to
+     *     `options.curve`. A speed of 1.2 means that the map appears to move along the flight path
+     *     by 1.2 times `options.curve` screenfuls every second. A _screenful_ is the map's visible span.
+     *     It does not correspond to a fixed physical distance, but varies by zoom level.
+     * @param {number} [options.screenSpeed] The average speed of the animation measured in screenfuls
+     *     per second, assuming a linear timing curve. If `options.speed` is specified, this option is ignored.
+     * @param {number} [options.maxDuration] The animation's maximum duration, measured in milliseconds.
+     *     If duration exceeds maximum duration, it resets to 0.
+     * @param eventData Additional properties to be added to event objects of events triggered by this method.
+     * @fires movestart
+     * @fires zoomstart
+     * @fires pitchstart
+     * @fires move
+     * @fires zoom
+     * @fires rotate
+     * @fires pitch
+     * @fires moveend
+     * @fires zoomend
+     * @fires pitchend
+     * @returns {Map} `this`
+     * @example
+     * // fly with default options to null island
+     * map.flyTo({center: [0, 0], zoom: 9});
+     * // using flyTo options
+     * map.flyTo({
+     *   center: [0, 0],
+     *   zoom: 9,
+     *   speed: 0.2,
+     *   curve: 1,
+     *   easing(t) {
+     *     return t;
+     *   }
+     * });
+     * @see [Fly to a location](https://www.mapbox.com/mapbox-gl-js/example/flyto/)
+     * @see [Slowly fly to a location](https://www.mapbox.com/mapbox-gl-js/example/flyto-options/)
+     * @see [Fly to a location based on scroll position](https://www.mapbox.com/mapbox-gl-js/example/scroll-fly-to/)
+     */
+    Camera.prototype.flyTo = function flyTo (options, eventData         ) {
+        var this$1 = this;
+
+        // This method implements an â€œoptimal pathâ€ animation, as detailed in:
+        //
+        // Van Wijk, Jarke J.; Nuij, Wim A. A. â€œSmooth and efficient zooming and panning.â€ INFOVIS
+        //   â€™03. pp. 15â€“22. <https://www.win.tue.nl/~vanwijk/zoompan.pdf#page=5>.
+        //
+        // Where applicable, local variable documentation begins with the associated variable or
+        // function in van Wijk (2003).
+
+        this.stop();
+
+        options = util.extend({
+            offset: [0, 0],
+            speed: 1.2,
+            curve: 1.42,
+            easing: util.ease
+        }, options);
+
+        var tr = this.transform,
+            startZoom = this.getZoom(),
+            startBearing = this.getBearing(),
+            startPitch = this.getPitch();
+
+        var zoom = 'zoom' in options ? util.clamp(+options.zoom, tr.minZoom, tr.maxZoom) : startZoom;
+        var bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing;
+        var pitch = 'pitch' in options ? +options.pitch : startPitch;
+
+        var scale = tr.zoomScale(zoom - startZoom);
+        var pointAtOffset = tr.centerPoint.add(Point.convert(options.offset));
+        var locationAtOffset = tr.pointLocation(pointAtOffset);
+        var center = LngLat.convert(options.center || locationAtOffset);
+        this._normalizeCenter(center);
+
+        var from = tr.project(locationAtOffset);
+        var delta = tr.project(center).sub(from);
+
+        var rho = options.curve;
+
+        // wâ‚€: Initial visible span, measured in pixels at the initial scale.
+        var w0 = Math.max(tr.width, tr.height),
+            // wâ‚: Final visible span, measured in pixels with respect to the initial scale.
+            w1 = w0 / scale,
+            // Length of the flight path as projected onto the ground plane, measured in pixels from
+            // the world image origin at the initial scale.
+            u1 = delta.mag();
+
+        if ('minZoom' in options) {
+            var minZoom = util.clamp(Math.min(options.minZoom, startZoom, zoom), tr.minZoom, tr.maxZoom);
+            // w<sub>m</sub>: Maximum visible span, measured in pixels with respect to the initial
+            // scale.
+            var wMax = w0 / tr.zoomScale(minZoom - startZoom);
+            rho = Math.sqrt(wMax / u1 * 2);
+        }
+
+        // ÏÂ²
+        var rho2 = rho * rho;
+
+        /**
+         * ráµ¢: Returns the zoom-out factor at one end of the animation.
+         *
+         * @param i 0 for the ascent or 1 for the descent.
+         * @private
+         */
+        function r(i) {
+            var b = (w1 * w1 - w0 * w0 + (i ? -1 : 1) * rho2 * rho2 * u1 * u1) / (2 * (i ? w1 : w0) * rho2 * u1);
+            return Math.log(Math.sqrt(b * b + 1) - b);
+        }
+
+        function sinh(n) { return (Math.exp(n) - Math.exp(-n)) / 2; }
+        function cosh(n) { return (Math.exp(n) + Math.exp(-n)) / 2; }
+        function tanh(n) { return sinh(n) / cosh(n); }
+
+        // râ‚€: Zoom-out factor during ascent.
+        var r0 = r(0);
+
+        // w(s): Returns the visible span on the ground, measured in pixels with respect to the
+        // initial scale. Assumes an angular field of view of 2 arctan Â½ â‰ˆ 53Â°.
+        var w                     = function (s) {
+            return (cosh(r0) / cosh(r0 + rho * s));
+        };
+
+        // u(s): Returns the distance along the flight path as projected onto the ground plane,
+        // measured in pixels from the world image origin at the initial scale.
+        var u                     = function (s) {
+            return w0 * ((cosh(r0) * tanh(r0 + rho * s) - sinh(r0)) / rho2) / u1;
+        };
+
+        // S: Total length of the flight path, measured in Ï-screenfuls.
+        var S = (r(1) - r0) / rho;
+
+        // When uâ‚€ = uâ‚, the optimal path doesnâ€™t require both ascent and descent.
+        if (Math.abs(u1) < 0.000001 || !isFinite(S)) {
+            // Perform a more or less instantaneous transition if the path is too short.
+            if (Math.abs(w0 - w1) < 0.000001) { return this.easeTo(options, eventData); }
+
+            var k = w1 < w0 ? -1 : 1;
+            S = Math.abs(Math.log(w1 / w0)) / rho;
+
+            u = function() { return 0; };
+            w = function(s) { return Math.exp(k * rho * s); };
+        }
+
+        if ('duration' in options) {
+            options.duration = +options.duration;
+        } else {
+            var V = 'screenSpeed' in options ? +options.screenSpeed / rho : +options.speed;
+            options.duration = 1000 * S / V;
+        }
+
+        if (options.maxDuration && options.duration > options.maxDuration) {
+            options.duration = 0;
+        }
+
+        this.zooming = true;
+        this.rotating = (startBearing !== bearing);
+        this.pitching = (pitch !== startPitch);
+
+        this._prepareEase(eventData, false);
+
+        this._ease(function (k) {
+            // s: The distance traveled along the flight path, measured in Ï-screenfuls.
+            var s = k * S;
+            var scale = 1 / w(s);
+            tr.zoom = startZoom + tr.scaleZoom(scale);
+
+            if (this.rotating) {
+                tr.bearing = interpolate(startBearing, bearing, k);
+            }
+            if (this.pitching) {
+                tr.pitch = interpolate(startPitch, pitch, k);
+            }
+
+            var newCenter = tr.unproject(from.add(delta.mult(u(s))).mult(scale));
+            tr.setLocationAtPoint(tr.renderWorldCopies ? newCenter.wrap() : newCenter, pointAtOffset);
+
+            this._fireMoveEvents(eventData);
+
+        }, function () { return this$1._easeToEnd(eventData); }, options);
+
+        return this;
+    };
+
+    Camera.prototype.isEasing = function isEasing () {
+        return !!this._abortFn;
+    };
+
+    /**
+     * Returns a Boolean indicating whether the camera is moving.
+     *
+     * @memberof Map#
+     * @returns A Boolean indicating whether the camera is moving.
+     */
+    Camera.prototype.isMoving = function isMoving ()          {
+        return this.moving;
+    };
+
+    /**
+     * Stops any animated transition underway.
+     *
+     * @memberof Map#
+     * @returns {Map} `this`
+     */
+    Camera.prototype.stop = function stop ()    {
+        if (this._abortFn) {
+            this._abortFn();
+            this._finishEase();
+        }
+        return this;
+    };
+
+    Camera.prototype._ease = function _ease (frame                  ,
+          finish            ,
+          options                                                                  ) {
+        this._finishFn = finish;
+        this._abortFn = browser.timed(function (t) {
+            frame.call(this, options.easing(t));
+            if (t === 1) {
+                this._finishEase();
+            }
+        }, options.animate === false ? 0 : options.duration, this);
+    };
+
+    Camera.prototype._finishEase = function _finishEase () {
+        delete this._abortFn;
+        // The finish function might emit events which trigger new eases, which
+        // set a new _finishFn. Ensure we don't delete it unintentionally.
+        var finish = this._finishFn;
+        delete this._finishFn;
+        finish.call(this);
+    };
+
+    // convert bearing so that it's numerically close to the current one so that it interpolates properly
+    Camera.prototype._normalizeBearing = function _normalizeBearing (bearing        , currentBearing        ) {
+        bearing = util.wrap(bearing, -180, 180);
+        var diff = Math.abs(bearing - currentBearing);
+        if (Math.abs(bearing - 360 - currentBearing) < diff) { bearing -= 360; }
+        if (Math.abs(bearing + 360 - currentBearing) < diff) { bearing += 360; }
+        return bearing;
+    };
+
+    // If a path crossing the antimeridian would be shorter, extend the final coordinate so that
+    // interpolating between the two endpoints will cross it.
+    Camera.prototype._normalizeCenter = function _normalizeCenter (center        ) {
+        var tr = this.transform;
+        if (!tr.renderWorldCopies || tr.lngRange) { return; }
+
+        var delta = center.lng - tr.center.lng;
+        center.lng +=
+            delta > 180 ? -360 :
+            delta < -180 ? 360 : 0;
+    };
+
+    // only used on mouse-wheel zoom to smooth out animation
+    Camera.prototype._smoothOutEasing = function _smoothOutEasing (duration        ) {
+        var easing = util.ease;
+
+        if (this._prevEase) {
+            var ease = this._prevEase,
+                t = (Date.now() - ease.start) / ease.duration,
+                speed = ease.easing(t + 0.01) - ease.easing(t),
+
+                // Quick hack to make new bezier that is continuous with last
+                x = 0.27 / Math.sqrt(speed * speed + 0.0001) * 0.01,
+                y = Math.sqrt(0.27 * 0.27 - x * x);
+
+            easing = util.bezier(x, y, 0.25, 1);
+        }
+
+        this._prevEase = {
+            start: (new Date()).getTime(),
+            duration: duration,
+            easing: easing
+        };
+
+        return easing;
+    };
+
+  return Camera;
+}(Evented));
+
+module.exports = Camera;
+
+},{"../geo/lng_lat":69,"../geo/lng_lat_bounds":70,"../style-spec/util/interpolate":153,"../util/browser":232,"../util/evented":240,"../util/util":253,"@mapbox/point-geometry":2}],212:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var config = require('../../util/config');
+
+                              
+
+/**
+ * An `AttributionControl` control presents the map's [attribution information](https://www.mapbox.com/help/attribution/).
+ *
+ * @implements {IControl}
+ * @param {Object} [options]
+ * @param {boolean} [options.compact] If `true` force a compact attribution that shows the full attribution on mouse hover, or if `false` force the full attribution control. The default is a responsive attribution that collapses when the map is less than 640 pixels wide.
+ * @example
+ * var map = new mapboxgl.Map({attributionControl: false})
+ *     .addControl(new mapboxgl.AttributionControl({
+ *         compact: true
+ *     }));
+ */
+var AttributionControl = function AttributionControl(options ) {
+    this.options = options;
+
+    util.bindAll([
+        '_updateEditLink',
+        '_updateData',
+        '_updateCompact'
+    ], this);
+};
+
+AttributionControl.prototype.getDefaultPosition = function getDefaultPosition () {
+    return 'bottom-right';
+};
+
+AttributionControl.prototype.onAdd = function onAdd (map ) {
+    var compact = this.options && this.options.compact;
+
+    this._map = map;
+    this._container = DOM.create('div', 'mapboxgl-ctrl mapboxgl-ctrl-attrib');
+
+    if (compact) {
+        this._container.classList.add('mapboxgl-compact');
+    }
+
+    this._updateAttributions();
+    this._updateEditLink();
+
+    this._map.on('sourcedata', this._updateData);
+    this._map.on('moveend', this._updateEditLink);
+
+    if (compact === undefined) {
+        this._map.on('resize', this._updateCompact);
+        this._updateCompact();
+    }
+
+    return this._container;
+};
+
+AttributionControl.prototype.onRemove = function onRemove () {
+    DOM.remove(this._container);
+
+    this._map.off('sourcedata', this._updateData);
+    this._map.off('moveend', this._updateEditLink);
+    this._map.off('resize', this._updateCompact);
+
+    this._map = (undefined );
+};
+
+AttributionControl.prototype._updateEditLink = function _updateEditLink () {
+    var editLink = this._editLink;
+    if (!editLink) {
+        editLink = this._editLink = (this._container.querySelector('.mapbox-improve-map') );
+    }
+
+    var params = [
+        {key: "owner", value: this.styleOwner},
+        {key: "id", value: this.styleId},
+        {key: "access_token", value: config.ACCESS_TOKEN}
+    ];
+
+    if (editLink) {
+        var paramString = params.reduce(function (acc, next, i) {
+            if (next.value) {
+                acc += (next.key) + "=" + (next.value) + (i < params.length - 1 ? '&' : '');
+            }
+            return acc;
+        }, "?");
+        editLink.href = "https://www.mapbox.com/feedback/" + paramString + (this._map._hash ? this._map._hash.getHashString(true) : '');
+    }
+};
+
+AttributionControl.prototype._updateData = function _updateData (e ) {
+    if (e && e.sourceDataType === 'metadata') {
+        this._updateAttributions();
+        this._updateEditLink();
+    }
+};
+
+AttributionControl.prototype._updateAttributions = function _updateAttributions () {
+    if (!this._map.style) { return; }
+    var attributions            = [];
+
+    if (this._map.style.stylesheet) {
+        var stylesheet  = this._map.style.stylesheet;
+        this.styleOwner = stylesheet.owner;
+        this.styleId = stylesheet.id;
+    }
+
+    var sourceCaches = this._map.style.sourceCaches;
+    for (var id in sourceCaches) {
+        var source = sourceCaches[id].getSource();
+        if (source.attribution && attributions.indexOf(source.attribution) < 0) {
+            attributions.push(source.attribution);
+        }
+    }
+
+    // remove any entries that are substrings of another entry.
+    // first sort by length so that substrings come first
+    attributions.sort(function (a, b) { return a.length - b.length; });
+    attributions = attributions.filter(function (attrib, i) {
+        for (var j = i + 1; j < attributions.length; j++) {
+            if (attributions[j].indexOf(attrib) >= 0) { return false; }
+        }
+        return true;
+    });
+    this._container.innerHTML = attributions.join(' | ');
+    // remove old DOM node from _editLink
+    this._editLink = null;
+};
+
+AttributionControl.prototype._updateCompact = function _updateCompact () {
+    if (this._map.getCanvasContainer().offsetWidth <= 640) {
+        this._container.classList.add('mapboxgl-compact');
+    } else {
+        this._container.classList.remove('mapboxgl-compact');
+    }
+};
+
+module.exports = AttributionControl;
+
+},{"../../util/config":236,"../../util/dom":239,"../../util/util":253}],213:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var window = require('../../util/window');
+
+                              
+
+/**
+ * A `FullscreenControl` control contains a button for toggling the map in and out of fullscreen mode.
+ *
+ * @implements {IControl}
+ * @example
+ * map.addControl(new mapboxgl.FullscreenControl());
+ * @see [View a fullscreen map](https://www.mapbox.com/mapbox-gl-js/example/fullscreen/)
+ */
+
+var FullscreenControl = function FullscreenControl() {
+    this._fullscreen = false;
+    util.bindAll([
+        '_onClickFullscreen',
+        '_changeIcon'
+    ], this);
+    if ('onfullscreenchange' in window.document) {
+        this._fullscreenchange = 'fullscreenchange';
+    } else if ('onmozfullscreenchange' in window.document) {
+        this._fullscreenchange = 'mozfullscreenchange';
+    } else if ('onwebkitfullscreenchange' in window.document) {
+        this._fullscreenchange = 'webkitfullscreenchange';
+    } else if ('onmsfullscreenchange' in window.document) {
+        this._fullscreenchange = 'MSFullscreenChange';
+    }
+    this._className = 'mapboxgl-ctrl';
+};
+
+FullscreenControl.prototype.onAdd = function onAdd (map ) {
+    this._map = map;
+    this._mapContainer = this._map.getContainer();
+    this._container = DOM.create('div', ((this._className) + " mapboxgl-ctrl-group"));
+    if (this._checkFullscreenSupport()) {
+        this._setupUI();
+    } else {
+        this._container.style.display = 'none';
+        util.warnOnce('This device does not support fullscreen mode.');
+    }
+    return this._container;
+};
+
+FullscreenControl.prototype.onRemove = function onRemove () {
+    DOM.remove(this._container);
+    this._map = (null );
+    window.document.removeEventListener(this._fullscreenchange, this._changeIcon);
+};
+
+FullscreenControl.prototype._checkFullscreenSupport = function _checkFullscreenSupport () {
+    return !!(
+        window.document.fullscreenEnabled ||
+        (window.document ).mozFullScreenEnabled ||
+        (window.document ).msFullscreenEnabled ||
+        (window.document ).webkitFullscreenEnabled
+    );
+};
+
+FullscreenControl.prototype._setupUI = function _setupUI () {
+    var button = this._fullscreenButton = DOM.create('button', (((this._className) + "-icon " + (this._className) + "-fullscreen")), this._container);
+    button.setAttribute("aria-label", "Toggle fullscreen");
+    button.type = 'button';
+    this._fullscreenButton.addEventListener('click', this._onClickFullscreen);
+    window.document.addEventListener(this._fullscreenchange, this._changeIcon);
+};
+
+FullscreenControl.prototype._isFullscreen = function _isFullscreen () {
+    return this._fullscreen;
+};
+
+FullscreenControl.prototype._changeIcon = function _changeIcon () {
+    var fullscreenElement =
+        window.document.fullscreenElement ||
+        (window.document ).mozFullScreenElement ||
+        (window.document ).webkitFullscreenElement ||
+        (window.document ).msFullscreenElement;
+
+    if ((fullscreenElement === this._mapContainer) !== this._fullscreen) {
+        this._fullscreen = !this._fullscreen;
+        this._fullscreenButton.classList.toggle(((this._className) + "-shrink"));
+        this._fullscreenButton.classList.toggle(((this._className) + "-fullscreen"));
+    }
+};
+
+FullscreenControl.prototype._onClickFullscreen = function _onClickFullscreen () {
+    if (this._isFullscreen()) {
+        if (window.document.exitFullscreen) {
+            (window.document ).exitFullscreen();
+        } else if (window.document.mozCancelFullScreen) {
+            (window.document ).mozCancelFullScreen();
+        } else if (window.document.msExitFullscreen) {
+            (window.document ).msExitFullscreen();
+        } else if (window.document.webkitCancelFullScreen) {
+            (window.document ).webkitCancelFullScreen();
+        }
+    } else if (this._mapContainer.requestFullscreen) {
+        this._mapContainer.requestFullscreen();
+    } else if (this._mapContainer.mozRequestFullScreen) {
+        (this._mapContainer ).mozRequestFullScreen();
+    } else if (this._mapContainer.msRequestFullscreen) {
+        (this._mapContainer ).msRequestFullscreen();
+    } else if (this._mapContainer.webkitRequestFullscreen) {
+        (this._mapContainer ).webkitRequestFullscreen();
+    }
+};
+
+module.exports = FullscreenControl;
+
+},{"../../util/dom":239,"../../util/util":253,"../../util/window":234}],214:[function(require,module,exports){
+'use strict';//      
+
+var Evented = require('../../util/evented');
+var DOM = require('../../util/dom');
+var window = require('../../util/window');
+var util = require('../../util/util');
+var assert = require('assert');
+var LngLat = require('../../geo/lng_lat');
+var Marker = require('../marker');
+
+                              
+
+var defaultOptions = {
+    positionOptions: {
+        enableHighAccuracy: false,
+        timeout: 6000 /* 6 sec */
+    },
+    fitBoundsOptions: {
+        maxZoom: 15
+    },
+    trackUserLocation: false,
+    showUserLocation: true
+};
+var className = 'mapboxgl-ctrl';
+
+var supportsGeolocation;
+
+function checkGeolocationSupport(callback) {
+    if (supportsGeolocation !== undefined) {
+        callback(supportsGeolocation);
+
+    } else if (window.navigator.permissions !== undefined) {
+        // navigator.permissions has incomplete browser support
+        // http://caniuse.com/#feat=permissions-api
+        // Test for the case where a browser disables Geolocation because of an
+        // insecure origin
+        window.navigator.permissions.query({ name: 'geolocation' }).then(function (p) {
+            supportsGeolocation = p.state !== 'denied';
+            callback(supportsGeolocation);
+        });
+
+    } else {
+        supportsGeolocation = !!window.navigator.geolocation;
+        callback(supportsGeolocation);
+    }
+}
+
+/**
+ * A `GeolocateControl` control provides a button that uses the browser's geolocation
+ * API to locate the user on the map.
+ *
+ * Not all browsers support geolocation,
+ * and some users may disable the feature. Geolocation support for modern
+ * browsers including Chrome requires sites to be served over HTTPS. If
+ * geolocation support is not available, the GeolocateControl will not
+ * be visible.
+ *
+ * The zoom level applied will depend on the accuracy of the geolocation provided by the device.
+ *
+ * The GeolocateControl has two modes. If `trackUserLocation` is `false` (default) the control acts as a button, which when pressed will set the map's camera to target the user location. If the user moves, the map won't update. This is most suited for the desktop. If `trackUserLocation` is `true` the control acts as a toggle button that when active the user's location is actively monitored for changes. In this mode the GeolocateControl has three states:
+ * * active - the map's camera automatically updates as the user's location changes, keeping the location dot in the center.
+ * * passive - the user's location dot automatically updates, but the map's camera does not.
+ * * disabled
+ *
+ * @implements {IControl}
+ * @param {Object} [options]
+ * @param {Object} [options.positionOptions={enableHighAccuracy: false, timeout: 6000}] A Geolocation API [PositionOptions](https://developer.mozilla.org/en-US/docs/Web/API/PositionOptions) object.
+ * @param {Object} [options.fitBoundsOptions={maxZoom: 15}] A [`fitBounds`](#Map#fitBounds) options object to use when the map is panned and zoomed to the user's location. The default is to use a `maxZoom` of 15 to limit how far the map will zoom in for very accurate locations.
+ * @param {Object} [options.trackUserLocation=false] If `true` the Geolocate Control becomes a toggle button and when active the map will receive updates to the user's location as it changes.
+ * @param {Object} [options.showUserLocation=true] By default a dot will be shown on the map at the user's location. Set to `false` to disable.
+ *
+ * @example
+ * map.addControl(new mapboxgl.GeolocateControl({
+ *     positionOptions: {
+ *         enableHighAccuracy: true
+ *     },
+ *     trackUserLocation: true
+ * }));
+ */
+var GeolocateControl = (function (Evented) {
+    function GeolocateControl(options     ) {
+        Evented.call(this);
+        this.options = util.extend({}, defaultOptions, options);
+
+        util.bindAll([
+            '_onSuccess',
+            '_onError',
+            '_finish',
+            '_setupUI',
+            '_updateCamera',
+            '_updateMarker',
+            '_onClickGeolocate'
+        ], this);
+    }
+
+    if ( Evented ) GeolocateControl.__proto__ = Evented;
+    GeolocateControl.prototype = Object.create( Evented && Evented.prototype );
+    GeolocateControl.prototype.constructor = GeolocateControl;
+
+    GeolocateControl.prototype.onAdd = function onAdd (map     ) {
+        this._map = map;
+        this._container = DOM.create('div', (className + " " + className + "-group"));
+        checkGeolocationSupport(this._setupUI);
+        return this._container;
+    };
+
+    GeolocateControl.prototype.onRemove = function onRemove () {
+        // clear the geolocation watch if exists
+        if (this._geolocationWatchID !== undefined) {
+            window.navigator.geolocation.clearWatch(this._geolocationWatchID);
+            this._geolocationWatchID = (undefined     );
+        }
+
+        // clear the marker from the map
+        if (this.options.showUserLocation) {
+            this._userLocationDotMarker.remove();
+        }
+
+        DOM.remove(this._container);
+        this._map = (undefined     );
+    };
+
+    GeolocateControl.prototype._onSuccess = function _onSuccess (position          ) {
+        if (this.options.trackUserLocation) {
+            // keep a record of the position so that if the state is BACKGROUND and the user
+            // clicks the button, we can move to ACTIVE_LOCK immediately without waiting for
+            // watchPosition to trigger _onSuccess
+            this._lastKnownPosition = position;
+
+            switch (this._watchState) {
+            case 'WAITING_ACTIVE':
+            case 'ACTIVE_LOCK':
+            case 'ACTIVE_ERROR':
+                this._watchState = 'ACTIVE_LOCK';
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active-error');
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-active');
+                break;
+            case 'BACKGROUND':
+            case 'BACKGROUND_ERROR':
+                this._watchState = 'BACKGROUND';
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background-error');
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-background');
+                break;
+            default:
+                assert(false, ("Unexpected watchState " + (this._watchState)));
+            }
+        }
+
+        // if showUserLocation and the watch state isn't off then update the marker location
+        if (this.options.showUserLocation && this._watchState !== 'OFF') {
+            this._updateMarker(position);
+        }
+
+        // if in normal mode (not watch mode), or if in watch mode and the state is active watch
+        // then update the camera
+        if (!this.options.trackUserLocation || this._watchState === 'ACTIVE_LOCK') {
+            this._updateCamera(position);
+        }
+
+        if (this.options.showUserLocation) {
+            this._dotElement.classList.remove('mapboxgl-user-location-dot-stale');
+        }
+
+        this.fire('geolocate', position);
+        this._finish();
+    };
+
+    GeolocateControl.prototype._updateCamera = function _updateCamera (position          ) {
+        var center = new LngLat(position.coords.longitude, position.coords.latitude);
+        var radius = position.coords.accuracy;
+
+        this._map.fitBounds(center.toBounds(radius), this.options.fitBoundsOptions, {
+            geolocateSource: true // tag this camera change so it won't cause the control to change to background state
+        });
+    };
+
+    GeolocateControl.prototype._updateMarker = function _updateMarker (position           ) {
+        if (position) {
+            this._userLocationDotMarker.setLngLat([position.coords.longitude, position.coords.latitude]).addTo(this._map);
+        } else {
+            this._userLocationDotMarker.remove();
+        }
+    };
+
+    GeolocateControl.prototype._onError = function _onError (error               ) {
+        if (this.options.trackUserLocation) {
+            if (error.code === 1) {
+                // PERMISSION_DENIED
+                this._watchState = 'OFF';
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active-error');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background-error');
+
+                if (this._geolocationWatchID !== undefined) {
+                    this._clearWatch();
+                }
+            } else {
+                switch (this._watchState) {
+                case 'WAITING_ACTIVE':
+                    this._watchState = 'ACTIVE_ERROR';
+                    this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
+                    this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-active-error');
+                    break;
+                case 'ACTIVE_LOCK':
+                    this._watchState = 'ACTIVE_ERROR';
+                    this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
+                    this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-active-error');
+                    this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-waiting');
+                    // turn marker grey
+                    break;
+                case 'BACKGROUND':
+                    this._watchState = 'BACKGROUND_ERROR';
+                    this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background');
+                    this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-background-error');
+                    this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-waiting');
+                    // turn marker grey
+                    break;
+                case 'ACTIVE_ERROR':
+                    break;
+                default:
+                    assert(false, ("Unexpected watchState " + (this._watchState)));
+                }
+            }
+        }
+
+        if (this._watchState !== 'OFF' && this.options.showUserLocation) {
+            this._dotElement.classList.add('mapboxgl-user-location-dot-stale');
+        }
+
+        this.fire('error', error);
+
+        this._finish();
+    };
+
+    GeolocateControl.prototype._finish = function _finish () {
+        if (this._timeoutId) { clearTimeout(this._timeoutId); }
+        this._timeoutId = undefined;
+    };
+
+    GeolocateControl.prototype._setupUI = function _setupUI (supported         ) {
+        var this$1 = this;
+
+        if (supported === false) { return; }
+        this._container.addEventListener('contextmenu', function (e            ) { return e.preventDefault(); });
+        this._geolocateButton = DOM.create('button',
+            (className + "-icon " + className + "-geolocate"),
+            this._container);
+        this._geolocateButton.type = 'button';
+        this._geolocateButton.setAttribute('aria-label', 'Geolocate');
+
+        if (this.options.trackUserLocation) {
+            this._geolocateButton.setAttribute('aria-pressed', 'false');
+            this._watchState = 'OFF';
+        }
+
+        // when showUserLocation is enabled, keep the Geolocate button disabled until the device location marker is setup on the map
+        if (this.options.showUserLocation) {
+            this._dotElement = DOM.create('div', 'mapboxgl-user-location-dot');
+
+            this._userLocationDotMarker = new Marker(this._dotElement);
+
+            if (this.options.trackUserLocation) { this._watchState = 'OFF'; }
+        }
+
+        this._geolocateButton.addEventListener('click',
+            this._onClickGeolocate.bind(this));
+
+        // when the camera is changed (and it's not as a result of the Geolocation Control) change
+        // the watch mode to background watch, so that the marker is updated but not the camera.
+        if (this.options.trackUserLocation) {
+            this._map.on('movestart', function (event) {
+                if (!event.geolocateSource && this$1._watchState === 'ACTIVE_LOCK') {
+                    this$1._watchState = 'BACKGROUND';
+                    this$1._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-background');
+                    this$1._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
+
+                    this$1.fire('trackuserlocationend');
+                }
+            });
+        }
+    };
+
+    GeolocateControl.prototype._onClickGeolocate = function _onClickGeolocate () {
+        if (this.options.trackUserLocation) {
+            // update watchState and do any outgoing state cleanup
+            switch (this._watchState) {
+            case 'OFF':
+                // turn on the Geolocate Control
+                this._watchState = 'WAITING_ACTIVE';
+
+                this.fire('trackuserlocationstart');
+                break;
+            case 'WAITING_ACTIVE':
+            case 'ACTIVE_LOCK':
+            case 'ACTIVE_ERROR':
+            case 'BACKGROUND_ERROR':
+                // turn off the Geolocate Control
+                this._watchState = 'OFF';
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active-error');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background');
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background-error');
+
+                this.fire('trackuserlocationend');
+                break;
+            case 'BACKGROUND':
+                this._watchState = 'ACTIVE_LOCK';
+                this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-background');
+                // set camera to last known location
+                if (this._lastKnownPosition) { this._updateCamera(this._lastKnownPosition); }
+
+                this.fire('trackuserlocationstart');
+                break;
+            default:
+                assert(false, ("Unexpected watchState " + (this._watchState)));
+            }
+
+            // incoming state setup
+            switch (this._watchState) {
+            case 'WAITING_ACTIVE':
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-active');
+                break;
+            case 'ACTIVE_LOCK':
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-active');
+                break;
+            case 'ACTIVE_ERROR':
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-active-error');
+                break;
+            case 'BACKGROUND':
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-background');
+                break;
+            case 'BACKGROUND_ERROR':
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-background-error');
+                break;
+            case 'OFF':
+                break;
+            default:
+                assert(false, ("Unexpected watchState " + (this._watchState)));
+            }
+
+            // manage geolocation.watchPosition / geolocation.clearWatch
+            if (this._watchState === 'OFF' && this._geolocationWatchID !== undefined) {
+                // clear watchPosition as we've changed to an OFF state
+                this._clearWatch();
+            } else if (this._geolocationWatchID === undefined) {
+                // enable watchPosition since watchState is not OFF and there is no watchPosition already running
+
+                this._geolocateButton.classList.add('mapboxgl-ctrl-geolocate-waiting');
+                this._geolocateButton.setAttribute('aria-pressed', 'true');
+
+                this._geolocationWatchID = window.navigator.geolocation.watchPosition(
+                    this._onSuccess, this._onError, this.options.positionOptions);
+            }
+        } else {
+            window.navigator.geolocation.getCurrentPosition(
+                this._onSuccess, this._onError, this.options.positionOptions);
+
+            // This timeout ensures that we still call finish() even if
+            // the user declines to share their location in Firefox
+            this._timeoutId = setTimeout(this._finish, 10000 /* 10sec */);
+        }
+    };
+
+    GeolocateControl.prototype._clearWatch = function _clearWatch () {
+        window.navigator.geolocation.clearWatch(this._geolocationWatchID);
+
+        this._geolocationWatchID = (undefined     );
+        this._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-waiting');
+        this._geolocateButton.setAttribute('aria-pressed', 'false');
+
+        if (this.options.showUserLocation) {
+            this._updateMarker(null);
+        }
+    };
+
+    return GeolocateControl;
+}(Evented));
+
+module.exports = GeolocateControl;
+
+/* Geolocate Control Watch States
+ * This is the private state of the control.
+ *
+ * OFF
+ *    off/inactive
+ * WAITING_ACTIVE
+ *    Geolocate Control was clicked but still waiting for Geolocation API response with user location
+ * ACTIVE_LOCK
+ *    Showing the user location as a dot AND tracking the camera to be fixed to their location. If their location changes the map moves to follow.
+ * ACTIVE_ERROR
+ *    There was en error from the Geolocation API while trying to show and track the user location.
+ * BACKGROUND
+ *    Showing the user location as a dot but the camera doesn't follow their location as it changes.
+ * BACKGROUND_ERROR
+ *    There was an error from the Geolocation API while trying to show (but not track) the user location.
+ */
+
+
+/**
+ * Fired on each Geolocation API position update which returned as success.
+ *
+ * @event geolocate
+ * @memberof GeolocateControl
+ * @instance
+ * @property {Position} data The returned [Position](https://developer.mozilla.org/en-US/docs/Web/API/Position) object from the callback in [Geolocation.getCurrentPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) or [Geolocation.watchPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition).
+ *
+ */
+
+/**
+ * Fired on each Geolocation API position update which returned as an error.
+ *
+ * @event error
+ * @memberof GeolocateControl
+ * @instance
+ * @property {PositionError} data The returned [PositionError](https://developer.mozilla.org/en-US/docs/Web/API/PositionError) object from the callback in [Geolocation.getCurrentPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) or [Geolocation.watchPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition).
+ *
+ */
+
+/**
+ * Fired when the Geolocate Control changes to the active lock state, which happens either upon first obtaining a successful Geolocation API position for the user (a geolocate event will follow), or the user clicks the geolocate button when in the background state which uses the last known position to recenter the map and enter active lock state (no geolocate event will follow unless the users's location changes).
+ *
+ * @event trackuserlocationstart
+ * @memberof GeolocateControl
+ * @instance
+ *
+ */
+
+/**
+ * Fired when the Geolocate Control changes to the background state, which happens when a user changes the camera during an active position lock. This only applies when trackUserLocation is true. In the background state, the dot on the map will update with location updates but the camera will not.
+ *
+ * @event trackuserlocationend
+ * @memberof GeolocateControl
+ * @instance
+ *
+ */
+
+},{"../../geo/lng_lat":69,"../../util/dom":239,"../../util/evented":240,"../../util/util":253,"../../util/window":234,"../marker":228,"assert":11}],215:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+
+                              
+
+/**
+ * A `LogoControl` is a control that adds the Mapbox watermark
+ * to the map as required by the [terms of service](https://www.mapbox.com/tos/) for Mapbox
+ * vector tiles and core styles.
+ *
+ * @implements {IControl}
+ * @private
+**/
+
+var LogoControl = function LogoControl() {
+    util.bindAll(['_updateLogo'], this);
+};
+
+LogoControl.prototype.onAdd = function onAdd (map ) {
+    this._map = map;
+    this._container = DOM.create('div', 'mapboxgl-ctrl');
+    var anchor = DOM.create('a', 'mapboxgl-ctrl-logo');
+    anchor.target = "_blank";
+    anchor.href = "https://www.mapbox.com/";
+    anchor.setAttribute("aria-label", "Mapbox logo");
+    this._container.appendChild(anchor);
+    this._container.style.display = 'none';
+
+    this._map.on('sourcedata', this._updateLogo);
+    this._updateLogo();
+    return this._container;
+};
+
+LogoControl.prototype.onRemove = function onRemove () {
+    DOM.remove(this._container);
+    this._map.off('sourcedata', this._updateLogo);
+};
+
+LogoControl.prototype.getDefaultPosition = function getDefaultPosition () {
+    return 'bottom-left';
+};
+
+LogoControl.prototype._updateLogo = function _updateLogo (e ) {
+    if (!e || e.sourceDataType === 'metadata') {
+        this._container.style.display = this._logoRequired() ? 'block' : 'none';
+    }
+};
+
+LogoControl.prototype._logoRequired = function _logoRequired () {
+    if (!this._map.style) { return; }
+
+    var sourceCaches = this._map.style.sourceCaches;
+    for (var id in sourceCaches) {
+        var source = sourceCaches[id].getSource();
+        if (source.mapbox_logo) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+
+module.exports = LogoControl;
+
+},{"../../util/dom":239,"../../util/util":253}],216:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var DragRotateHandler = require('../handler/drag_rotate');
+
+                              
+
+/**
+ * A `NavigationControl` control contains zoom buttons and a compass.
+ *
+ * @implements {IControl}
+ * @example
+ * var nav = new mapboxgl.NavigationControl();
+ * map.addControl(nav, 'top-left');
+ * @see [Display map navigation controls](https://www.mapbox.com/mapbox-gl-js/example/navigation/)
+ * @see [Add a third party vector tile source](https://www.mapbox.com/mapbox-gl-js/example/third-party/)
+ */
+var NavigationControl = function NavigationControl() {
+    var this$1 = this;
+
+    util.bindAll([
+        '_rotateCompassArrow'
+    ], this);
+
+    this._container = DOM.create('div', 'mapboxgl-ctrl mapboxgl-ctrl-group');
+    this._container.addEventListener('contextmenu', function (e) { return e.preventDefault(); });
+
+    this._zoomInButton = this._createButton('mapboxgl-ctrl-icon mapboxgl-ctrl-zoom-in', 'Zoom In', function () { return this$1._map.zoomIn(); });
+    this._zoomOutButton = this._createButton('mapboxgl-ctrl-icon mapboxgl-ctrl-zoom-out', 'Zoom Out', function () { return this$1._map.zoomOut(); });
+    this._compass = this._createButton('mapboxgl-ctrl-icon mapboxgl-ctrl-compass', 'Reset North', function () { return this$1._map.resetNorth(); });
+    this._compassArrow = DOM.create('span', 'mapboxgl-ctrl-compass-arrow', this._compass);
+};
+
+NavigationControl.prototype._rotateCompassArrow = function _rotateCompassArrow () {
+    var rotate = "rotate(" + (this._map.transform.angle * (180 / Math.PI)) + "deg)";
+    this._compassArrow.style.transform = rotate;
+};
+
+NavigationControl.prototype.onAdd = function onAdd (map ) {
+    this._map = map;
+    this._map.on('rotate', this._rotateCompassArrow);
+    this._rotateCompassArrow();
+    this._handler = new DragRotateHandler(map, {button: 'left', element: this._compass, pitchWithRotate: false});
+    this._handler.enable();
+    return this._container;
+};
+
+NavigationControl.prototype.onRemove = function onRemove () {
+    DOM.remove(this._container);
+    this._map.off('rotate', this._rotateCompassArrow);
+    delete this._map;
+
+    this._handler.disable();
+    delete this._handler;
+};
+
+NavigationControl.prototype._createButton = function _createButton (className    , ariaLabel    , fn         ) {
+    var a = DOM.create('button', className, this._container);
+    a.type = 'button';
+    a.setAttribute('aria-label', ariaLabel);
+    a.addEventListener('click', fn);
+    return a;
+};
+
+module.exports = NavigationControl;
+
+},{"../../util/dom":239,"../../util/util":253,"../handler/drag_rotate":222}],217:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+
+                              
+
+/**
+ * A `ScaleControl` control displays the ratio of a distance on the map to the corresponding distance on the ground.
+ *
+ * @implements {IControl}
+ * @param {Object} [options]
+ * @param {number} [options.maxWidth='150'] The maximum length of the scale control in pixels.
+ * @param {string} [options.unit='metric'] Unit of the distance (`'imperial'`, `'metric'` or `'nautical'`).
+ * @example
+ * map.addControl(new mapboxgl.ScaleControl({
+ *     maxWidth: 80,
+ *     unit: 'imperial'
+ * }));
+ */
+var ScaleControl = function ScaleControl(options ) {
+    this.options = options;
+
+    util.bindAll([
+        '_onMove'
+    ], this);
+};
+
+ScaleControl.prototype.getDefaultPosition = function getDefaultPosition () {
+    return 'bottom-left';
+};
+
+ScaleControl.prototype._onMove = function _onMove () {
+    updateScale(this._map, this._container, this.options);
+};
+
+ScaleControl.prototype.onAdd = function onAdd (map ) {
+    this._map = map;
+    this._container = DOM.create('div', 'mapboxgl-ctrl mapboxgl-ctrl-scale', map.getContainer());
+
+    this._map.on('move', this._onMove);
+    this._onMove();
+
+    return this._container;
+};
+
+ScaleControl.prototype.onRemove = function onRemove () {
+    DOM.remove(this._container);
+    this._map.off('move', this._onMove);
+    this._map = (undefined );
+};
+
+module.exports = ScaleControl;
+
+function updateScale(map, container, options) {
+    // A horizontal scale is imagined to be present at center of the map
+    // container with maximum length (Default) as 100px.
+    // Using spherical law of cosines approximation, the real distance is
+    // found between the two coordinates.
+    var maxWidth = options && options.maxWidth || 100;
+
+    var y = map._container.clientHeight / 2;
+    var maxMeters = getDistance(map.unproject([0, y]), map.unproject([maxWidth, y]));
+    // The real distance corresponding to 100px scale length is rounded off to
+    // near pretty number and the scale length for the same is found out.
+    // Default unit of the scale is based on User's locale.
+    if (options && options.unit === 'imperial') {
+        var maxFeet = 3.2808 * maxMeters;
+        if (maxFeet > 5280) {
+            var maxMiles = maxFeet / 5280;
+            setScale(container, maxWidth, maxMiles, 'mi');
+        } else {
+            setScale(container, maxWidth, maxFeet, 'ft');
+        }
+    } else if (options && options.unit === 'nautical') {
+        var maxNauticals = maxMeters / 1852;
+        setScale(container, maxWidth, maxNauticals, 'nm');
+    } else {
+        setScale(container, maxWidth, maxMeters, 'm');
+    }
+}
+
+function setScale(container, maxWidth, maxDistance, unit) {
+    var distance = getRoundNum(maxDistance);
+    var ratio = distance / maxDistance;
+
+    if (unit === 'm' && distance >= 1000) {
+        distance = distance / 1000;
+        unit = 'km';
+    }
+
+    container.style.width = (maxWidth * ratio) + "px";
+    container.innerHTML = distance + unit;
+}
+
+function getDistance(latlng1, latlng2) {
+    // Uses spherical law of cosines approximation.
+    var R = 6371000;
+
+    var rad = Math.PI / 180,
+        lat1 = latlng1.lat * rad,
+        lat2 = latlng2.lat * rad,
+        a = Math.sin(lat1) * Math.sin(lat2) +
+          Math.cos(lat1) * Math.cos(lat2) * Math.cos((latlng2.lng - latlng1.lng) * rad);
+
+    var maxMeters = R * Math.acos(Math.min(a, 1));
+    return maxMeters;
+
+}
+
+function getRoundNum(num) {
+    var pow10 = Math.pow(10, (("" + (Math.floor(num)))).length - 1);
+    var d = num / pow10;
+
+    d = d >= 10 ? 10 :
+        d >= 5 ? 5 :
+        d >= 3 ? 3 :
+        d >= 2 ? 2 : 1;
+
+    return pow10 * d;
+}
+
+},{"../../util/dom":239,"../../util/util":253}],218:[function(require,module,exports){
+'use strict';//      
+
+                             
+                                                
+                                         
+                                                      
+
+/**
+ * @typedef {Object} MapMouseEvent
+ * @property {string} type The event type.
+ * @property {Map} target The `Map` object that fired the event.
+ * @property {MouseEvent} originalEvent
+ * @property {Point} point The pixel coordinates of the mouse event target, relative to the map
+ *   and measured from the top left corner.
+ * @property {LngLat} lngLat The geographic location on the map of the mouse event target.
+ */
+                             
+                     
+                   
+                 
+                    
+                     
+                      
+                      
+                     
+                    
+                        
+             
+                              
+                 
+                  
+  
+
+/**
+ * @typedef {Object} MapTouchEvent
+ * @property {string} type The event type.
+ * @property {Map} target The `Map` object that fired the event.
+ * @property {TouchEvent} originalEvent
+ * @property {Point} point The pixel coordinates of the center of the touch event points, relative to the map
+ *   and measured from the top left corner.
+ * @property {LngLat} lngLat The geographic location on the map of the center of the touch event points.
+ * @property {Array<Point>} points The array of pixel coordinates corresponding to
+ *   a [touch event's `touches`](https://developer.mozilla.org/en-US/docs/Web/API/TouchEvent/touches)
+ *   property.
+ * @property {Array<LngLat>} lngLats The geographical locations on the map corresponding to
+ *   a [touch event's `touches`](https://developer.mozilla.org/en-US/docs/Web/API/TouchEvent/touches)
+ *   property.
+ */
+                             
+                      
+                    
+                        
+             
+                              
+                   
+                         
+                          
+  
+
+/**
+ * @typedef {Object} MapBoxZoomEvent
+ * @property {MouseEvent} originalEvent
+ * @property {LngLatBounds} boxZoomBounds The bounding box of the "box zoom" interaction.
+ *   This property is only provided for `boxzoomend` events.
+ */
+                               
+                        
+                      
+                          
+             
+                              
+                               
+  
+
+/**
+ * A `MapDataEvent` object is emitted with the {@link Map.event:data}
+ * and {@link Map.event:dataloading} events. Possible values for
+ * `dataType`s are:
+ *
+ * - `'source'`: The non-tile data associated with any source
+ * - `'style'`: The [style](https://www.mapbox.com/mapbox-gl-style-spec/) used by the map
+ *
+ * @typedef {Object} MapDataEvent
+ * @property {string} type The event type.
+ * @property {string} dataType The type of data that has changed. One of `'source'`, `'style'`.
+ * @property {boolean} [isSourceLoaded] True if the event has a `dataType` of `source` and the source has no outstanding network requests.
+ * @property {Object} [source] The [style spec representation of the source](https://www.mapbox.com/mapbox-gl-style-spec/#sources) if the event has a `dataType` of `source`.
+ * @property {string} [sourceDataType] Included if the event has a `dataType` of `source` and the event signals
+ * that internal data has been received or changed. Possible values are `metadata` and `content`.
+ * @property {Object} [tile] The tile being loaded or changed, if the event has a `dataType` of `source` and
+ * the event is related to loading of a tile.
+ * @property {Coordinate} [coord] The coordinate of the tile if the event has a `dataType` of `source` and
+ * the event is related to loading of a tile.
+ */
+
+},{}],219:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var LngLatBounds = require('../../geo/lng_lat_bounds');
+var util = require('../../util/util');
+var window = require('../../util/window');
+
+                              
+
+/**
+ * The `BoxZoomHandler` allows the user to zoom the map to fit within a bounding box.
+ * The bounding box is defined by clicking and holding `shift` while dragging the cursor.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ */
+var BoxZoomHandler = function BoxZoomHandler(map ) {
+    this._map = map;
+    this._el = map.getCanvasContainer();
+    this._container = map.getContainer();
+
+    util.bindAll([
+        '_onMouseDown',
+        '_onMouseMove',
+        '_onMouseUp',
+        '_onKeyDown'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether the "box zoom" interaction is enabled.
+ *
+ * @returns {boolean} `true` if the "box zoom" interaction is enabled.
+ */
+BoxZoomHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Returns a Boolean indicating whether the "box zoom" interaction is active, i.e. currently being used.
+ *
+ * @returns {boolean} `true` if the "box zoom" interaction is active.
+ */
+BoxZoomHandler.prototype.isActive = function isActive () {
+    return !!this._active;
+};
+
+/**
+ * Enables the "box zoom" interaction.
+ *
+ * @example
+ *   map.boxZoom.enable();
+ */
+BoxZoomHandler.prototype.enable = function enable () {
+    if (this.isEnabled()) { return; }
+
+    // the event listeners for the DragPanHandler have to fire _after_ the event listener for BoxZoomHandler in order,
+    // for the DragPanHandler's check on map.boxZoom.isActive() to tell whether or not to ignore a keydown event
+    // so this makes sure the firing order is preserved if the BoxZoomHandler is enabled after the DragPanHandler.
+    if (this._map.dragPan) { this._map.dragPan.disable(); }
+    this._el.addEventListener('mousedown', this._onMouseDown, false);
+    if (this._map.dragPan) { this._map.dragPan.enable(); }
+
+    this._enabled = true;
+};
+
+/**
+ * Disables the "box zoom" interaction.
+ *
+ * @example
+ *   map.boxZoom.disable();
+ */
+BoxZoomHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._el.removeEventListener('mousedown', this._onMouseDown);
+    this._enabled = false;
+};
+
+BoxZoomHandler.prototype._onMouseDown = function _onMouseDown (e        ) {
+    if (!(e.shiftKey && e.button === 0)) { return; }
+
+    window.document.addEventListener('mousemove', this._onMouseMove, false);
+    window.document.addEventListener('keydown', this._onKeyDown, false);
+    window.document.addEventListener('mouseup', this._onMouseUp, false);
+
+    DOM.disableDrag();
+    this._startPos = DOM.mousePos(this._el, e);
+    this._active = true;
+};
+
+BoxZoomHandler.prototype._onMouseMove = function _onMouseMove (e        ) {
+    var p0 = this._startPos,
+        p1 = DOM.mousePos(this._el, e);
+
+    if (!this._box) {
+        this._box = DOM.create('div', 'mapboxgl-boxzoom', this._container);
+        this._container.classList.add('mapboxgl-crosshair');
+        this._fireEvent('boxzoomstart', e);
+    }
+
+    var minX = Math.min(p0.x, p1.x),
+        maxX = Math.max(p0.x, p1.x),
+        minY = Math.min(p0.y, p1.y),
+        maxY = Math.max(p0.y, p1.y);
+
+    DOM.setTransform(this._box, ("translate(" + minX + "px," + minY + "px)"));
+
+    this._box.style.width = (maxX - minX) + "px";
+    this._box.style.height = (maxY - minY) + "px";
+};
+
+BoxZoomHandler.prototype._onMouseUp = function _onMouseUp (e        ) {
+    if (e.button !== 0) { return; }
+
+    var p0 = this._startPos,
+        p1 = DOM.mousePos(this._el, e),
+        bounds = new LngLatBounds()
+            .extend(this._map.unproject(p0))
+            .extend(this._map.unproject(p1));
+
+    this._finish();
+
+    if (p0.x === p1.x && p0.y === p1.y) {
+        this._fireEvent('boxzoomcancel', e);
+    } else {
+        this._map
+            .fitBounds(bounds, {linear: true})
+            .fire('boxzoomend', { originalEvent: e, boxZoomBounds: bounds });
+    }
+};
+
+BoxZoomHandler.prototype._onKeyDown = function _onKeyDown (e           ) {
+    if (e.keyCode === 27) {
+        this._finish();
+        this._fireEvent('boxzoomcancel', e);
+    }
+};
+
+BoxZoomHandler.prototype._finish = function _finish () {
+    this._active = false;
+
+    window.document.removeEventListener('mousemove', this._onMouseMove, false);
+    window.document.removeEventListener('keydown', this._onKeyDown, false);
+    window.document.removeEventListener('mouseup', this._onMouseUp, false);
+
+    this._container.classList.remove('mapboxgl-crosshair');
+
+    if (this._box) {
+        DOM.remove(this._box);
+        this._box = (null );
+    }
+
+    DOM.enableDrag();
+};
+
+BoxZoomHandler.prototype._fireEvent = function _fireEvent (type    , e   ) {
+    return this._map.fire(type, { originalEvent: e });
+};
+
+module.exports = BoxZoomHandler;
+
+},{"../../geo/lng_lat_bounds":70,"../../util/dom":239,"../../util/util":253,"../../util/window":234}],220:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../../util/util');
+
+                              
+
+/**
+ * The `DoubleClickZoomHandler` allows the user to zoom the map at a point by
+ * double clicking.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ */
+var DoubleClickZoomHandler = function DoubleClickZoomHandler(map ) {
+    this._map = map;
+
+    util.bindAll([
+        '_onDblClick',
+        '_onZoomEnd'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether the "double click to zoom" interaction is enabled.
+ *
+ * @returns {boolean} `true` if the "double click to zoom" interaction is enabled.
+ */
+DoubleClickZoomHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Returns a Boolean indicating whether the "double click to zoom" interaction is active, i.e. currently being used.
+ *
+ * @returns {boolean} `true` if the "double click to zoom" interaction is active.
+ */
+DoubleClickZoomHandler.prototype.isActive = function isActive () {
+    return !!this._active;
+};
+
+/**
+ * Enables the "double click to zoom" interaction.
+ *
+ * @example
+ * map.doubleClickZoom.enable();
+ */
+DoubleClickZoomHandler.prototype.enable = function enable () {
+    if (this.isEnabled()) { return; }
+    this._map.on('dblclick', this._onDblClick);
+    this._enabled = true;
+};
+
+/**
+ * Disables the "double click to zoom" interaction.
+ *
+ * @example
+ * map.doubleClickZoom.disable();
+ */
+DoubleClickZoomHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._map.off('dblclick', this._onDblClick);
+    this._enabled = false;
+};
+
+DoubleClickZoomHandler.prototype._onDblClick = function _onDblClick (e ) {
+    this._active = true;
+    this._map.on('zoomend', this._onZoomEnd);
+    this._map.zoomTo(
+        this._map.getZoom() + (e.originalEvent.shiftKey ? -1 : 1),
+        {around: e.lngLat},
+        e
+    );
+};
+
+DoubleClickZoomHandler.prototype._onZoomEnd = function _onZoomEnd () {
+    this._active = false;
+    this._map.off('zoomend', this._onZoomEnd);
+};
+
+module.exports = DoubleClickZoomHandler;
+
+},{"../../util/util":253}],221:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var window = require('../../util/window');
+
+                              
+                                                
+
+var inertiaLinearity = 0.3,
+    inertiaEasing = util.bezier(0, 0, inertiaLinearity, 1),
+    inertiaMaxSpeed = 1400, // px/s
+    inertiaDeceleration = 2500; // px/s^2
+
+/**
+ * The `DragPanHandler` allows the user to pan the map by clicking and dragging
+ * the cursor.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ */
+var DragPanHandler = function DragPanHandler(map ) {
+    this._map = map;
+    this._el = map.getCanvasContainer();
+
+    util.bindAll([
+        '_onDown',
+        '_onMove',
+        '_onUp',
+        '_onTouchEnd',
+        '_onMouseUp'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether the "drag to pan" interaction is enabled.
+ *
+ * @returns {boolean} `true` if the "drag to pan" interaction is enabled.
+ */
+DragPanHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Returns a Boolean indicating whether the "drag to pan" interaction is active, i.e. currently being used.
+ *
+ * @returns {boolean} `true` if the "drag to pan" interaction is active.
+ */
+DragPanHandler.prototype.isActive = function isActive () {
+    return !!this._active;
+};
+
+/**
+ * Enables the "drag to pan" interaction.
+ *
+ * @example
+ * map.dragPan.enable();
+ */
+DragPanHandler.prototype.enable = function enable () {
+    if (this.isEnabled()) { return; }
+    this._el.classList.add('mapboxgl-touch-drag-pan');
+    this._el.addEventListener('mousedown', this._onDown);
+    this._el.addEventListener('touchstart', this._onDown);
+    this._enabled = true;
+};
+
+/**
+ * Disables the "drag to pan" interaction.
+ *
+ * @example
+ * map.dragPan.disable();
+ */
+DragPanHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._el.classList.remove('mapboxgl-touch-drag-pan');
+    this._el.removeEventListener('mousedown', this._onDown);
+    this._el.removeEventListener('touchstart', this._onDown);
+    this._enabled = false;
+};
+
+DragPanHandler.prototype._onDown = function _onDown (e                     ) {
+    if (this._ignoreEvent(e)) { return; }
+    if (this.isActive()) { return; }
+
+    if (e.touches) {
+        window.document.addEventListener('touchmove', this._onMove);
+        window.document.addEventListener('touchend', this._onTouchEnd);
+    } else {
+        window.document.addEventListener('mousemove', this._onMove);
+        window.document.addEventListener('mouseup', this._onMouseUp);
+    }
+    /* Deactivate DragPan when the window looses focus. Otherwise if a mouseup occurs when the window isn't in focus, DragPan will still be active even though the mouse is no longer pressed. */
+    window.addEventListener('blur', this._onMouseUp);
+
+    this._active = false;
+    this._startPos = this._pos = DOM.mousePos(this._el, e);
+    this._inertia = [[Date.now(), this._pos]];
+};
+
+DragPanHandler.prototype._onMove = function _onMove (e                     ) {
+    if (this._ignoreEvent(e)) { return; }
+
+    if (!this.isActive()) {
+        this._active = true;
+        this._map.moving = true;
+        this._fireEvent('dragstart', e);
+        this._fireEvent('movestart', e);
+    }
+
+    var pos = DOM.mousePos(this._el, e),
+        map = this._map;
+
+    map.stop();
+    this._drainInertiaBuffer();
+    this._inertia.push([Date.now(), pos]);
+
+    map.transform.setLocationAtPoint(map.transform.pointLocation(this._pos), pos);
+
+    this._fireEvent('drag', e);
+    this._fireEvent('move', e);
+
+    this._pos = pos;
+
+    e.preventDefault();
+};
+
+DragPanHandler.prototype._onUp = function _onUp (e                                  ) {
+        var this$1 = this;
+
+    if (!this.isActive()) { return; }
+
+    this._active = false;
+    this._fireEvent('dragend', e);
+    this._drainInertiaBuffer();
+
+    var finish = function () {
+        this$1._map.moving = false;
+        this$1._fireEvent('moveend', e);
+    };
+
+    var inertia = this._inertia;
+    if (inertia.length < 2) {
+        finish();
+        return;
+    }
+
+    var last = inertia[inertia.length - 1],
+        first = inertia[0],
+        flingOffset = last[1].sub(first[1]),
+        flingDuration = (last[0] - first[0]) / 1000;
+
+    if (flingDuration === 0 || last[1].equals(first[1])) {
+        finish();
+        return;
+    }
+
+    // calculate px/s velocity & adjust for increased initial animation speed when easing out
+    var velocity = flingOffset.mult(inertiaLinearity / flingDuration);
+    var speed = velocity.mag(); // px/s
+
+    if (speed > inertiaMaxSpeed) {
+        speed = inertiaMaxSpeed;
+        velocity._unit()._mult(speed);
+    }
+
+    var duration = speed / (inertiaDeceleration * inertiaLinearity),
+        offset = velocity.mult(-duration / 2);
+
+    this._map.panBy(offset, {
+        duration: duration * 1000,
+        easing: inertiaEasing,
+        noMoveStart: true
+    }, { originalEvent: e });
+};
+
+DragPanHandler.prototype._onMouseUp = function _onMouseUp (e                     ) {
+    if (this._ignoreEvent(e)) { return; }
+    this._onUp(e);
+    window.document.removeEventListener('mousemove', this._onMove);
+    window.document.removeEventListener('mouseup', this._onMouseUp);
+    window.removeEventListener('blur', this._onMouseUp);
+};
+
+DragPanHandler.prototype._onTouchEnd = function _onTouchEnd (e        ) {
+    if (this._ignoreEvent(e)) { return; }
+    this._onUp(e);
+    window.document.removeEventListener('touchmove', this._onMove);
+    window.document.removeEventListener('touchend', this._onTouchEnd);
+};
+
+DragPanHandler.prototype._fireEvent = function _fireEvent (type    , e   ) {
+    return this._map.fire(type, { originalEvent: e });
+};
+
+DragPanHandler.prototype._ignoreEvent = function _ignoreEvent (e ) {
+    var map = this._map;
+
+    if (map.boxZoom && map.boxZoom.isActive()) { return true; }
+    if (map.dragRotate && map.dragRotate.isActive()) { return true; }
+    if (e.touches) {
+        return (e.touches.length > 1);
+    } else {
+        if (e.ctrlKey) { return true; }
+        return e.type !== 'mousemove' && e.button && e.button !== 0; // left button
+    }
+};
+
+DragPanHandler.prototype._drainInertiaBuffer = function _drainInertiaBuffer () {
+    var inertia = this._inertia,
+        now = Date.now(),
+        cutoff = 160;   // msec
+
+    while (inertia.length > 0 && now - inertia[0][0] > cutoff) { inertia.shift(); }
+};
+
+module.exports = DragPanHandler;
+
+},{"../../util/dom":239,"../../util/util":253,"../../util/window":234}],222:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var window = require('../../util/window');
+
+                              
+                                                
+
+var inertiaLinearity = 0.25,
+    inertiaEasing = util.bezier(0, 0, inertiaLinearity, 1),
+    inertiaMaxSpeed = 180, // deg/s
+    inertiaDeceleration = 720; // deg/s^2
+
+/**
+ * The `DragRotateHandler` allows the user to rotate the map by clicking and
+ * dragging the cursor while holding the right mouse button or `ctrl` key.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ * @param {Object} [options]
+ * @param {number} [options.bearingSnap] The threshold, measured in degrees, that determines when the map's
+ *   bearing (rotation) will snap to north.
+ * @param {bool} [options.pitchWithRotate=true] Control the map pitch in addition to the bearing
+ */
+var DragRotateHandler = function DragRotateHandler(map , options   
+                                  
+                              
+                             
+                                 
+ ) {
+    this._map = map;
+    this._el = options.element || map.getCanvasContainer();
+    this._button = options.button || 'right';
+    this._bearingSnap = options.bearingSnap || 0;
+    this._pitchWithRotate = options.pitchWithRotate !== false;
+
+    util.bindAll([
+        '_onDown',
+        '_onMove',
+        '_onUp'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether the "drag to rotate" interaction is enabled.
+ *
+ * @returns {boolean} `true` if the "drag to rotate" interaction is enabled.
+ */
+DragRotateHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Returns a Boolean indicating whether the "drag to rotate" interaction is active, i.e. currently being used.
+ *
+ * @returns {boolean} `true` if the "drag to rotate" interaction is active.
+ */
+DragRotateHandler.prototype.isActive = function isActive () {
+    return !!this._active;
+};
+
+/**
+ * Enables the "drag to rotate" interaction.
+ *
+ * @example
+ * map.dragRotate.enable();
+ */
+DragRotateHandler.prototype.enable = function enable () {
+    if (this.isEnabled()) { return; }
+    this._el.addEventListener('mousedown', this._onDown);
+    this._enabled = true;
+};
+
+/**
+ * Disables the "drag to rotate" interaction.
+ *
+ * @example
+ * map.dragRotate.disable();
+ */
+DragRotateHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._el.removeEventListener('mousedown', this._onDown);
+    this._enabled = false;
+};
+
+DragRotateHandler.prototype._onDown = function _onDown (e        ) {
+    if (this._map.boxZoom && this._map.boxZoom.isActive()) { return; }
+    if (this._map.dragPan && this._map.dragPan.isActive()) { return; }
+    if (this.isActive()) { return; }
+
+    if (this._button === 'right') {
+        var button = (e.ctrlKey ? 0 : 2);   // ? ctrl+left button : right button
+        var eventButton = e.button;
+        if (typeof window.InstallTrigger !== 'undefined' && e.button === 2 && e.ctrlKey &&
+            window.navigator.platform.toUpperCase().indexOf('MAC') >= 0) {
+            // Fix for https://github.com/mapbox/mapbox-gl-js/issues/3131:
+            // Firefox (detected by InstallTrigger) on Mac determines e.button = 2 when
+            // using Control + left click
+            eventButton = 0;
+        }
+        if (eventButton !== button) { return; }
+    } else {
+        if (e.ctrlKey || e.button !== 0) { return; }
+    }
+
+    DOM.disableDrag();
+
+    window.document.addEventListener('mousemove', this._onMove, {capture: true});
+    window.document.addEventListener('mouseup', this._onUp);
+    /* Deactivate DragRotate when the window looses focus. Otherwise if a mouseup occurs when the window isn't in focus, DragRotate will still be active even though the mouse is no longer pressed. */
+    window.addEventListener('blur', this._onUp);
+
+    this._active = false;
+    this._inertia = [[Date.now(), this._map.getBearing()]];
+    this._startPos = this._pos = DOM.mousePos(this._el, e);
+    this._center = this._map.transform.centerPoint;  // Center of rotation
+
+    e.preventDefault();
+};
+
+DragRotateHandler.prototype._onMove = function _onMove (e        ) {
+    if (!this.isActive()) {
+        this._active = true;
+        this._map.moving = true;
+        this._fireEvent('rotatestart', e);
+        this._fireEvent('movestart', e);
+        if (this._pitchWithRotate) {
+            this._fireEvent('pitchstart', e);
+        }
+    }
+
+    var map = this._map;
+    map.stop();
+
+    var p1 = this._pos,
+        p2 = DOM.mousePos(this._el, e),
+        bearingDiff = (p1.x - p2.x) * 0.8,
+        pitchDiff = (p1.y - p2.y) * -0.5,
+        bearing = map.getBearing() - bearingDiff,
+        pitch = map.getPitch() - pitchDiff,
+        inertia = this._inertia,
+        last = inertia[inertia.length - 1];
+
+    this._drainInertiaBuffer();
+    inertia.push([Date.now(), map._normalizeBearing(bearing, last[1])]);
+
+    map.transform.bearing = bearing;
+    if (this._pitchWithRotate) {
+        this._fireEvent('pitch', e);
+        map.transform.pitch = pitch;
+    }
+
+    this._fireEvent('rotate', e);
+    this._fireEvent('move', e);
+
+    this._pos = p2;
+};
+
+DragRotateHandler.prototype._onUp = function _onUp (e                     ) {
+        var this$1 = this;
+
+    window.document.removeEventListener('mousemove', this._onMove, {capture: true});
+    window.document.removeEventListener('mouseup', this._onUp);
+    window.removeEventListener('blur', this._onUp);
+
+    DOM.enableDrag();
+
+    if (!this.isActive()) { return; }
+
+    this._active = false;
+    this._fireEvent('rotateend', e);
+    this._drainInertiaBuffer();
+
+    var map = this._map,
+        mapBearing = map.getBearing(),
+        inertia = this._inertia;
+
+    var finish = function () {
+        if (Math.abs(mapBearing) < this$1._bearingSnap) {
+            map.resetNorth({noMoveStart: true}, { originalEvent: e });
+        } else {
+            this$1._map.moving = false;
+            this$1._fireEvent('moveend', e);
+        }
+        if (this$1._pitchWithRotate) { this$1._fireEvent('pitchend', e); }
+    };
+
+    if (inertia.length < 2) {
+        finish();
+        return;
+    }
+
+    var first = inertia[0],
+        last = inertia[inertia.length - 1],
+        previous = inertia[inertia.length - 2];
+    var bearing = map._normalizeBearing(mapBearing, previous[1]);
+    var flingDiff = last[1] - first[1],
+        sign = flingDiff < 0 ? -1 : 1,
+        flingDuration = (last[0] - first[0]) / 1000;
+
+    if (flingDiff === 0 || flingDuration === 0) {
+        finish();
+        return;
+    }
+
+    var speed = Math.abs(flingDiff * (inertiaLinearity / flingDuration));  // deg/s
+    if (speed > inertiaMaxSpeed) {
+        speed = inertiaMaxSpeed;
+    }
+
+    var duration = speed / (inertiaDeceleration * inertiaLinearity),
+        offset = sign * speed * (duration / 2);
+
+    bearing += offset;
+
+    if (Math.abs(map._normalizeBearing(bearing, 0)) < this._bearingSnap) {
+        bearing = map._normalizeBearing(0, bearing);
+    }
+
+    map.rotateTo(bearing, {
+        duration: duration * 1000,
+        easing: inertiaEasing,
+        noMoveStart: true
+    }, { originalEvent: e });
+};
+
+DragRotateHandler.prototype._fireEvent = function _fireEvent (type    , e   ) {
+    return this._map.fire(type, { originalEvent: e });
+};
+
+DragRotateHandler.prototype._drainInertiaBuffer = function _drainInertiaBuffer () {
+    var inertia = this._inertia,
+        now = Date.now(),
+        cutoff = 160;   //msec
+
+    while (inertia.length > 0 && now - inertia[0][0] > cutoff)
+        { inertia.shift(); }
+};
+
+module.exports = DragRotateHandler;
+
+},{"../../util/dom":239,"../../util/util":253,"../../util/window":234}],223:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../../util/util');
+
+                              
+
+var panStep = 100,
+    bearingStep = 15,
+    pitchStep = 10;
+
+/**
+ * The `KeyboardHandler` allows the user to zoom, rotate, and pan the map using
+ * the following keyboard shortcuts:
+ *
+ * - `=` / `+`: Increase the zoom level by 1.
+ * - `Shift-=` / `Shift-+`: Increase the zoom level by 2.
+ * - `-`: Decrease the zoom level by 1.
+ * - `Shift--`: Decrease the zoom level by 2.
+ * - Arrow keys: Pan by 100 pixels.
+ * - `Shift+â‡¢`: Increase the rotation by 15 degrees.
+ * - `Shift+â‡ `: Decrease the rotation by 15 degrees.
+ * - `Shift+â‡¡`: Increase the pitch by 10 degrees.
+ * - `Shift+â‡£`: Decrease the pitch by 10 degrees.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ */
+var KeyboardHandler = function KeyboardHandler(map ) {
+    this._map = map;
+    this._el = map.getCanvasContainer();
+
+    util.bindAll([
+        '_onKeyDown'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether keyboard interaction is enabled.
+ *
+ * @returns {boolean} `true` if keyboard interaction is enabled.
+ */
+KeyboardHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Enables keyboard interaction.
+ *
+ * @example
+ * map.keyboard.enable();
+ */
+KeyboardHandler.prototype.enable = function enable () {
+    if (this.isEnabled()) { return; }
+    this._el.addEventListener('keydown', this._onKeyDown, false);
+    this._enabled = true;
+};
+
+/**
+ * Disables keyboard interaction.
+ *
+ * @example
+ * map.keyboard.disable();
+ */
+KeyboardHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._el.removeEventListener('keydown', this._onKeyDown);
+    this._enabled = false;
+};
+
+KeyboardHandler.prototype._onKeyDown = function _onKeyDown (e           ) {
+    if (e.altKey || e.ctrlKey || e.metaKey) { return; }
+
+    var zoomDir = 0;
+    var bearingDir = 0;
+    var pitchDir = 0;
+    var xDir = 0;
+    var yDir = 0;
+
+    switch (e.keyCode) {
+    case 61:
+    case 107:
+    case 171:
+    case 187:
+        zoomDir = 1;
+        break;
+
+    case 189:
+    case 109:
+    case 173:
+        zoomDir = -1;
+        break;
+
+    case 37:
+        if (e.shiftKey) {
+            bearingDir = -1;
+        } else {
+            e.preventDefault();
+            xDir = -1;
+        }
+        break;
+
+    case 39:
+        if (e.shiftKey) {
+            bearingDir = 1;
+        } else {
+            e.preventDefault();
+            xDir = 1;
+        }
+        break;
+
+    case 38:
+        if (e.shiftKey) {
+            pitchDir = 1;
+        } else {
+            e.preventDefault();
+            yDir = -1;
+        }
+        break;
+
+    case 40:
+        if (e.shiftKey) {
+            pitchDir = -1;
+        } else {
+            yDir = 1;
+            e.preventDefault();
+        }
+        break;
+
+    default:
+        return;
+    }
+
+    var map = this._map;
+    var zoom = map.getZoom();
+
+    var easeOptions = {
+        duration: 300,
+        delayEndEvents: 500,
+        easing: easeOut,
+
+        zoom: zoomDir ? Math.round(zoom) + zoomDir * (e.shiftKey ? 2 : 1) : zoom,
+        bearing: map.getBearing() + bearingDir * bearingStep,
+        pitch: map.getPitch() + pitchDir * pitchStep,
+        offset: [-xDir * panStep, -yDir * panStep],
+        center: map.getCenter()
+    };
+
+    map.easeTo(easeOptions, {originalEvent: e});
+};
+
+function easeOut(t) {
+    return t * (2 - t);
+}
+
+module.exports = KeyboardHandler;
+
+},{"../../util/util":253}],224:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var browser = require('../../util/browser');
+var window = require('../../util/window');
+
+                              
+                                                
+
+var ua = window.navigator.userAgent.toLowerCase(),
+    firefox = ua.indexOf('firefox') !== -1,
+    safari = ua.indexOf('safari') !== -1 && ua.indexOf('chrom') === -1;
+
+/**
+ * The `ScrollZoomHandler` allows the user to zoom the map by scrolling.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ */
+var ScrollZoomHandler = function ScrollZoomHandler(map ) {
+    this._map = map;
+    this._el = map.getCanvasContainer();
+
+    util.bindAll([
+        '_onWheel',
+        '_onTimeout'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether the "scroll to zoom" interaction is enabled.
+ *
+ * @returns {boolean} `true` if the "scroll to zoom" interaction is enabled.
+ */
+ScrollZoomHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Enables the "scroll to zoom" interaction.
+ *
+ * @param {Object} [options]
+ * @param {string} [options.around] If "center" is passed, map will zoom around center of map
+ *
+ * @example
+ *   map.scrollZoom.enable();
+ * @example
+ *  map.scrollZoom.enable({ around: 'center' })
+ */
+ScrollZoomHandler.prototype.enable = function enable (options ) {
+    if (this.isEnabled()) { return; }
+    this._el.addEventListener('wheel', this._onWheel, false);
+    this._el.addEventListener('mousewheel', this._onWheel, false);
+    this._enabled = true;
+    this._aroundCenter = options && options.around === 'center';
+};
+
+/**
+ * Disables the "scroll to zoom" interaction.
+ *
+ * @example
+ *   map.scrollZoom.disable();
+ */
+ScrollZoomHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._el.removeEventListener('wheel', this._onWheel);
+    this._el.removeEventListener('mousewheel', this._onWheel);
+    this._enabled = false;
+};
+
+ScrollZoomHandler.prototype._onWheel = function _onWheel (e ) {
+    var value = 0;
+
+    if (e.type === 'wheel') {
+        value = e.deltaY;
+        // Firefox doubles the values on retina screens...
+        // Remove `any` casts when https://github.com/facebook/flow/issues/4879 is fixed.
+        if (firefox && e.deltaMode === (window.WheelEvent ).DOM_DELTA_PIXEL) { value /= browser.devicePixelRatio; }
+        if (e.deltaMode === (window.WheelEvent ).DOM_DELTA_LINE) { value *= 40; }
+
+    } else if (e.type === 'mousewheel') {
+        value = -e.wheelDeltaY;
+        if (safari) { value = value / 3; }
+    }
+
+    var now = browser.now(),
+        timeDelta = now - (this._time || 0);
+
+    this._pos = DOM.mousePos(this._el, e);
+    this._time = now;
+
+    if (value !== 0 && (value % 4.000244140625) === 0) {
+        // This one is definitely a mouse wheel event.
+        this._type = 'wheel';
+
+    } else if (value !== 0 && Math.abs(value) < 4) {
+        // This one is definitely a trackpad event because it is so small.
+        this._type = 'trackpad';
+
+    } else if (timeDelta > 400) {
+        // This is likely a new scroll action.
+        this._type = null;
+        this._lastValue = value;
+
+        // Start a timeout in case this was a singular event, and dely it by up to 40ms.
+        this._timeout = setTimeout(this._onTimeout, 40);
+
+    } else if (!this._type) {
+        // This is a repeating event, but we don't know the type of event just yet.
+        // If the delta per time is small, we assume it's a fast trackpad; otherwise we switch into wheel mode.
+        this._type = (Math.abs(timeDelta * value) < 200) ? 'trackpad' : 'wheel';
+
+        // Make sure our delayed event isn't fired again, because we accumulate
+        // the previous event (which was less than 40ms ago) into this event.
+        if (this._timeout) {
+            clearTimeout(this._timeout);
+            this._timeout = null;
+            value += this._lastValue;
+        }
+    }
+
+    // Slow down zoom if shift key is held for more precise zooming
+    if (e.shiftKey && value) { value = value / 4; }
+
+    // Only fire the callback if we actually know what type of scrolling device the user uses.
+    if (this._type) { this._zoom(-value, e); }
+
+    e.preventDefault();
+};
+
+ScrollZoomHandler.prototype._onTimeout = function _onTimeout () {
+    this._type = 'wheel';
+    this._zoom(-this._lastValue);
+};
+
+ScrollZoomHandler.prototype._zoom = function _zoom (delta    , e    ) {
+    if (delta === 0) { return; }
+    var map = this._map;
+
+    // Scale by sigmoid of scroll wheel delta.
+    var scale = 2 / (1 + Math.exp(-Math.abs(delta / 100)));
+    if (delta < 0 && scale !== 0) { scale = 1 / scale; }
+
+    var fromScale = map.ease ? (map.ease ).to : map.transform.scale,
+        targetZoom = map.transform.scaleZoom(fromScale * scale);
+
+    map.zoomTo(targetZoom, {
+        duration: this._type === 'wheel' ? 200 : 0,
+        around: this._aroundCenter ? map.getCenter() : map.unproject(this._pos),
+        delayEndEvents: 200,
+        smoothEasing: true
+    }, { originalEvent: e });
+};
+
+module.exports = ScrollZoomHandler;
+
+},{"../../util/browser":232,"../../util/dom":239,"../../util/util":253,"../../util/window":234}],225:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../../util/dom');
+var util = require('../../util/util');
+var window = require('../../util/window');
+
+                              
+                                                
+
+var inertiaLinearity = 0.15,
+    inertiaEasing = util.bezier(0, 0, inertiaLinearity, 1),
+    inertiaDeceleration = 12, // scale / s^2
+    inertiaMaxSpeed = 2.5, // scale / s
+    significantScaleThreshold = 0.15,
+    significantRotateThreshold = 10;
+
+/**
+ * The `TouchZoomRotateHandler` allows the user to zoom and rotate the map by
+ * pinching on a touchscreen.
+ *
+ * @param {Map} map The Mapbox GL JS map to add the handler to.
+ */
+var TouchZoomRotateHandler = function TouchZoomRotateHandler(map ) {
+    this._map = map;
+    this._el = map.getCanvasContainer();
+
+    util.bindAll([
+        '_onStart',
+        '_onMove',
+        '_onEnd'
+    ], this);
+};
+
+/**
+ * Returns a Boolean indicating whether the "pinch to rotate and zoom" interaction is enabled.
+ *
+ * @returns {boolean} `true` if the "pinch to rotate and zoom" interaction is enabled.
+ */
+TouchZoomRotateHandler.prototype.isEnabled = function isEnabled () {
+    return !!this._enabled;
+};
+
+/**
+ * Enables the "pinch to rotate and zoom" interaction.
+ *
+ * @param {Object} [options]
+ * @param {string} [options.around] If "center" is passed, map will zoom around the center
+ *
+ * @example
+ *   map.touchZoomRotate.enable();
+ * @example
+ *   map.touchZoomRotate.enable({ around: 'center' });
+ */
+TouchZoomRotateHandler.prototype.enable = function enable (options ) {
+    if (this.isEnabled()) { return; }
+    this._el.classList.add('mapboxgl-touch-zoom-rotate');
+    this._el.addEventListener('touchstart', this._onStart, false);
+    this._enabled = true;
+    this._aroundCenter = options && options.around === 'center';
+};
+
+/**
+ * Disables the "pinch to rotate and zoom" interaction.
+ *
+ * @example
+ *   map.touchZoomRotate.disable();
+ */
+TouchZoomRotateHandler.prototype.disable = function disable () {
+    if (!this.isEnabled()) { return; }
+    this._el.classList.remove('mapboxgl-touch-zoom-rotate');
+    this._el.removeEventListener('touchstart', this._onStart);
+    this._enabled = false;
+};
+
+/**
+ * Disables the "pinch to rotate" interaction, leaving the "pinch to zoom"
+ * interaction enabled.
+ *
+ * @example
+ *   map.touchZoomRotate.disableRotation();
+ */
+TouchZoomRotateHandler.prototype.disableRotation = function disableRotation () {
+    this._rotationDisabled = true;
+};
+
+/**
+ * Enables the "pinch to rotate" interaction.
+ *
+ * @example
+ *   map.touchZoomRotate.enable();
+ *   map.touchZoomRotate.enableRotation();
+ */
+TouchZoomRotateHandler.prototype.enableRotation = function enableRotation () {
+    this._rotationDisabled = false;
+};
+
+TouchZoomRotateHandler.prototype._onStart = function _onStart (e        ) {
+    if (e.touches.length !== 2) { return; }
+
+    var p0 = DOM.mousePos(this._el, e.touches[0]),
+        p1 = DOM.mousePos(this._el, e.touches[1]);
+
+    this._startVec = p0.sub(p1);
+    this._startScale = this._map.transform.scale;
+    this._startBearing = this._map.transform.bearing;
+    this._gestureIntent = undefined;
+    this._inertia = [];
+
+    window.document.addEventListener('touchmove', this._onMove, false);
+    window.document.addEventListener('touchend', this._onEnd, false);
+};
+
+TouchZoomRotateHandler.prototype._onMove = function _onMove (e        ) {
+    if (e.touches.length !== 2) { return; }
+
+    var p0 = DOM.mousePos(this._el, e.touches[0]),
+        p1 = DOM.mousePos(this._el, e.touches[1]),
+        p = p0.add(p1).div(2),
+        vec = p0.sub(p1),
+        scale = vec.mag() / this._startVec.mag(),
+        bearing = this._rotationDisabled ? 0 : vec.angleWith(this._startVec) * 180 / Math.PI,
+        map = this._map;
+
+    // Determine 'intent' by whichever threshold is surpassed first,
+    // then keep that state for the duration of this gesture.
+    if (!this._gestureIntent) {
+        var scalingSignificantly = (Math.abs(1 - scale) > significantScaleThreshold),
+            rotatingSignificantly = (Math.abs(bearing) > significantRotateThreshold);
+
+        if (rotatingSignificantly) {
+            this._gestureIntent = 'rotate';
+        } else if (scalingSignificantly) {
+            this._gestureIntent = 'zoom';
+        }
+
+        if (this._gestureIntent) {
+            this._startVec = vec;
+            this._startScale = map.transform.scale;
+            this._startBearing = map.transform.bearing;
+        }
+
+    } else {
+        var param     = { duration: 0, around: map.unproject(p) };
+
+        if (this._gestureIntent === 'rotate') {
+            param.bearing = this._startBearing + bearing;
+        }
+        if (this._gestureIntent === 'zoom' || this._gestureIntent === 'rotate') {
+            param.zoom = map.transform.scaleZoom(this._startScale * scale);
+        }
+
+        map.stop();
+        this._drainInertiaBuffer();
+        this._inertia.push([Date.now(), scale, p]);
+
+        map.easeTo(param, { originalEvent: e });
+    }
+
+    e.preventDefault();
+};
+
+TouchZoomRotateHandler.prototype._onEnd = function _onEnd (e        ) {
+    window.document.removeEventListener('touchmove', this._onMove);
+    window.document.removeEventListener('touchend', this._onEnd);
+    this._drainInertiaBuffer();
+
+    var inertia = this._inertia,
+        map = this._map;
+
+    if (inertia.length < 2) {
+        map.snapToNorth({}, { originalEvent: e });
+        return;
+    }
+
+    var last = inertia[inertia.length - 1],
+        first = inertia[0],
+        lastScale = map.transform.scaleZoom(this._startScale * last[1]),
+        firstScale = map.transform.scaleZoom(this._startScale * first[1]),
+        scaleOffset = lastScale - firstScale,
+        scaleDuration = (last[0] - first[0]) / 1000,
+        p = last[2];
+
+    if (scaleDuration === 0 || lastScale === firstScale) {
+        map.snapToNorth({}, { originalEvent: e });
+        return;
+    }
+
+    // calculate scale/s speed and adjust for increased initial animation speed when easing
+    var speed = scaleOffset * inertiaLinearity / scaleDuration; // scale/s
+
+    if (Math.abs(speed) > inertiaMaxSpeed) {
+        if (speed > 0) {
+            speed = inertiaMaxSpeed;
+        } else {
+            speed = -inertiaMaxSpeed;
+        }
+    }
+
+    var duration = Math.abs(speed / (inertiaDeceleration * inertiaLinearity)) * 1000;
+    var targetScale = lastScale + speed * duration / 2000;
+
+    if (targetScale < 0) {
+        targetScale = 0;
+    }
+
+    map.easeTo({
+        zoom: targetScale,
+        duration: duration,
+        easing: inertiaEasing,
+        around: this._aroundCenter ? map.getCenter() : map.unproject(p)
+    }, { originalEvent: e });
+};
+
+TouchZoomRotateHandler.prototype._drainInertiaBuffer = function _drainInertiaBuffer () {
+    var inertia = this._inertia,
+        now = Date.now(),
+        cutoff = 160; // msec
+
+    while (inertia.length > 2 && now - inertia[0][0] > cutoff) { inertia.shift(); }
+};
+
+module.exports = TouchZoomRotateHandler;
+
+},{"../../util/dom":239,"../../util/util":253,"../../util/window":234}],226:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var window = require('../util/window');
+
+                             
+
+/*
+ * Adds the map's position to its page's location hash.
+ * Passed as an option to the map object.
+ *
+ * @returns {Hash} `this`
+ */
+var Hash = function Hash() {
+    util.bindAll([
+        '_onHashChange',
+        '_updateHash'
+    ], this);
+};
+
+/*
+ * Map element to listen for coordinate changes
+ *
+ * @param {Object} map
+ * @returns {Hash} `this`
+ */
+Hash.prototype.addTo = function addTo (map ) {
+    this._map = map;
+    window.addEventListener('hashchange', this._onHashChange, false);
+    this._map.on('moveend', this._updateHash);
+    return this;
+};
+
+/*
+ * Removes hash
+ *
+ * @returns {Popup} `this`
+ */
+Hash.prototype.remove = function remove () {
+    window.removeEventListener('hashchange', this._onHashChange, false);
+    this._map.off('moveend', this._updateHash);
+    delete this._map;
+    return this;
+};
+
+Hash.prototype.getHashString = function getHashString (mapFeedback      ) {
+    var center = this._map.getCenter(),
+        zoom = Math.round(this._map.getZoom() * 100) / 100,
+        precision = Math.max(0, Math.ceil(Math.log(zoom) / Math.LN2)),
+        lng = Math.round(center.lng * Math.pow(10, precision)) / Math.pow(10, precision),
+        lat = Math.round(center.lat * Math.pow(10, precision)) / Math.pow(10, precision),
+        bearing = this._map.getBearing(),
+        pitch = this._map.getPitch();
+    var hash = '';
+    if (mapFeedback) {
+        // new map feedback site has some constraints that don't allow
+        // us to use the same hash format as we do for the Map hash option.
+        hash += "#/" + lng + "/" + lat + "/" + zoom;
+    } else {
+        hash += "#" + zoom + "/" + lat + "/" + lng;
+    }
+
+    if (bearing || pitch) { hash += (("/" + (Math.round(bearing * 10) / 10))); }
+    if (pitch) { hash += (("/" + (Math.round(pitch)))); }
+    return hash;
+};
+
+Hash.prototype._onHashChange = function _onHashChange () {
+    var loc = window.location.hash.replace('#', '').split('/');
+    if (loc.length >= 3) {
+        this._map.jumpTo({
+            center: [+loc[2], +loc[1]],
+            zoom: +loc[0],
+            bearing: +(loc[3] || 0),
+            pitch: +(loc[4] || 0)
+        });
+        return true;
+    }
+    return false;
+};
+
+Hash.prototype._updateHash = function _updateHash () {
+    var hash = this.getHashString();
+    window.history.replaceState('', '', hash);
+};
+
+module.exports = Hash;
+
+},{"../util/util":253,"../util/window":234}],227:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var browser = require('../util/browser');
+var window = require('../util/window');
+var ref = require('../util/window');
+var HTMLImageElement = ref.HTMLImageElement;
+var DOM = require('../util/dom');
+var ajax = require('../util/ajax');
+
+var Style = require('../style/style');
+var AnimationLoop = require('../style/animation_loop');
+var Painter = require('../render/painter');
+
+var Transform = require('../geo/transform');
+var Hash = require('./hash');
+
+var bindHandlers = require('./bind_handlers');
+
+var Camera = require('./camera');
+var LngLat = require('../geo/lng_lat');
+var LngLatBounds = require('../geo/lng_lat_bounds');
+var Point = require('@mapbox/point-geometry');
+var AttributionControl = require('./control/attribution_control');
+var LogoControl = require('./control/logo_control');
+var isSupported = require('mapbox-gl-supported');
+
+require('./events'); // Pull in for documentation.js
+
+                                               
+                                                            
+                                                    
+                                                 
+                                                     
+                                             
+
+                                                           
+                                                     
+                                                           
+                                                     
+                                                      
+                                                                  
+                                                                      
+
+                                                                                 
+
+/* eslint-disable no-use-before-define */
+                 
+                                 
+                             
+
+                                                
+ 
+/* eslint-enable no-use-before-define */
+
+                                                        
+                                                                                                           
+
+                   
+                   
+                          
+                                    
+                         
+                            
+                                 
+                                   
+                                           
+                                    
+                                  
+                                 
+                         
+                      
+                      
+                      
+                         
+                      
+                       
+                              
+                              
+                          
+                        
+                  
+                     
+                   
+                                
+                              
+                                               
+  
+
+var defaultMinZoom = 0;
+var defaultMaxZoom = 22;
+var defaultOptions = {
+    center: [0, 0],
+    zoom: 0,
+    bearing: 0,
+    pitch: 0,
+
+    minZoom: defaultMinZoom,
+    maxZoom: defaultMaxZoom,
+
+    interactive: true,
+
+    scrollZoom: true,
+    boxZoom: true,
+    dragRotate: true,
+    dragPan: true,
+    keyboard: true,
+    doubleClickZoom: true,
+    touchZoomRotate: true,
+
+    bearingSnap: 7,
+
+    hash: false,
+
+    attributionControl: true,
+
+    failIfMajorPerformanceCaveat: false,
+    preserveDrawingBuffer: false,
+
+    trackResize: true,
+
+    renderWorldCopies: true,
+
+    refreshExpiredTiles: true,
+
+    maxTileCacheSize: null,
+
+    transformRequest: null
+};
+
+/**
+ * The `Map` object represents the map on your page. It exposes methods
+ * and properties that enable you to programmatically change the map,
+ * and fires events as users interact with it.
+ *
+ * You create a `Map` by specifying a `container` and other options.
+ * Then Mapbox GL JS initializes the map on the page and returns your `Map`
+ * object.
+ *
+ * @extends Evented
+ * @param {Object} options
+ * @param {HTMLElement|string} options.container The HTML element in which Mapbox GL JS will render the map, or the element's string `id`. The specified element must have no children.
+ * @param {number} [options.minZoom=0] The minimum zoom level of the map (0-22).
+ * @param {number} [options.maxZoom=22] The maximum zoom level of the map (0-22).
+ * @param {Object|string} [options.style] The map's Mapbox style. This must be an a JSON object conforming to
+ * the schema described in the [Mapbox Style Specification](https://mapbox.com/mapbox-gl-style-spec/), or a URL to
+ * such JSON.
+ *
+ * To load a style from the Mapbox API, you can use a URL of the form `mapbox://styles/:owner/:style`,
+ * where `:owner` is your Mapbox account name and `:style` is the style ID. Or you can use one of the following
+ * [the predefined Mapbox styles](https://www.mapbox.com/maps/):
+ *
+ *  * `mapbox://styles/mapbox/streets-v9`
+ *  * `mapbox://styles/mapbox/outdoors-v9`
+ *  * `mapbox://styles/mapbox/light-v9`
+ *  * `mapbox://styles/mapbox/dark-v9`
+ *  * `mapbox://styles/mapbox/satellite-v9`
+ *  * `mapbox://styles/mapbox/satellite-streets-v9`
+ *
+ * Tilesets hosted with Mapbox can be style-optimized if you append `?optimize=true` to the end of your style URL, like `mapbox://styles/mapbox/streets-v9?optimize=true`.
+ * Learn more about style-optimized vector tiles in our [API documentation](https://www.mapbox.com/api-documentation/#retrieve-tiles).
+ *
+ * @param {boolean} [options.hash=false] If `true`, the map's position (zoom, center latitude, center longitude, bearing, and pitch) will be synced with the hash fragment of the page's URL.
+ *   For example, `http://path/to/my/page.html#2.59/39.26/53.07/-24.1/60`.
+ * @param {boolean} [options.interactive=true] If `false`, no mouse, touch, or keyboard listeners will be attached to the map, so it will not respond to interaction.
+ * @param {number} [options.bearingSnap=7] The threshold, measured in degrees, that determines when the map's
+ *   bearing (rotation) will snap to north. For example, with a `bearingSnap` of 7, if the user rotates
+ *   the map within 7 degrees of north, the map will automatically snap to exact north.
+ * @param {boolean} [options.pitchWithRotate=true] If `false`, the map's pitch (tilt) control with "drag to rotate" interaction will be disabled.
+ * @param {boolean} [options.attributionControl=true] If `true`, an {@link AttributionControl} will be added to the map.
+ * @param {string} [options.logoPosition='bottom-left'] A string representing the position of the Mapbox wordmark on the map. Valid options are `top-left`,`top-right`, `bottom-left`, `bottom-right`.
+ * @param {boolean} [options.failIfMajorPerformanceCaveat=false] If `true`, map creation will fail if the performance of Mapbox
+ *   GL JS would be dramatically worse than expected (i.e. a software renderer would be used).
+ * @param {boolean} [options.preserveDrawingBuffer=false] If `true`, the map's canvas can be exported to a PNG using `map.getCanvas().toDataURL()`. This is `false` by default as a performance optimization.
+ * @param {boolean} [options.refreshExpiredTiles=true] If `false`, the map won't attempt to re-request tiles once they expire per their HTTP `cacheControl`/`expires` headers.
+ * @param {LngLatBoundsLike} [options.maxBounds] If set, the map will be constrained to the given bounds.
+ * @param {boolean|Object} [options.scrollZoom=true] If `true`, the "scroll to zoom" interaction is enabled. An `Object` value is passed as options to {@link ScrollZoomHandler#enable}.
+ * @param {boolean} [options.boxZoom=true] If `true`, the "box zoom" interaction is enabled (see {@link BoxZoomHandler}).
+ * @param {boolean} [options.dragRotate=true] If `true`, the "drag to rotate" interaction is enabled (see {@link DragRotateHandler}).
+ * @param {boolean} [options.dragPan=true] If `true`, the "drag to pan" interaction is enabled (see {@link DragPanHandler}).
+ * @param {boolean} [options.keyboard=true] If `true`, keyboard shortcuts are enabled (see {@link KeyboardHandler}).
+ * @param {boolean} [options.doubleClickZoom=true] If `true`, the "double click to zoom" interaction is enabled (see {@link DoubleClickZoomHandler}).
+ * @param {boolean|Object} [options.touchZoomRotate=true] If `true`, the "pinch to rotate and zoom" interaction is enabled. An `Object` value is passed as options to {@link TouchZoomRotateHandler#enable}.
+ * @param {boolean} [options.trackResize=true]  If `true`, the map will automatically resize when the browser window resizes.
+ * @param {LngLatLike} [options.center=[0, 0]] The inital geographical centerpoint of the map. If `center` is not specified in the constructor options, Mapbox GL JS will look for it in the map's style object. If it is not specified in the style, either, it will default to `[0, 0]` Note: Mapbox GL uses longitude, latitude coordinate order (as opposed to latitude, longitude) to match GeoJSON.
+ * @param {number} [options.zoom=0] The initial zoom level of the map. If `zoom` is not specified in the constructor options, Mapbox GL JS will look for it in the map's style object. If it is not specified in the style, either, it will default to `0`.
+ * @param {number} [options.bearing=0] The initial bearing (rotation) of the map, measured in degrees counter-clockwise from north. If `bearing` is not specified in the constructor options, Mapbox GL JS will look for it in the map's style object. If it is not specified in the style, either, it will default to `0`.
+ * @param {number} [options.pitch=0] The initial pitch (tilt) of the map, measured in degrees away from the plane of the screen (0-60). If `pitch` is not specified in the constructor options, Mapbox GL JS will look for it in the map's style object. If it is not specified in the style, either, it will default to `0`.
+ * @param {boolean} [options.renderWorldCopies=true]  If `true`, multiple copies of the world will be rendered, when zoomed out.
+ * @param {number} [options.maxTileCacheSize=null]  The maxiumum number of tiles stored in the tile cache for a given source. If omitted, the cache will be dynamically sized based on the current viewport.
+ * @param {string} [options.localIdeographFontFamily=null] If specified, defines a CSS font-family
+ *   for locally overriding generation of glyphs in the 'CJK Unified Ideographs' and 'Hangul Syllables' ranges.
+ *   In these ranges, font settings from the map's style will be ignored, except for font-weight keywords (light/regular/medium/bold).
+ *   The purpose of this option is to avoid bandwidth-intensive glyph server requests. (see [Use locally generated ideographs](https://www.mapbox.com/mapbox-gl-js/example/local-ideographs))
+ * @param {RequestTransformFunction} [options.transformRequest=null] A callback run before the Map makes a request for an external URL. The callback can be used to modify the url, set headers, or set the credentials property for cross-origin requests.
+ *   Expected to return an object with a `url` property and optionally `headers` and `credentials` properties.
+ * @example
+ * var map = new mapboxgl.Map({
+ *   container: 'map',
+ *   center: [-122.420679, 37.772537],
+ *   zoom: 13,
+ *   style: style_object,
+ *   hash: true,
+ *   transformRequest: (url, resourceType)=> {
+ *     if(resourceType == 'Source' && url.startsWith('http://myHost') {
+ *       return {
+ *        url: url.replace('http', 'https'),
+ *        headers: { 'my-custom-header': true},
+ *        credentials: 'include'  // Include cookies for cross-origin requests
+ *      }
+ *     }
+ *   }
+ * });
+ * @see [Display a map](https://www.mapbox.com/mapbox-gl-js/examples/)
+ */
+var Map = (function (Camera) {
+  function Map(options            ) {
+        var this$1 = this;
+
+        options = util.extend({}, defaultOptions, options);
+
+        if (options.minZoom != null && options.maxZoom != null && options.minZoom > options.maxZoom) {
+            throw new Error("maxZoom must be greater than minZoom");
+        }
+
+        var transform = new Transform(options.minZoom, options.maxZoom, options.renderWorldCopies);
+        Camera.call(this, transform, options);
+
+        this._interactive = options.interactive;
+        this._maxTileCacheSize = options.maxTileCacheSize;
+        this._failIfMajorPerformanceCaveat = options.failIfMajorPerformanceCaveat;
+        this._preserveDrawingBuffer = options.preserveDrawingBuffer;
+        this._trackResize = options.trackResize;
+        this._bearingSnap = options.bearingSnap;
+        this._refreshExpiredTiles = options.refreshExpiredTiles;
+
+        var transformRequestFn = options.transformRequest;
+        this._transformRequest = transformRequestFn ?  function (url, type) { return transformRequestFn(url, type) || ({ url: url }); } : function (url) { return ({ url: url }); };
+
+        if (typeof options.container === 'string') {
+            var container = window.document.getElementById(options.container);
+            if (!container) {
+                throw new Error(("Container '" + (options.container) + "' not found."));
+            } else {
+                this._container = container;
+            }
+        } else {
+            this._container = options.container;
+        }
+
+        this.animationLoop = new AnimationLoop();
+
+        if (options.maxBounds) {
+            this.setMaxBounds(options.maxBounds);
+        }
+
+        util.bindAll([
+            '_onWindowOnline',
+            '_onWindowResize',
+            '_contextLost',
+            '_contextRestored',
+            '_update',
+            '_render',
+            '_onData',
+            '_onDataLoading'
+        ], this);
+
+        this._setupContainer();
+        this._setupPainter();
+
+        this.on('move', this._update.bind(this, false));
+        this.on('zoom', this._update.bind(this, true));
+        this.on('moveend', function () {
+            this$1.animationLoop.set(300); // text fading
+            this$1._rerender();
+        });
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('online', this._onWindowOnline, false);
+            window.addEventListener('resize', this._onWindowResize, false);
+        }
+
+        bindHandlers(this, options);
+
+        this._hash = options.hash && (new Hash()).addTo(this);
+        // don't set position from options if set through hash
+        if (!this._hash || !this._hash._onHashChange()) {
+            this.jumpTo({
+                center: options.center,
+                zoom: options.zoom,
+                bearing: options.bearing,
+                pitch: options.pitch
+            });
+        }
+
+        this.resize();
+
+        if (options.style) { this.setStyle(options.style, { localIdeographFontFamily: options.localIdeographFontFamily }); }
+
+        if (options.attributionControl) { this.addControl(new AttributionControl()); }
+        this.addControl(new LogoControl(), options.logoPosition);
+
+        this.on('style.load', function() {
+            if (this.transform.unmodified) {
+                this.jumpTo(this.style.stylesheet);
+            }
+            this.style.update({transition: false});
+        });
+
+        this.on('data', this._onData);
+        this.on('dataloading', this._onDataLoading);
+    }
+
+  if ( Camera ) Map.__proto__ = Camera;
+  Map.prototype = Object.create( Camera && Camera.prototype );
+  Map.prototype.constructor = Map;
+
+  var prototypeAccessors = { showTileBoundaries: {},showCollisionBoxes: {},showOverdrawInspector: {},repaint: {},vertices: {} };
+
+    /**
+     * Adds a {@link IControl} to the map, calling `control.onAdd(this)`.
+     *
+     * @param {IControl} control The {@link IControl} to add.
+     * @param {string} [position] position on the map to which the control will be added.
+     * Valid values are `'top-left'`, `'top-right'`, `'bottom-left'`, and `'bottom-right'`. Defaults to `'top-right'`.
+     * @returns {Map} `this`
+     * @see [Display map navigation controls](https://www.mapbox.com/mapbox-gl-js/example/navigation/)
+     */
+    Map.prototype.addControl = function addControl (control          , position                  ) {
+        if (position === undefined && control.getDefaultPosition) {
+            position = control.getDefaultPosition();
+        }
+        if (position === undefined) {
+            position = 'top-right';
+        }
+        var controlElement = control.onAdd(this);
+        var positionContainer = this._controlPositions[position];
+        if (position.indexOf('bottom') !== -1) {
+            positionContainer.insertBefore(controlElement, positionContainer.firstChild);
+        } else {
+            positionContainer.appendChild(controlElement);
+        }
+        return this;
+    };
+
+    /**
+     * Removes the control from the map.
+     *
+     * @param {IControl} control The {@link IControl} to remove.
+     * @returns {Map} `this`
+     */
+    Map.prototype.removeControl = function removeControl (control          ) {
+        control.onRemove(this);
+        return this;
+    };
+
+    /**
+     * Resizes the map according to the dimensions of its
+     * `container` element.
+     *
+     * This method must be called after the map's `container` is resized by another script,
+     * or when the map is shown after being initially hidden with CSS.
+     *
+     * @returns {Map} `this`
+     */
+    Map.prototype.resize = function resize () {
+        var dimensions = this._containerDimensions();
+        var width = dimensions[0];
+        var height = dimensions[1];
+
+        this._resizeCanvas(width, height);
+        this.transform.resize(width, height);
+        this.painter.resize(width, height);
+
+        return this
+            .fire('movestart')
+            .fire('move')
+            .fire('resize')
+            .fire('moveend');
+    };
+
+    /**
+     * Returns the map's geographical bounds.
+     *
+     * @returns {LngLatBounds} The map's geographical bounds.
+     */
+    Map.prototype.getBounds = function getBounds () {
+        var bounds = new LngLatBounds(
+            this.transform.pointLocation(new Point(0, this.transform.height)),
+            this.transform.pointLocation(new Point(this.transform.width, 0)));
+
+        if (this.transform.angle || this.transform.pitch) {
+            bounds.extend(this.transform.pointLocation(new Point(this.transform.size.x, 0)));
+            bounds.extend(this.transform.pointLocation(new Point(0, this.transform.size.y)));
+        }
+
+        return bounds;
+    };
+
+    /**
+     * Gets the map's geographical bounds.
+     *
+     * Returns the LngLatBounds by which pan and zoom operations on the map are constrained.
+     *
+     * @returns {LngLatBounds | null} The maximum bounds the map is constrained to, or `null` if none set.
+     */
+    Map.prototype.getMaxBounds = function getMaxBounds () {
+        if (this.transform.latRange && this.transform.latRange.length === 2 &&
+            this.transform.lngRange && this.transform.lngRange.length === 2) {
+            return new LngLatBounds([this.transform.lngRange[0], this.transform.latRange[0]],
+                [this.transform.lngRange[1], this.transform.latRange[1]]);
+        } else {
+            return null;
+        }
+    };
+
+    /**
+     * Sets or clears the map's geographical bounds.
+     *
+     * Pan and zoom operations are constrained within these bounds.
+     * If a pan or zoom is performed that would
+     * display regions outside these bounds, the map will
+     * instead display a position and zoom level
+     * as close as possible to the operation's request while still
+     * remaining within the bounds.
+     *
+     * @param {LngLatBoundsLike | null | undefined} lnglatbounds The maximum bounds to set. If `null` or `undefined` is provided, the function removes the map's maximum bounds.
+     * @returns {Map} `this`
+     */
+    Map.prototype.setMaxBounds = function setMaxBounds (lnglatbounds                  ) {
+        if (lnglatbounds) {
+            var b = LngLatBounds.convert(lnglatbounds);
+            this.transform.lngRange = [b.getWest(), b.getEast()];
+            this.transform.latRange = [b.getSouth(), b.getNorth()];
+            this.transform._constrain();
+            this._update();
+        } else if (lnglatbounds === null || lnglatbounds === undefined) {
+            this.transform.lngRange = null;
+            this.transform.latRange = null;
+            this._update();
+        }
+        return this;
+
+    };
+
+    /**
+     * Sets or clears the map's minimum zoom level.
+     * If the map's current zoom level is lower than the new minimum,
+     * the map will zoom to the new minimum.
+     *
+     * @param {number | null | undefined} minZoom The minimum zoom level to set (0-20).
+     *   If `null` or `undefined` is provided, the function removes the current minimum zoom (i.e. sets it to 0).
+     * @returns {Map} `this`
+     */
+    Map.prototype.setMinZoom = function setMinZoom (minZoom          ) {
+
+        minZoom = minZoom === null || minZoom === undefined ? defaultMinZoom : minZoom;
+
+        if (minZoom >= defaultMinZoom && minZoom <= this.transform.maxZoom) {
+            this.transform.minZoom = minZoom;
+            this._update();
+
+            if (this.getZoom() < minZoom) { this.setZoom(minZoom); }
+
+            return this;
+
+        } else { throw new Error(("minZoom must be between " + defaultMinZoom + " and the current maxZoom, inclusive")); }
+    };
+
+    /**
+     * Returns the map's minimum allowable zoom level.
+     *
+     * @returns {number} minZoom
+     */
+    Map.prototype.getMinZoom = function getMinZoom () { return this.transform.minZoom; };
+
+    /**
+     * Sets or clears the map's maximum zoom level.
+     * If the map's current zoom level is higher than the new maximum,
+     * the map will zoom to the new maximum.
+     *
+     * @param {number | null | undefined} maxZoom The maximum zoom level to set.
+     *   If `null` or `undefined` is provided, the function removes the current maximum zoom (sets it to 20).
+     * @returns {Map} `this`
+     */
+    Map.prototype.setMaxZoom = function setMaxZoom (maxZoom          ) {
+
+        maxZoom = maxZoom === null || maxZoom === undefined ? defaultMaxZoom : maxZoom;
+
+        if (maxZoom >= this.transform.minZoom) {
+            this.transform.maxZoom = maxZoom;
+            this._update();
+
+            if (this.getZoom() > maxZoom) { this.setZoom(maxZoom); }
+
+            return this;
+
+        } else { throw new Error("maxZoom must be greater than the current minZoom"); }
+    };
+
+    /**
+     * Returns the map's maximum allowable zoom level.
+     *
+     * @returns {number} maxZoom
+     */
+    Map.prototype.getMaxZoom = function getMaxZoom () { return this.transform.maxZoom; };
+
+    /**
+     * Returns a {@link Point} representing pixel coordinates, relative to the map's `container`,
+     * that correspond to the specified geographical location.
+     *
+     * @param {LngLatLike} lnglat The geographical location to project.
+     * @returns {Point} The {@link Point} corresponding to `lnglat`, relative to the map's `container`.
+     */
+    Map.prototype.project = function project (lnglat            ) {
+        return this.transform.locationPoint(LngLat.convert(lnglat));
+    };
+
+    /**
+     * Returns a {@link LngLat} representing geographical coordinates that correspond
+     * to the specified pixel coordinates.
+     *
+     * @param {PointLike} point The pixel coordinates to unproject.
+     * @returns {LngLat} The {@link LngLat} corresponding to `point`.
+     * @see [Show polygon information on click](https://www.mapbox.com/mapbox-gl-js/example/polygon-popup-on-click/)
+     */
+    Map.prototype.unproject = function unproject (point           ) {
+        return this.transform.pointLocation(Point.convert(point));
+    };
+
+    /**
+     * Adds a listener for events of a specified type.
+     *
+     * @method
+     * @name on
+     * @memberof Map
+     * @instance
+     * @param {string} type The event type to add a listen for.
+     * @param {Function} listener The function to be called when the event is fired.
+     *   The listener function is called with the data object passed to `fire`,
+     *   extended with `target` and `type` properties.
+     * @returns {Map} `this`
+     */
+
+    /**
+     * Adds a listener for events of a specified type occurring on features in a specified style layer.
+     *
+     * @param {string} type The event type to listen for; one of `'mousedown'`, `'mouseup'`, `'click'`, `'dblclick'`,
+     * `'mousemove'`, `'mouseenter'`, `'mouseleave'`, `'mouseover'`, `'mouseout'`, `'contextmenu'`, `'touchstart'`,
+     * `'touchend'`, or `'touchcancel'`. `mouseenter` and `mouseover` events are triggered when the cursor enters
+     * a visible portion of the specified layer from outside that layer or outside the map canvas. `mouseleave`
+     * and `mouseout` events are triggered when the cursor leaves a visible portion of the specified layer, or leaves
+     * the map canvas.
+     * @param {string} layer The ID of a style layer. Only events whose location is within a visible
+     * feature in this layer will trigger the listener. The event will have a `features` property containing
+     * an array of the matching features.
+     * @param {Function} listener The function to be called when the event is fired.
+     * @returns {Map} `this`
+     */
+    Map.prototype.on = function on (type          , layer     , listener     ) {
+        var this$1 = this;
+
+        if (listener === undefined) {
+            return Camera.prototype.on.call(this, type, layer);
+        }
+
+        var delegatedListener = (function () {
+            if (type === 'mouseenter' || type === 'mouseover') {
+                var mousein = false;
+                var mousemove = function (e) {
+                    var features = this$1.getLayer(layer) ? this$1.queryRenderedFeatures(e.point, {layers: [layer]}) : [];
+                    if (!features.length) {
+                        mousein = false;
+                    } else if (!mousein) {
+                        mousein = true;
+                        listener.call(this$1, util.extend({features: features}, e, {type: type}));
+                    }
+                };
+                var mouseout = function () {
+                    mousein = false;
+                };
+                return {layer: layer, listener: listener, delegates: {mousemove: mousemove, mouseout: mouseout}};
+            } else if (type === 'mouseleave' || type === 'mouseout') {
+                var mousein$1 = false;
+                var mousemove$1 = function (e) {
+                    var features = this$1.getLayer(layer) ? this$1.queryRenderedFeatures(e.point, {layers: [layer]}) : [];
+                    if (features.length) {
+                        mousein$1 = true;
+                    } else if (mousein$1) {
+                        mousein$1 = false;
+                        listener.call(this$1, util.extend({}, e, {type: type}));
+                    }
+                };
+                var mouseout$1 = function (e) {
+                    if (mousein$1) {
+                        mousein$1 = false;
+                        listener.call(this$1, util.extend({}, e, {type: type}));
+                    }
+                };
+                return {layer: layer, listener: listener, delegates: {mousemove: mousemove$1, mouseout: mouseout$1}};
+            } else {
+                var delegate = function (e) {
+                    var features = this$1.getLayer(layer) ? this$1.queryRenderedFeatures(e.point, {layers: [layer]}) : [];
+                    if (features.length) {
+                        listener.call(this$1, util.extend({features: features}, e));
+                    }
+                };
+                return {layer: layer, listener: listener, delegates: ( obj = {}, obj[type] = delegate, obj )};
+                var obj;
+            }
+        })();
+
+        this._delegatedListeners = this._delegatedListeners || {};
+        this._delegatedListeners[type] = this._delegatedListeners[type] || [];
+        this._delegatedListeners[type].push(delegatedListener);
+
+        for (var event in delegatedListener.delegates) {
+            this$1.on((event     ), delegatedListener.delegates[event]);
+        }
+
+        return this;
+    };
+
+    /**
+     * Removes an event listener previously added with `Map#on`.
+     *
+     * @method
+     * @name off
+     * @memberof Map
+     * @instance
+     * @param {string} type The event type previously used to install the listener.
+     * @param {Function} listener The function previously installed as a listener.
+     * @returns {Map} `this`
+     */
+
+    /**
+     * Removes an event listener for layer-specific events previously added with `Map#on`.
+     *
+     * @param {string} type The event type previously used to install the listener.
+     * @param {string} layer The layer ID previously used to install the listener.
+     * @param {Function} listener The function previously installed as a listener.
+     * @returns {Map} `this`
+     */
+    Map.prototype.off = function off (type          , layer     , listener     ) {
+        var this$1 = this;
+
+        if (listener === undefined) {
+            return Camera.prototype.off.call(this, type, layer);
+        }
+
+        if (this._delegatedListeners && this._delegatedListeners[type]) {
+            var listeners = this._delegatedListeners[type];
+            for (var i = 0; i < listeners.length; i++) {
+                var delegatedListener = listeners[i];
+                if (delegatedListener.layer === layer && delegatedListener.listener === listener) {
+                    for (var event in delegatedListener.delegates) {
+                        this$1.off((event     ), delegatedListener.delegates[event]);
+                    }
+                    listeners.splice(i, 1);
+                    return this$1;
+                }
+            }
+        }
+
+        return this;
+    };
+
+    /**
+     * Returns an array of [GeoJSON](http://geojson.org/)
+     * [Feature objects](http://geojson.org/geojson-spec.html#feature-objects)
+     * representing visible features that satisfy the query parameters.
+     *
+     * @param {PointLike|Array<PointLike>} [geometry] - The geometry of the query region:
+     * either a single point or southwest and northeast points describing a bounding box.
+     * Omitting this parameter (i.e. calling {@link Map#queryRenderedFeatures} with zero arguments,
+     * or with only a `parameters` argument) is equivalent to passing a bounding box encompassing the entire
+     * map viewport.
+     * @param {Object} [parameters]
+     * @param {Array<string>} [parameters.layers] An array of style layer IDs for the query to inspect.
+     *   Only features within these layers will be returned. If this parameter is undefined, all layers will be checked.
+     * @param {Array} [parameters.filter] A [filter](https://www.mapbox.com/mapbox-gl-style-spec/#types-filter)
+     *   to limit query results.
+     *
+     * @returns {Array<Object>} An array of [GeoJSON](http://geojson.org/)
+     * [feature objects](http://geojson.org/geojson-spec.html#feature-objects).
+     *
+     * The `properties` value of each returned feature object contains the properties of its source feature. For GeoJSON sources, only
+     * string and numeric property values are supported (i.e. `null`, `Array`, and `Object` values are not supported).
+     *
+     * Each feature includes a top-level `layer` property whose value is an object representing the style layer to
+     * which the feature belongs. Layout and paint properties in this object contain values which are fully evaluated
+     * for the given zoom level and feature.
+     *
+     * Features from layers whose `visibility` property is `"none"`, or from layers whose zoom range excludes the
+     * current zoom level are not included. Symbol features that have been hidden due to text or icon collision are
+     * not included. Features from all other layers are included, including features that may have no visible
+     * contribution to the rendered result; for example, because the layer's opacity or color alpha component is set to
+     * 0.
+     *
+     * The topmost rendered feature appears first in the returned array, and subsequent features are sorted by
+     * descending z-order. Features that are rendered multiple times (due to wrapping across the antimeridian at low
+     * zoom levels) are returned only once (though subject to the following caveat).
+     *
+     * Because features come from tiled vector data or GeoJSON data that is converted to tiles internally, feature
+     * geometries may be split or duplicated across tile boundaries and, as a result, features may appear multiple
+     * times in query results. For example, suppose there is a highway running through the bounding rectangle of a query.
+     * The results of the query will be those parts of the highway that lie within the map tiles covering the bounding
+     * rectangle, even if the highway extends into other tiles, and the portion of the highway within each map tile
+     * will be returned as a separate feature. Similarly, a point feature near a tile boundary may appear in multiple
+     * tiles due to tile buffering.
+     *
+     * @example
+     * // Find all features at a point
+     * var features = map.queryRenderedFeatures(
+     *   [20, 35],
+     *   { layers: ['my-layer-name'] }
+     * );
+     *
+     * @example
+     * // Find all features within a static bounding box
+     * var features = map.queryRenderedFeatures(
+     *   [[10, 20], [30, 50]],
+     *   { layers: ['my-layer-name'] }
+     * );
+     *
+     * @example
+     * // Find all features within a bounding box around a point
+     * var width = 10;
+     * var height = 20;
+     * var features = map.queryRenderedFeatures([
+     *   [point.x - width / 2, point.y - height / 2],
+     *   [point.x + width / 2, point.y + height / 2]
+     * ], { layers: ['my-layer-name'] });
+     *
+     * @example
+     * // Query all rendered features from a single layer
+     * var features = map.queryRenderedFeatures({ layers: ['my-layer-name'] });
+     * @see [Get features under the mouse pointer](https://www.mapbox.com/mapbox-gl-js/example/queryrenderedfeatures/)
+     * @see [Highlight features within a bounding box](https://www.mapbox.com/mapbox-gl-js/example/using-box-queryrenderedfeatures/)
+     * @see [Center the map on a clicked symbol](https://www.mapbox.com/mapbox-gl-js/example/center-on-symbol/)
+     */
+    Map.prototype.queryRenderedFeatures = function queryRenderedFeatures () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var params = {};
+        var geometry;
+
+        if (args.length === 2) {
+            geometry = arguments[0];
+            params = arguments[1];
+        } else if (args.length === 1 && isPointLike(args[0])) {
+            geometry = args[0];
+        } else if (args.length === 1) {
+            params = args[0];
+        }
+
+        if (!this.style) {
+            return [];
+        }
+
+        return this.style.queryRenderedFeatures(
+            this._makeQueryGeometry(geometry),
+            params,
+            this.transform.zoom,
+            this.transform.angle
+        );
+
+        function isPointLike(input) {
+            return input instanceof Point || Array.isArray(input);
+        }
+    };
+
+    Map.prototype._makeQueryGeometry = function _makeQueryGeometry (pointOrBox                                     ) {
+        var this$1 = this;
+
+        if (pointOrBox === undefined) {
+            // bounds was omitted: use full viewport
+            pointOrBox = [
+                Point.convert([0, 0]),
+                Point.convert([this.transform.width, this.transform.height])
+            ];
+        }
+
+        var queryGeometry;
+
+        if (pointOrBox instanceof Point || typeof pointOrBox[0] === 'number') {
+            var point = Point.convert(pointOrBox);
+            queryGeometry = [point];
+        } else {
+            var box = [Point.convert(pointOrBox[0]), Point.convert(pointOrBox[1])];
+            queryGeometry = [
+                box[0],
+                new Point(box[1].x, box[0].y),
+                box[1],
+                new Point(box[0].x, box[1].y),
+                box[0]
+            ];
+        }
+
+        queryGeometry = queryGeometry.map(function (p) {
+            return this$1.transform.pointCoordinate(p);
+        });
+
+        return queryGeometry;
+    };
+
+    /**
+     * Returns an array of [GeoJSON](http://geojson.org/)
+     * [Feature objects](http://geojson.org/geojson-spec.html#feature-objects)
+     * representing features within the specified vector tile or GeoJSON source that satisfy the query parameters.
+     *
+     * @param {string} sourceID The ID of the vector tile or GeoJSON source to query.
+     * @param {Object} [parameters]
+     * @param {string} [parameters.sourceLayer] The name of the vector tile layer to query. *For vector tile
+     *   sources, this parameter is required.* For GeoJSON sources, it is ignored.
+     * @param {Array} [parameters.filter] A [filter](https://www.mapbox.com/mapbox-gl-style-spec/#types-filter)
+     *   to limit query results.
+     *
+     * @returns {Array<Object>} An array of [GeoJSON](http://geojson.org/)
+     * [Feature objects](http://geojson.org/geojson-spec.html#feature-objects).
+     *
+     * In contrast to {@link Map#queryRenderedFeatures}, this function
+     * returns all features matching the query parameters,
+     * whether or not they are rendered by the current style (i.e. visible). The domain of the query includes all currently-loaded
+     * vector tiles and GeoJSON source tiles: this function does not check tiles outside the currently
+     * visible viewport.
+     *
+     * Because features come from tiled vector data or GeoJSON data that is converted to tiles internally, feature
+     * geometries may be split or duplicated across tile boundaries and, as a result, features may appear multiple
+     * times in query results. For example, suppose there is a highway running through the bounding rectangle of a query.
+     * The results of the query will be those parts of the highway that lie within the map tiles covering the bounding
+     * rectangle, even if the highway extends into other tiles, and the portion of the highway within each map tile
+     * will be returned as a separate feature. Similarly, a point feature near a tile boundary may appear in multiple
+     * tiles due to tile buffering.
+     * @see [Filter features within map view](https://www.mapbox.com/mapbox-gl-js/example/filter-features-within-map-view/)
+     * @see [Highlight features containing similar data](https://www.mapbox.com/mapbox-gl-js/example/query-similar-features/)
+     */
+    Map.prototype.querySourceFeatures = function querySourceFeatures (sourceID        , parameters                                              ) {
+        return this.style.querySourceFeatures(sourceID, parameters);
+    };
+
+    /**
+     * Updates the map's Mapbox style object with a new value.  If the given
+     * value is style JSON object, compares it against the the map's current
+     * state and perform only the changes necessary to make the map style match
+     * the desired state.
+     *
+     * @param style A JSON object conforming to the schema described in the
+     *   [Mapbox Style Specification](https://mapbox.com/mapbox-gl-style-spec/), or a URL to such JSON.
+     * @param {Object} [options]
+     * @param {boolean} [options.diff=true] If false, force a 'full' update, removing the current style
+     *   and adding building the given one instead of attempting a diff-based update.
+     * @param {string} [options.localIdeographFontFamily=null] If non-null, defines a css font-family
+     *   for locally overriding generation of glyphs in the 'CJK Unified Ideographs' and 'Hangul Syllables'
+     *   ranges. Forces a full update.
+     * @returns {Map} `this`
+     * @see [Change a map's style](https://www.mapbox.com/mapbox-gl-js/example/setstyle/)
+     */
+    Map.prototype.setStyle = function setStyle (style                                    , options                                  ) {
+        var shouldTryDiff = (!options || (options.diff !== false && !options.localIdeographFontFamily)) && this.style;
+        if (shouldTryDiff && style && typeof style === 'object') {
+            try {
+                if (this.style.setState(style)) {
+                    this._update(true);
+                }
+                return this;
+            } catch (e) {
+                util.warnOnce(("Unable to perform style diff: " + (e.message || e.error || e) + ".  Rebuilding the style from scratch."));
+            }
+        }
+
+        if (this.style) {
+            this.style.setEventedParent(null);
+            this.style._remove();
+            this.off('rotate', this.style._redoPlacement);
+            this.off('pitch', this.style._redoPlacement);
+            this.off('move', this.style._redoPlacement);
+        }
+
+        if (!style) {
+            delete this.style;
+            return this;
+        } else {
+            this.style = new Style(this, options || {});
+        }
+
+        this.style.setEventedParent(this, {style: this.style});
+
+        if (typeof style === 'string') {
+            this.style.loadURL(style);
+        } else {
+            this.style.loadJSON(style);
+        }
+
+        this.on('rotate', this.style._redoPlacement);
+        this.on('pitch', this.style._redoPlacement);
+        this.on('move', this.style._redoPlacement);
+
+        return this;
+    };
+
+    /**
+     * Returns the map's Mapbox style object, which can be used to recreate the map's style.
+     *
+     * @returns {Object} The map's style object.
+     */
+    Map.prototype.getStyle = function getStyle () {
+        if (this.style) {
+            return this.style.serialize();
+        }
+    };
+
+    /**
+     * Returns a Boolean indicating whether the map's style is fully loaded.
+     *
+     * @returns {boolean} A Boolean indicating whether the style is fully loaded.
+     */
+    Map.prototype.isStyleLoaded = function isStyleLoaded () {
+        if (!this.style) { return util.warnOnce('There is no style added to the map.'); }
+        return this.style.loaded();
+    };
+
+    /**
+     * Adds a source to the map's style.
+     *
+     * @param {string} id The ID of the source to add. Must not conflict with existing sources.
+     * @param {Object} source The source object, conforming to the
+     * Mapbox Style Specification's [source definition](https://www.mapbox.com/mapbox-gl-style-spec/#sources).
+     * @param {string} source.type The source type, which must be either one of the core Mapbox GL source types defined in the style specification or a custom type that has been added to the map with {@link Map#addSourceType}.
+     * @fires source.add
+     * @returns {Map} `this`
+     * @see [Draw GeoJSON points](https://www.mapbox.com/mapbox-gl-js/example/geojson-markers/)
+     * @see [Style circles using data-driven styling](https://www.mapbox.com/mapbox-gl-js/example/data-driven-circle-colors/)
+     * @see [Set a point after Geocoder result](https://www.mapbox.com/mapbox-gl-js/example/point-from-geocoder-result/)
+     */
+    Map.prototype.addSource = function addSource (id        , source                     ) {
+        this.style.addSource(id, source);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns a Boolean indicating whether the source is loaded.
+     *
+     * @param {string} id The ID of the source to be checked.
+     * @returns {boolean} A Boolean indicating whether the source is loaded.
+     */
+    Map.prototype.isSourceLoaded = function isSourceLoaded (id        ) {
+        var source = this.style && this.style.sourceCaches[id];
+        if (source === undefined) {
+            this.fire('error', {
+                error: new Error(("There is no source with ID '" + id + "'"))
+            });
+            return;
+        }
+        return source.loaded();
+    };
+
+    /**
+     * Returns a Boolean indicating whether all tiles in the viewport from all sources on
+     * the style are loaded.
+     *
+     * @returns {boolean} A Boolean indicating whether all tiles are loaded.
+     */
+
+    Map.prototype.areTilesLoaded = function areTilesLoaded () {
+        var sources = this.style && this.style.sourceCaches;
+        for (var id in sources) {
+            var source = sources[id];
+            var tiles = source._tiles;
+            for (var t in tiles) {
+                var tile = tiles[t];
+                if (!(tile.state === 'loaded' || tile.state === 'errored')) { return false; }
+            }
+        }
+        return true;
+    };
+
+    /**
+     * Adds a [custom source type](#Custom Sources), making it available for use with
+     * {@link Map#addSource}.
+     * @private
+     * @param {string} name The name of the source type; source definition objects use this name in the `{type: ...}` field.
+     * @param {Function} SourceType A {@link Source} constructor.
+     * @param {Function} callback Called when the source type is ready or with an error argument if there is an error.
+     */
+    Map.prototype.addSourceType = function addSourceType (name        , SourceType     , callback          ) {
+        return this.style.addSourceType(name, SourceType, callback);
+    };
+
+    /**
+     * Removes a source from the map's style.
+     *
+     * @param {string} id The ID of the source to remove.
+     * @returns {Map} `this`
+     */
+    Map.prototype.removeSource = function removeSource (id        ) {
+        this.style.removeSource(id);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns the source with the specified ID in the map's style.
+     *
+     * @param {string} id The ID of the source to get.
+     * @returns {?Object} The style source with the specified ID, or `undefined`
+     *   if the ID corresponds to no existing sources.
+     * @see [Create a draggable point](https://www.mapbox.com/mapbox-gl-js/example/drag-a-point/)
+     * @see [Animate a point](https://www.mapbox.com/mapbox-gl-js/example/animate-point-along-line/)
+     * @see [Add live realtime data](https://www.mapbox.com/mapbox-gl-js/example/live-geojson/)
+     */
+    Map.prototype.getSource = function getSource (id        ) {
+        return this.style.getSource(id);
+    };
+
+    /**
+     * Add an image to the style. This image can be used in `icon-image`,
+     * `background-pattern`, `fill-pattern`, and `line-pattern`. An
+     * {@link Map#error} event will be fired if there is not enough space in the
+     * sprite to add this image.
+     *
+     * @see [Add an icon to the map](https://www.mapbox.com/mapbox-gl-js/example/add-image/)
+     * @see [Add a generated icon to the map](https://www.mapbox.com/mapbox-gl-js/example/add-image-generated/)
+     * @param id The ID of the image.
+     * @param data The image as an `HTMLImageElement`, `ImageData`, or object with `width`, `height`, and `data`
+     * properties with the same format as `ImageData`.
+     * @param options
+     * @param options.pixelRatio The ratio of pixels in the image to physical pixels on the screen
+     * @param options.sdf Whether the image should be interpreted as an SDF image
+     */
+    Map.prototype.addImage = function addImage (id        , data                                                                                                      ,
+             ref) {
+        if ( ref === void 0 ) ref                                       = {};
+        var pixelRatio = ref.pixelRatio; if ( pixelRatio === void 0 ) pixelRatio = 1;
+        var sdf = ref.sdf; if ( sdf === void 0 ) sdf = false;
+
+        if (data instanceof HTMLImageElement) {
+            data = browser.getImageData(data);
+        } else if (data.width === undefined || data.height === undefined) {
+            return this.fire('error', {error: new Error(
+                'Invalid arguments to map.addImage(). The second argument must be an `HTMLImageElement`, `ImageData`, ' +
+                'or object with `width`, `height`, and `data` properties with the same format as `ImageData`')});
+        }
+        this.style.addImage(id, { data: ((data     )           ), pixelRatio: pixelRatio, sdf: sdf });
+    };
+
+    /**
+     * Remove an image from the style (such as one used by `icon-image` or `background-pattern`).
+     *
+     * @param id The ID of the image.
+     */
+    Map.prototype.removeImage = function removeImage (id        ) {
+        this.style.removeImage(id);
+    };
+
+    /**
+     * Load an image from an external URL for use with `Map#addImage`. External
+     * domains must support [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS).
+     *
+     * @param {string} url The URL of the image file. Image file must be in png, webp, or jpg format.
+     * @param {Function} callback Expecting `callback(error, data)`. Called when the image has loaded or with an error argument if there is an error.
+     * @see [Add an icon to the map](https://www.mapbox.com/mapbox-gl-js/example/add-image/)
+     */
+    Map.prototype.loadImage = function loadImage (url        , callback          ) {
+        ajax.getImage(this._transformRequest(url, ajax.ResourceType.Image), callback);
+    };
+
+    /**
+     * Adds a [Mapbox style layer](https://www.mapbox.com/mapbox-gl-style-spec/#layers)
+     * to the map's style.
+     *
+     * A layer defines styling for data from a specified source.
+     *
+     * @param {Object} layer The style layer to add, conforming to the Mapbox Style Specification's
+     *   [layer definition](https://www.mapbox.com/mapbox-gl-style-spec/#layers).
+     * @param {string} [before] The ID of an existing layer to insert the new layer before.
+     *   If this argument is omitted, the layer will be appended to the end of the layers array.
+     * @returns {Map} `this`
+     * @see [Create and style clusters](https://www.mapbox.com/mapbox-gl-js/example/cluster/)
+     * @see [Add a vector tile source](https://www.mapbox.com/mapbox-gl-js/example/vector-source/)
+     * @see [Add a WMS source](https://www.mapbox.com/mapbox-gl-js/example/wms/)
+     */
+    Map.prototype.addLayer = function addLayer (layer                    , before         ) {
+        this.style.addLayer(layer, before);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Moves a layer to a different z-position.
+     *
+     * @param {string} id The ID of the layer to move.
+     * @param {string} [beforeId] The ID of an existing layer to insert the new layer before.
+     *   If this argument is omitted, the layer will be appended to the end of the layers array.
+     * @returns {Map} `this`
+     */
+    Map.prototype.moveLayer = function moveLayer (id        , beforeId         ) {
+        this.style.moveLayer(id, beforeId);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Removes the layer with the given id from the map's style.
+     *
+     * If no such layer exists, an `error` event is fired.
+     *
+     * @param {string} id id of the layer to remove
+     * @fires error
+     */
+    Map.prototype.removeLayer = function removeLayer (id        ) {
+        this.style.removeLayer(id);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns the layer with the specified ID in the map's style.
+     *
+     * @param {string} id The ID of the layer to get.
+     * @returns {?Object} The layer with the specified ID, or `undefined`
+     *   if the ID corresponds to no existing layers.
+     * @see [Filter symbols by toggling a list](https://www.mapbox.com/mapbox-gl-js/example/filter-markers/)
+     * @see [Filter symbols by text input](https://www.mapbox.com/mapbox-gl-js/example/filter-markers-by-input/)
+     */
+    Map.prototype.getLayer = function getLayer (id        ) {
+        return this.style.getLayer(id);
+    };
+
+    /**
+     * Sets the filter for the specified style layer.
+     *
+     * @param {string} layer The ID of the layer to which the filter will be applied.
+     * @param {Array | null | undefined} filter The filter, conforming to the Mapbox Style Specification's
+     *   [filter definition](https://www.mapbox.com/mapbox-gl-style-spec/#types-filter).  If `null` or `undefined` is provided, the function removes any existing filter from the layer.
+     * @returns {Map} `this`
+     * @example
+     * map.setFilter('my-layer', ['==', 'name', 'USA']);
+     * @see [Filter features within map view](https://www.mapbox.com/mapbox-gl-js/example/filter-features-within-map-view/)
+     * @see [Highlight features containing similar data](https://www.mapbox.com/mapbox-gl-js/example/query-similar-features/)
+     * @see [Create a timeline animation](https://www.mapbox.com/mapbox-gl-js/example/timeline-animation/)
+     */
+    Map.prototype.setFilter = function setFilter (layer        , filter                     ) {
+        this.style.setFilter(layer, filter);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Sets the zoom extent for the specified style layer.
+     *
+     * @param {string} layerId The ID of the layer to which the zoom extent will be applied.
+     * @param {number} minzoom The minimum zoom to set (0-20).
+     * @param {number} maxzoom The maximum zoom to set (0-20).
+     * @returns {Map} `this`
+     * @example
+     * map.setLayerZoomRange('my-layer', 2, 5);
+     */
+    Map.prototype.setLayerZoomRange = function setLayerZoomRange (layerId        , minzoom        , maxzoom        ) {
+        this.style.setLayerZoomRange(layerId, minzoom, maxzoom);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns the filter applied to the specified style layer.
+     *
+     * @param {string} layer The ID of the style layer whose filter to get.
+     * @returns {Array} The layer's filter.
+     */
+    Map.prototype.getFilter = function getFilter (layer        ) {
+        return this.style.getFilter(layer);
+    };
+
+    /**
+     * Sets the value of a paint property in the specified style layer.
+     *
+     * @param {string} layer The ID of the layer to set the paint property in.
+     * @param {string} name The name of the paint property to set.
+     * @param {*} value The value of the paint propery to set.
+     *   Must be of a type appropriate for the property, as defined in the [Mapbox Style Specification](https://www.mapbox.com/mapbox-gl-style-spec/).
+     * @returns {Map} `this`
+     * @example
+     * map.setPaintProperty('my-layer', 'fill-color', '#faafee');
+     * @see [Change a layer's color with buttons](https://www.mapbox.com/mapbox-gl-js/example/color-switcher/)
+     * @see [Adjust a layer's opacity](https://www.mapbox.com/mapbox-gl-js/example/adjust-layer-opacity/)
+     * @see [Create a draggable point](https://www.mapbox.com/mapbox-gl-js/example/drag-a-point/)
+     */
+    Map.prototype.setPaintProperty = function setPaintProperty (layer        , name        , value     ) {
+        this.style.setPaintProperty(layer, name, value);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns the value of a paint property in the specified style layer.
+     *
+     * @param {string} layer The ID of the layer to get the paint property from.
+     * @param {string} name The name of a paint property to get.
+     * @returns {*} The value of the specified paint property.
+     */
+    Map.prototype.getPaintProperty = function getPaintProperty (layer        , name        ) {
+        return this.style.getPaintProperty(layer, name);
+    };
+
+    /**
+     * Sets the value of a layout property in the specified style layer.
+     *
+     * @param {string} layer The ID of the layer to set the layout property in.
+     * @param {string} name The name of the layout property to set.
+     * @param {*} value The value of the layout propery. Must be of a type appropriate for the property, as defined in the [Mapbox Style Specification](https://www.mapbox.com/mapbox-gl-style-spec/).
+     * @returns {Map} `this`
+     * @example
+     * map.setLayoutProperty('my-layer', 'visibility', 'none');
+     */
+    Map.prototype.setLayoutProperty = function setLayoutProperty (layer        , name        , value     ) {
+        this.style.setLayoutProperty(layer, name, value);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns the value of a layout property in the specified style layer.
+     *
+     * @param {string} layer The ID of the layer to get the layout property from.
+     * @param {string} name The name of the layout property to get.
+     * @returns {*} The value of the specified layout property.
+     */
+    Map.prototype.getLayoutProperty = function getLayoutProperty (layer        , name        ) {
+        return this.style.getLayoutProperty(layer, name);
+    };
+
+    /**
+     * Sets the any combination of light values.
+     *
+     * @param light Light properties to set. Must conform to the [Mapbox Style Specification](https://www.mapbox.com/mapbox-gl-style-spec/).
+     * @returns {Map} `this`
+     */
+    Map.prototype.setLight = function setLight (light                    ) {
+        this.style.setLight(light);
+        this._update(true);
+        return this;
+    };
+
+    /**
+     * Returns the value of the light object.
+     *
+     * @returns {Object} light Light properties of the style.
+     */
+    Map.prototype.getLight = function getLight () {
+        return this.style.getLight();
+    };
+
+    /**
+     * Returns the map's containing HTML element.
+     *
+     * @returns {HTMLElement} The map's container.
+     */
+    Map.prototype.getContainer = function getContainer () {
+        return this._container;
+    };
+
+    /**
+     * Returns the HTML element containing the map's `<canvas>` element.
+     *
+     * If you want to add non-GL overlays to the map, you should append them to this element.
+     *
+     * This is the element to which event bindings for map interactivity (such as panning and zooming) are
+     * attached. It will receive bubbled events from child elements such as the `<canvas>`, but not from
+     * map controls.
+     *
+     * @returns {HTMLElement} The container of the map's `<canvas>`.
+     * @see [Create a draggable point](https://www.mapbox.com/mapbox-gl-js/example/drag-a-point/)
+     * @see [Highlight features within a bounding box](https://www.mapbox.com/mapbox-gl-js/example/using-box-queryrenderedfeatures/)
+     */
+    Map.prototype.getCanvasContainer = function getCanvasContainer () {
+        return this._canvasContainer;
+    };
+
+    /**
+     * Returns the map's `<canvas>` element.
+     *
+     * @returns {HTMLCanvasElement} The map's `<canvas>` element.
+     * @see [Measure distances](https://www.mapbox.com/mapbox-gl-js/example/measure/)
+     * @see [Display a popup on hover](https://www.mapbox.com/mapbox-gl-js/example/popup-on-hover/)
+     * @see [Center the map on a clicked symbol](https://www.mapbox.com/mapbox-gl-js/example/center-on-symbol/)
+     */
+    Map.prototype.getCanvas = function getCanvas () {
+        return this._canvas;
+    };
+
+    Map.prototype._containerDimensions = function _containerDimensions () {
+        var width = 0;
+        var height = 0;
+
+        if (this._container) {
+            width = this._container.offsetWidth || 400;
+            height = this._container.offsetHeight || 300;
+        }
+
+        return [width, height];
+    };
+
+    Map.prototype._setupContainer = function _setupContainer () {
+        var container = this._container;
+        container.classList.add('mapboxgl-map');
+
+        var missingCSSContainer = this._missingCSSContainer = DOM.create('div', 'mapboxgl-missing-css', container);
+        missingCSSContainer.innerHTML = 'Missing Mapbox GL JS CSS';
+
+        var canvasContainer = this._canvasContainer = DOM.create('div', 'mapboxgl-canvas-container', container);
+        if (this._interactive) {
+            canvasContainer.classList.add('mapboxgl-interactive');
+        }
+
+        this._canvas = DOM.create('canvas', 'mapboxgl-canvas', canvasContainer);
+        this._canvas.style.position = 'absolute';
+        this._canvas.addEventListener('webglcontextlost', this._contextLost, false);
+        this._canvas.addEventListener('webglcontextrestored', this._contextRestored, false);
+        this._canvas.setAttribute('tabindex', '0');
+        this._canvas.setAttribute('aria-label', 'Map');
+
+        var dimensions = this._containerDimensions();
+        this._resizeCanvas(dimensions[0], dimensions[1]);
+
+        var controlContainer = this._controlContainer = DOM.create('div', 'mapboxgl-control-container', container);
+        var positions = this._controlPositions = {};
+        ['top-left', 'top-right', 'bottom-left', 'bottom-right'].forEach(function (positionName) {
+            positions[positionName] = DOM.create('div', ("mapboxgl-ctrl-" + positionName), controlContainer);
+        });
+    };
+
+    Map.prototype._resizeCanvas = function _resizeCanvas (width        , height        ) {
+        var pixelRatio = window.devicePixelRatio || 1;
+
+        // Request the required canvas size taking the pixelratio into account.
+        this._canvas.width = pixelRatio * width;
+        this._canvas.height = pixelRatio * height;
+
+        // Maintain the same canvas size, potentially downscaling it for HiDPI displays
+        this._canvas.style.width = width + "px";
+        this._canvas.style.height = height + "px";
+    };
+
+    Map.prototype._setupPainter = function _setupPainter () {
+        var attributes = util.extend({
+            failIfMajorPerformanceCaveat: this._failIfMajorPerformanceCaveat,
+            preserveDrawingBuffer: this._preserveDrawingBuffer
+        }, isSupported.webGLContextAttributes);
+
+        var gl = this._canvas.getContext('webgl', attributes) ||
+            this._canvas.getContext('experimental-webgl', attributes);
+
+        if (!gl) {
+            this.fire('error', { error: new Error('Failed to initialize WebGL') });
+            return;
+        }
+
+        this.painter = new Painter(gl, this.transform);
+    };
+
+    Map.prototype._contextLost = function _contextLost (event       ) {
+        event.preventDefault();
+        if (this._frameId) {
+            browser.cancelFrame(this._frameId);
+            this._frameId = null;
+        }
+        this.fire('webglcontextlost', {originalEvent: event});
+    };
+
+    Map.prototype._contextRestored = function _contextRestored (event       ) {
+        this._setupPainter();
+        this.resize();
+        this._update();
+        this.fire('webglcontextrestored', {originalEvent: event});
+    };
+
+    /**
+     * Returns a Boolean indicating whether the map is fully loaded.
+     *
+     * Returns `false` if the style is not yet fully loaded,
+     * or if there has been a change to the sources or style that
+     * has not yet fully loaded.
+     *
+     * @returns {boolean} A Boolean indicating whether the map is fully loaded.
+     */
+    Map.prototype.loaded = function loaded () {
+        if (this._styleDirty || this._sourcesDirty)
+            { return false; }
+        if (!this.style || !this.style.loaded())
+            { return false; }
+        return true;
+    };
+
+    /**
+     * Update this map's style and sources, and re-render the map.
+     *
+     * @param {boolean} updateStyle mark the map's style for reprocessing as
+     * well as its sources
+     * @returns {Map} this
+     * @private
+     */
+    Map.prototype._update = function _update (updateStyle          ) {
+        if (!this.style) { return this; }
+
+        this._styleDirty = this._styleDirty || updateStyle;
+        this._sourcesDirty = true;
+
+        this._rerender();
+
+        return this;
+    };
+
+    /**
+     * Call when a (re-)render of the map is required:
+     * - The style has changed (`setPaintProperty()`, etc.)
+     * - Source data has changed (e.g. tiles have finished loading)
+     * - The map has is moving (or just finished moving)
+     * - A transition is in progress
+     *
+     * @returns {Map} this
+     * @private
+     */
+    Map.prototype._render = function _render () {
+        // If the style has changed, the map is being zoomed, or a transition
+        // is in progress:
+        //  - Apply style changes (in a batch)
+        //  - Recalculate zoom-dependent paint properties.
+        if (this.style && this._styleDirty) {
+            this._styleDirty = false;
+            this.style.update();
+            this.style._recalculate(this.transform.zoom);
+        }
+
+        // If we are in _render for any reason other than an in-progress paint
+        // transition, update source caches to check for and load any tiles we
+        // need for the current transform
+        if (this.style && this._sourcesDirty) {
+            this._sourcesDirty = false;
+            this.style._updateSources(this.transform);
+        }
+
+        // Actually draw
+        this.painter.render(this.style, {
+            showTileBoundaries: this.showTileBoundaries,
+            showOverdrawInspector: this._showOverdrawInspector,
+            rotating: this.rotating,
+            zooming: this.zooming
+        });
+
+        this.fire('render');
+
+        if (this.loaded() && !this._loaded) {
+            this._loaded = true;
+            this.fire('load');
+        }
+
+        this._frameId = null;
+
+        // Flag an ongoing transition
+        if (!this.animationLoop.stopped()) {
+            this._styleDirty = true;
+        }
+
+        // Schedule another render frame if it's needed.
+        //
+        // Even though `_styleDirty` and `_sourcesDirty` are reset in this
+        // method, synchronous events fired during Style#update or
+        // Style#_updateSources could have caused them to be set again.
+        if (this._sourcesDirty || this._repaint || this._styleDirty) {
+            this._rerender();
+        }
+
+        return this;
+    };
+
+    /**
+     * Clean up and release all internal resources associated with this map.
+     *
+     * This includes DOM elements, event bindings, web workers, and WebGL resources.
+     *
+     * Use this method when you are done using the map and wish to ensure that it no
+     * longer consumes browser resources. Afterwards, you must not call any other
+     * methods on the map.
+     */
+    Map.prototype.remove = function remove () {
+        if (this._hash) { this._hash.remove(); }
+        browser.cancelFrame(this._frameId);
+        this._frameId = null;
+        this.setStyle(null);
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('resize', this._onWindowResize, false);
+            window.removeEventListener('online', this._onWindowOnline, false);
+        }
+        var extension = this.painter.gl.getExtension('WEBGL_lose_context');
+        if (extension) { extension.loseContext(); }
+        removeNode(this._canvasContainer);
+        removeNode(this._controlContainer);
+        removeNode(this._missingCSSContainer);
+        this._container.classList.remove('mapboxgl-map');
+        this.fire('remove');
+    };
+
+    Map.prototype._rerender = function _rerender () {
+        if (this.style && !this._frameId) {
+            this._frameId = browser.frame(this._render);
+        }
+    };
+
+    Map.prototype._onWindowOnline = function _onWindowOnline () {
+        this._update();
+    };
+
+    Map.prototype._onWindowResize = function _onWindowResize () {
+        if (this._trackResize) {
+            this.stop().resize()._update();
+        }
+    };
+
+    /**
+     * Gets and sets a Boolean indicating whether the map will render an outline
+     * around each tile. These tile boundaries are useful for debugging.
+     *
+     * @name showTileBoundaries
+     * @type {boolean}
+     * @instance
+     * @memberof Map
+     */
+    prototypeAccessors.showTileBoundaries.get = function ()          { return !!this._showTileBoundaries; };
+    prototypeAccessors.showTileBoundaries.set = function (value         ) {
+        if (this._showTileBoundaries === value) { return; }
+        this._showTileBoundaries = value;
+        this._update();
+    };
+
+    /**
+     * Gets and sets a Boolean indicating whether the map will render boxes
+     * around all symbols in the data source, revealing which symbols
+     * were rendered or which were hidden due to collisions.
+     * This information is useful for debugging.
+     *
+     * @name showCollisionBoxes
+     * @type {boolean}
+     * @instance
+     * @memberof Map
+     */
+    prototypeAccessors.showCollisionBoxes.get = function ()          { return !!this._showCollisionBoxes; };
+    prototypeAccessors.showCollisionBoxes.set = function (value         ) {
+        if (this._showCollisionBoxes === value) { return; }
+        this._showCollisionBoxes = value;
+        this.style._redoPlacement();
+    };
+
+    /*
+     * Gets and sets a Boolean indicating whether the map should color-code
+     * each fragment to show how many times it has been shaded.
+     * White fragments have been shaded 8 or more times.
+     * Black fragments have been shaded 0 times.
+     * This information is useful for debugging.
+     *
+     * @name showOverdraw
+     * @type {boolean}
+     * @instance
+     * @memberof Map
+     */
+    prototypeAccessors.showOverdrawInspector.get = function ()          { return !!this._showOverdrawInspector; };
+    prototypeAccessors.showOverdrawInspector.set = function (value         ) {
+        if (this._showOverdrawInspector === value) { return; }
+        this._showOverdrawInspector = value;
+        this._update();
+    };
+
+    /**
+     * Gets and sets a Boolean indicating whether the map will
+     * continuously repaint. This information is useful for analyzing performance.
+     *
+     * @name repaint
+     * @type {boolean}
+     * @instance
+     * @memberof Map
+     */
+    prototypeAccessors.repaint.get = function ()          { return !!this._repaint; };
+    prototypeAccessors.repaint.set = function (value         ) { this._repaint = value; this._update(); };
+
+    // show vertices
+    prototypeAccessors.vertices.get = function ()          { return !!this._vertices; };
+    prototypeAccessors.vertices.set = function (value         ) { this._vertices = value; this._update(); };
+
+    Map.prototype._onData = function _onData (event              ) {
+        this._update(event.dataType === 'style');
+        this.fire(((event.dataType) + "data"), event);
+    };
+
+    Map.prototype._onDataLoading = function _onDataLoading (event              ) {
+        this.fire(((event.dataType) + "dataloading"), event);
+    };
+
+  Object.defineProperties( Map.prototype, prototypeAccessors );
+
+  return Map;
+}(Camera));
+
+module.exports = Map;
+
+function removeNode(node) {
+    if (node.parentNode) {
+        node.parentNode.removeChild(node);
+    }
+}
+
+/**
+ * Interface for interactive controls added to the map. This is an
+ * specification for implementers to model: it is not
+ * an exported method or class.
+ *
+ * Controls must implement `onAdd` and `onRemove`, and must own an
+ * element, which is often a `div` element. To use Mapbox GL JS's
+ * default control styling, add the `mapboxgl-ctrl` class to your control's
+ * node.
+ *
+ * @interface IControl
+ * @example
+ * // Control implemented as ES6 class
+ * class HelloWorldControl {
+ *     onAdd(map) {
+ *         this._map = map;
+ *         this._container = document.createElement('div');
+ *         this._container.className = 'mapboxgl-ctrl';
+ *         this._container.textContent = 'Hello, world';
+ *         return this._container;
+ *     }
+ *
+ *     onRemove() {
+ *         this._container.parentNode.removeChild(this._container);
+ *         this._map = undefined;
+ *     }
+ * }
+ *
+ * // Control implemented as ES5 prototypical class
+ * function HelloWorldControl() { }
+ *
+ * HelloWorldControl.prototype.onAdd = function(map) {
+ *     this._map = map;
+ *     this._container = document.createElement('div');
+ *     this._container.className = 'mapboxgl-ctrl';
+ *     this._container.textContent = 'Hello, world';
+ *     return this._container;
+ * };
+ *
+ * HelloWorldControl.prototype.onRemove = function () {
+ *      this._container.parentNode.removeChild(this._container);
+ *      this._map = undefined;
+ * };
+ */
+
+/**
+ * Register a control on the map and give it a chance to register event listeners
+ * and resources. This method is called by {@link Map#addControl}
+ * internally.
+ *
+ * @function
+ * @memberof IControl
+ * @instance
+ * @name onAdd
+ * @param {Map} map the Map this control will be added to
+ * @returns {HTMLElement} The control's container element. This should
+ * be created by the control and returned by onAdd without being attached
+ * to the DOM: the map will insert the control's element into the DOM
+ * as necessary.
+ */
+
+/**
+ * Unregister a control on the map and give it a chance to detach event listeners
+ * and resources. This method is called by {@link Map#removeControl}
+ * internally.
+ *
+ * @function
+ * @memberof IControl
+ * @instance
+ * @name onRemove
+ * @param {Map} map the Map this control will be removed from
+ * @returns {undefined} there is no required return value for this method
+ */
+
+/**
+ * Optionally provide a default position for this control. If this method
+ * is implemented and {@link Map#addControl} is called without the `position`
+ * parameter, the value returned by getDefaultPosition will be used as the
+ * control's position.
+ *
+ * @function
+ * @memberof IControl
+ * @instance
+ * @name getDefaultPosition
+ * @returns {string} a control position, one of the values valid in addControl.
+ */
+
+/**
+ * A [`Point` geometry](https://github.com/mapbox/point-geometry) object, which has
+ * `x` and `y` properties representing screen coordinates in pixels.
+ *
+ * @typedef {Object} Point
+ */
+
+/**
+ * A {@link Point} or an array of two numbers representing `x` and `y` screen coordinates in pixels.
+ *
+ * @typedef {(Point | Array<number>)} PointLike
+ */
+
+},{"../geo/lng_lat":69,"../geo/lng_lat_bounds":70,"../geo/transform":71,"../render/painter":91,"../style/animation_loop":177,"../style/style":183,"../util/ajax":231,"../util/browser":232,"../util/dom":239,"../util/util":253,"../util/window":234,"./bind_handlers":210,"./camera":211,"./control/attribution_control":212,"./control/logo_control":215,"./events":218,"./hash":226,"@mapbox/point-geometry":2,"mapbox-gl-supported":38}],228:[function(require,module,exports){
+'use strict';//      
+
+var DOM = require('../util/dom');
+var LngLat = require('../geo/lng_lat');
+var Point = require('@mapbox/point-geometry');
+var smartWrap = require('../util/smart_wrap');
+var ref = require('../util/util');
+var bindAll = ref.bindAll;
+
+                             
+                                 
+                                               
+                                            
+
+/**
+ * Creates a marker component
+ * @param element DOM element to use as a marker (creates a div element by default)
+ * @param options
+ * @param options.offset The offset in pixels as a {@link PointLike} object to apply relative to the element's center. Negatives indicate left and up.
+ * @example
+ * var marker = new mapboxgl.Marker()
+ *   .setLngLat([30.5, 50.5])
+ *   .addTo(map);
+ * @see [Add custom icons with Markers](https://www.mapbox.com/mapbox-gl-js/example/custom-marker-icons/)
+ */
+var Marker = function Marker(element          , options                  ) {
+    this._offset = Point.convert(options && options.offset || [0, 0]);
+
+    bindAll(['_update', '_onMapClick'], this);
+
+    if (!element) { element = DOM.create('div'); }
+    element.classList.add('mapboxgl-marker');
+    this._element = element;
+
+    this._popup = null;
+};
+
+/**
+ * Attaches the marker to a map
+ * @param {Map} map
+ * @returns {Marker} `this`
+ */
+Marker.prototype.addTo = function addTo (map ) {
+    this.remove();
+    this._map = map;
+    map.getCanvasContainer().appendChild(this._element);
+    map.on('move', this._update);
+    map.on('moveend', this._update);
+    this._update();
+
+    // If we attached the `click` listener to the marker element, the popup
+    // would close once the event propogated to `map` due to the
+    // `Popup#_onClickClose` listener.
+    this._map.on('click', this._onMapClick);
+
+    return this;
+};
+
+/**
+ * Removes the marker from a map
+ * @example
+ * var marker = new mapboxgl.Marker().addTo(map);
+ * marker.remove();
+ * @returns {Marker} `this`
+ */
+Marker.prototype.remove = function remove () {
+    if (this._map) {
+        this._map.off('click', this._onMapClick);
+        this._map.off('move', this._update);
+        this._map.off('moveend', this._update);
+        delete this._map;
+    }
+    DOM.remove(this._element);
+    if (this._popup) { this._popup.remove(); }
+    return this;
+};
+
+/**
+ * Get the marker's geographical location.
+ *
+ * The longitude of the result may differ by a multiple of 360 degrees from the longitude previously
+ * set by `setLngLat` because `Marker` wraps the anchor longitude across copies of the world to keep
+ * the marker on screen.
+ *
+ * @returns {LngLat}
+ */
+Marker.prototype.getLngLat = function getLngLat () {
+    return this._lngLat;
+};
+
+/**
+ * Set the marker's geographical position and move it.
+ * @returns {Marker} `this`
+ */
+Marker.prototype.setLngLat = function setLngLat (lnglat        ) {
+    this._lngLat = LngLat.convert(lnglat);
+    this._pos = null;
+    if (this._popup) { this._popup.setLngLat(this._lngLat); }
+    this._update();
+    return this;
+};
+
+/**
+ * Returns the `Marker`'s HTML element.
+ * @returns {HTMLElement} element
+ */
+Marker.prototype.getElement = function getElement () {
+    return this._element;
+};
+
+/**
+ * Binds a Popup to the Marker
+ * @param popup an instance of the `Popup` class. If undefined or null, any popup
+ * set on this `Marker` instance is unset
+ * @returns {Marker} `this`
+ */
+Marker.prototype.setPopup = function setPopup (popup    ) {
+    if (this._popup) {
+        this._popup.remove();
+        this._popup = null;
+    }
+
+    if (popup) {
+        if (!('offset' in popup.options)) {
+            popup.options.offset = this._offset;
+        }
+        this._popup = popup;
+        this._popup.setLngLat(this._lngLat);
+    }
+
+    return this;
+};
+
+Marker.prototype._onMapClick = function _onMapClick (event           ) {
+    var targetElement = event.originalEvent.target;
+    var element = this._element;
+
+    if (this._popup && (targetElement === element || element.contains((targetElement )))) {
+        this.togglePopup();
+    }
+};
+
+/**
+ * Returns the Popup instance that is bound to the Marker
+ * @returns {Popup} popup
+ */
+Marker.prototype.getPopup = function getPopup () {
+    return this._popup;
+};
+
+/**
+ * Opens or closes the bound popup, depending on the current state
+ * @returns {Marker} `this`
+ */
+Marker.prototype.togglePopup = function togglePopup () {
+    var popup = this._popup;
+
+    if (!popup) { return this; }
+    else if (popup.isOpen()) { popup.remove(); }
+    else { popup.addTo(this._map); }
+    return this;
+};
+
+Marker.prototype._update = function _update (e                         ) {
+    if (!this._map) { return; }
+
+    if (this._map.transform.renderWorldCopies) {
+        this._lngLat = smartWrap(this._lngLat, this._pos, this._map.transform);
+    }
+
+    this._pos = this._map.project(this._lngLat)._add(this._offset);
+
+    // because rounding the coordinates at every `move` event causes stuttered zooming
+    // we only round them when _update is called with `moveend` or when its called with
+    // no arguments (when the Marker is initialized or Marker#setLngLat is invoked).
+    if (!e || e.type === "moveend") {
+        this._pos = this._pos.round();
+    }
+
+    DOM.setTransform(this._element, ("translate(-50%, -50%) translate(" + (this._pos.x) + "px, " + (this._pos.y) + "px)"));
+};
+
+module.exports = Marker;
+
+},{"../geo/lng_lat":69,"../util/dom":239,"../util/smart_wrap":249,"../util/util":253,"@mapbox/point-geometry":2}],229:[function(require,module,exports){
+'use strict';//      
+
+var util = require('../util/util');
+var Evented = require('../util/evented');
+var DOM = require('../util/dom');
+var LngLat = require('../geo/lng_lat');
+var Point = require('@mapbox/point-geometry');
+var window = require('../util/window');
+var smartWrap = require('../util/smart_wrap');
+
+                             
+                                               
+
+var defaultOptions = {
+    closeButton: true,
+    closeOnClick: true
+};
+
+                                                                                                                     
+                                                                
+
+                            
+                         
+                          
+                   
+                  
+  
+
+/**
+ * A popup component.
+ *
+ * @param {Object} [options]
+ * @param {boolean} [options.closeButton=true] If `true`, a close button will appear in the
+ *   top right corner of the popup.
+ * @param {boolean} [options.closeOnClick=true] If `true`, the popup will closed when the
+ *   map is clicked.
+ * @param {string} [options.anchor] - A string indicating the popup's location relative to
+ *   the coordinate set via {@link Popup#setLngLat}.
+ *   Options are `'top'`, `'bottom'`, `'left'`, `'right'`, `'top-left'`,
+ *   `'top-right'`, `'bottom-left'`, and `'bottom-right'`. If unset the anchor will be
+ *   dynamically set to ensure the popup falls within the map container with a preference
+ *   for `'bottom'`.
+ * @param {number|PointLike|Object} [options.offset] -
+ *  A pixel offset applied to the popup's location specified as:
+ *   - a single number specifying a distance from the popup's location
+ *   - a {@link PointLike} specifying a constant offset
+ *   - an object of {@link Point}s specifing an offset for each anchor position
+ *  Negative offsets indicate left and up.
+ * @example
+ * var markerHeight = 50, markerRadius = 10, linearOffset = 25;
+ * var popupOffsets = {
+ *  'top': [0, 0],
+ *  'top-left': [0,0],
+ *  'top-right': [0,0],
+ *  'bottom': [0, -markerHeight],
+ *  'bottom-left': [linearOffset, (markerHeight - markerRadius + linearOffset) * -1],
+ *  'bottom-right': [-linearOffset, (markerHeight - markerRadius + linearOffset) * -1],
+ *  'left': [markerRadius, (markerHeight - markerRadius) * -1],
+ *  'right': [-markerRadius, (markerHeight - markerRadius) * -1]
+ *  };
+ * var popup = new mapboxgl.Popup({offset:popupOffsets})
+ *   .setLngLat(e.lngLat)
+ *   .setHTML("<h1>Hello World!</h1>")
+ *   .addTo(map);
+ * @see [Display a popup](https://www.mapbox.com/mapbox-gl-js/example/popup/)
+ * @see [Display a popup on hover](https://www.mapbox.com/mapbox-gl-js/example/popup-on-hover/)
+ * @see [Display a popup on click](https://www.mapbox.com/mapbox-gl-js/example/popup-on-click/)
+ */
+var Popup = (function (Evented) {
+  function Popup(options              ) {
+        Evented.call(this);
+        this.options = util.extend(Object.create(defaultOptions), options);
+        util.bindAll(['_update', '_onClickClose'], this);
+    }
+
+  if ( Evented ) Popup.__proto__ = Evented;
+  Popup.prototype = Object.create( Evented && Evented.prototype );
+  Popup.prototype.constructor = Popup;
+
+    /**
+     * Adds the popup to a map.
+     *
+     * @param {Map} map The Mapbox GL JS map to add the popup to.
+     * @returns {Popup} `this`
+     */
+    Popup.prototype.addTo = function addTo (map     ) {
+        this._map = map;
+        this._map.on('move', this._update);
+        if (this.options.closeOnClick) {
+            this._map.on('click', this._onClickClose);
+        }
+        this._update();
+        return this;
+    };
+
+    /**
+     * @returns {boolean} `true` if the popup is open, `false` if it is closed.
+     */
+    Popup.prototype.isOpen = function isOpen () {
+        return !!this._map;
+    };
+
+    /**
+     * Removes the popup from the map it has been added to.
+     *
+     * @example
+     * var popup = new mapboxgl.Popup().addTo(map);
+     * popup.remove();
+     * @returns {Popup} `this`
+     */
+    Popup.prototype.remove = function remove () {
+        if (this._content) {
+            DOM.remove(this._content);
+        }
+
+        if (this._container) {
+            DOM.remove(this._container);
+            delete this._container;
+        }
+
+        if (this._map) {
+            this._map.off('move', this._update);
+            this._map.off('click', this._onClickClose);
+            delete this._map;
+        }
+
+        /**
+         * Fired when the popup is closed manually or programatically.
+         *
+         * @event close
+         * @memberof Popup
+         * @instance
+         * @type {Object}
+         * @property {Popup} popup object that was closed
+         */
+        this.fire('close');
+
+        return this;
+    };
+
+    /**
+     * Returns the geographical location of the popup's anchor.
+     *
+     * The longitude of the result may differ by a multiple of 360 degrees from the longitude previously
+     * set by `setLngLat` because `Popup` wraps the anchor longitude across copies of the world to keep
+     * the popup on screen.
+     *
+     * @returns {LngLat} The geographical location of the popup's anchor.
+     */
+    Popup.prototype.getLngLat = function getLngLat () {
+        return this._lngLat;
+    };
+
+    /**
+     * Sets the geographical location of the popup's anchor, and moves the popup to it.
+     *
+     * @param lnglat The geographical location to set as the popup's anchor.
+     * @returns {Popup} `this`
+     */
+    Popup.prototype.setLngLat = function setLngLat (lnglat            ) {
+        this._lngLat = LngLat.convert(lnglat);
+        this._pos = null;
+        this._update();
+        return this;
+    };
+
+    /**
+     * Sets the popup's content to a string of text.
+     *
+     * This function creates a [Text](https://developer.mozilla.org/en-US/docs/Web/API/Text) node in the DOM,
+     * so it cannot insert raw HTML. Use this method for security against XSS
+     * if the popup content is user-provided.
+     *
+     * @param text Textual content for the popup.
+     * @returns {Popup} `this`
+     * @example
+     * var popup = new mapboxgl.Popup()
+     *   .setLngLat(e.lngLat)
+     *   .setText('Hello, world!')
+     *   .addTo(map);
+     */
+    Popup.prototype.setText = function setText (text        ) {
+        return this.setDOMContent(window.document.createTextNode(text));
+    };
+
+    /**
+     * Sets the popup's content to the HTML provided as a string.
+     *
+     * This method does not perform HTML filtering or sanitization, and must be
+     * used only with trusted content. Consider {@link Popup#setText} if
+     * the content is an untrusted text string.
+     *
+     * @param html A string representing HTML content for the popup.
+     * @returns {Popup} `this`
+     */
+    Popup.prototype.setHTML = function setHTML (html        ) {
+        var frag = window.document.createDocumentFragment();
+        var temp = window.document.createElement('body');
+        var child;
+        temp.innerHTML = html;
+        while (true) {
+            child = temp.firstChild;
+            if (!child) { break; }
+            frag.appendChild(child);
+        }
+
+        return this.setDOMContent(frag);
+    };
+
+    /**
+     * Sets the popup's content to the element provided as a DOM node.
+     *
+     * @param htmlNode A DOM node to be used as content for the popup.
+     * @returns {Popup} `this`
+     * @example
+     * // create an element with the popup content
+     * var div = window.document.createElement('div');
+     * div.innerHTML = 'Hello, world!';
+     * var popup = new mapboxgl.Popup()
+     *   .setLngLat(e.lngLat)
+     *   .setDOMContent(div)
+     *   .addTo(map);
+     */
+    Popup.prototype.setDOMContent = function setDOMContent (htmlNode      ) {
+        this._createContent();
+        this._content.appendChild(htmlNode);
+        this._update();
+        return this;
+    };
+
+    Popup.prototype._createContent = function _createContent () {
+        if (this._content) {
+            DOM.remove(this._content);
+        }
+
+        this._content = DOM.create('div', 'mapboxgl-popup-content', this._container);
+
+        if (this.options.closeButton) {
+            this._closeButton = DOM.create('button', 'mapboxgl-popup-close-button', this._content);
+            this._closeButton.type = 'button';
+            this._closeButton.setAttribute('aria-label', 'Close popup');
+            this._closeButton.innerHTML = '&#215;';
+            this._closeButton.addEventListener('click', this._onClickClose);
+        }
+    };
+
+    Popup.prototype._update = function _update () {
+        if (!this._map || !this._lngLat || !this._content) { return; }
+
+        if (!this._container) {
+            this._container = DOM.create('div', 'mapboxgl-popup', this._map.getContainer());
+            this._tip       = DOM.create('div', 'mapboxgl-popup-tip', this._container);
+            this._container.appendChild(this._content);
+        }
+
+        if (this._map.transform.renderWorldCopies) {
+            this._lngLat = smartWrap(this._lngLat, this._pos, this._map.transform);
+        }
+
+        var pos = this._pos = this._map.project(this._lngLat);
+
+        var anchor = this.options.anchor;
+        var offset = normalizeOffset(this.options.offset);
+
+        if (!anchor) {
+            var width = this._container.offsetWidth,
+                height = this._container.offsetHeight;
+
+            if (pos.y + offset.bottom.y < height) {
+                anchor = ['top'];
+            } else if (pos.y > this._map.transform.height - height) {
+                anchor = ['bottom'];
+            } else {
+                anchor = [];
+            }
+
+            if (pos.x < width / 2) {
+                anchor.push('left');
+            } else if (pos.x > this._map.transform.width - width / 2) {
+                anchor.push('right');
+            }
+
+            if (anchor.length === 0) {
+                anchor = 'bottom';
+            } else {
+                anchor = anchor.join('-');
+            }
+        }
+
+        var offsetedPos = pos.add(offset[anchor]).round();
+
+        var anchorTranslate = {
+            'top': 'translate(-50%,0)',
+            'top-left': 'translate(0,0)',
+            'top-right': 'translate(-100%,0)',
+            'bottom': 'translate(-50%,-100%)',
+            'bottom-left': 'translate(0,-100%)',
+            'bottom-right': 'translate(-100%,-100%)',
+            'left': 'translate(0,-50%)',
+            'right': 'translate(-100%,-50%)'
+        };
+
+        var classList = this._container.classList;
+        for (var key in anchorTranslate) {
+            classList.remove(("mapboxgl-popup-anchor-" + key));
+        }
+        classList.add(("mapboxgl-popup-anchor-" + anchor));
+
+        DOM.setTransform(this._container, ((anchorTranslate[anchor]) + " translate(" + (offsetedPos.x) + "px," + (offsetedPos.y) + "px)"));
+    };
+
+    Popup.prototype._onClickClose = function _onClickClose () {
+        this.remove();
+    };
+
+  return Popup;
+}(Evented));
+
+function normalizeOffset(offset         ) {
+    if (!offset) {
+        return normalizeOffset(new Point(0, 0));
+
+    } else if (typeof offset === 'number') {
+        // input specifies a radius from which to calculate offsets at all positions
+        var cornerOffset = Math.round(Math.sqrt(0.5 * Math.pow(offset, 2)));
+        return {
+            'top': new Point(0, offset),
+            'top-left': new Point(cornerOffset, cornerOffset),
+            'top-right': new Point(-cornerOffset, cornerOffset),
+            'bottom': new Point(0, -offset),
+            'bottom-left': new Point(cornerOffset, -cornerOffset),
+            'bottom-right': new Point(-cornerOffset, -cornerOffset),
+            'left': new Point(offset, 0),
+            'right': new Point(-offset, 0)
+        };
+
+    } else if (offset instanceof Point || Array.isArray(offset)) {
+        // input specifies a single offset to be applied to all positions
+        var convertedOffset = Point.convert(offset);
+        return {
+            'top': convertedOffset,
+            'top-left': convertedOffset,
+            'top-right': convertedOffset,
+            'bottom': convertedOffset,
+            'bottom-left': convertedOffset,
+            'bottom-right': convertedOffset,
+            'left': convertedOffset,
+            'right': convertedOffset
+        };
+
+    } else {
+        // input specifies an offset per position
+        return {
+            'top': Point.convert(offset['top'] || [0, 0]),
+            'top-left': Point.convert(offset['top-left'] || [0, 0]),
+            'top-right': Point.convert(offset['top-right'] || [0, 0]),
+            'bottom': Point.convert(offset['bottom'] || [0, 0]),
+            'bottom-left': Point.convert(offset['bottom-left'] || [0, 0]),
+            'bottom-right': Point.convert(offset['bottom-right'] || [0, 0]),
+            'left': Point.convert(offset['left'] || [0, 0]),
+            'right': Point.convert(offset['right'] || [0, 0])
+        };
+    }
+}
+
+module.exports = Popup;
+
+},{"../geo/lng_lat":69,"../util/dom":239,"../util/evented":240,"../util/smart_wrap":249,"../util/util":253,"../util/window":234,"@mapbox/point-geometry":2}],230:[function(require,module,exports){
+'use strict';//      
+
+var util = require('./util');
+
+/**
+ * An implementation of the [Actor design pattern](http://en.wikipedia.org/wiki/Actor_model)
+ * that maintains the relationship between asynchronous tasks and the objects
+ * that spin them off - in this case, tasks like parsing parts of styles,
+ * owned by the styles
+ *
+ * @param {WebWorker} target
+ * @param {WebWorker} parent
+ * @param {string|number} mapId A unique identifier for the Map instance using this Actor.
+ * @private
+ */
+var Actor = function Actor(target , parent , mapId ) {
+    this.target = target;
+    this.parent = parent;
+    this.mapId = mapId;
+    this.callbacks = {};
+    this.callbackID = 0;
+    util.bindAll(['receive'], this);
+    this.target.addEventListener('message', this.receive, false);
+};
+
+/**
+ * Sends a message from a main-thread map to a Worker or from a Worker back to
+ * a main-thread map instance.
+ *
+ * @param type The name of the target method to invoke or '[source-type].name' for a method on a WorkerSource.
+ * @param buffers A list of buffers to "transfer" (see https://developer.mozilla.org/en-US/docs/Web/API/Transferable)
+ * @param targetMapId A particular mapId to which to send this message.
+ * @private
+ */
+Actor.prototype.send = function send (type    , data   , callback       , buffers                  , targetMapId     ) {
+    var id = callback ? ((this.mapId) + ":" + (this.callbackID++)) : null;
+    if (callback) { this.callbacks[id] = callback; }
+    this.target.postMessage({
+        targetMapId: targetMapId,
+        sourceMapId: this.mapId,
+        type: type,
+        id: String(id),
+        data: data
+    }, buffers);
+};
+
+Actor.prototype.receive = function receive (message    ) {
+        var this$1 = this;
+
+    var data = message.data,
+        id = data.id;
+    var callback;
+
+    if (data.targetMapId && this.mapId !== data.targetMapId)
+        { return; }
+
+    var done = function (err, data, buffers) {
+        this$1.target.postMessage({
+            sourceMapId: this$1.mapId,
+            type: '<response>',
+            id: String(id),
+            error: err ? String(err) : null,
+            data: data
+        }, buffers);
+    };
+
+    if (data.type === '<response>') {
+        callback = this.callbacks[data.id];
+        delete this.callbacks[data.id];
+        if (callback && data.error) {
+            callback(new Error(data.error));
+        } else if (callback) {
+            callback(null, data.data);
+        }
+    } else if (typeof data.id !== 'undefined' && this.parent[data.type]) {
+        // data.type == 'loadTile', 'removeTile', etc.
+        this.parent[data.type](data.sourceMapId, data.data, done);
+    } else if (typeof data.id !== 'undefined' && this.parent.getWorkerSource) {
+        // data.type == sourcetype.method
+        var keys = data.type.split('.');
+        var workerSource = (this.parent ).getWorkerSource(data.sourceMapId, keys[0]);
+        workerSource[keys[1]](data.data, done);
+    } else {
+        this.parent[data.type](data.data);
+    }
+};
+
+Actor.prototype.remove = function remove () {
+    this.target.removeEventListener('message', this.receive, false);
+};
+
+module.exports = Actor;
+
+},{"./util":253}],231:[function(require,module,exports){
+'use strict';//      
+
+var window = require('./window');
+
+/**
+ * The type of a resource.
+ * @private
+ * @readonly
+ * @enum {string}
+ */
+var ResourceType = {
+    Unknown: 'Unknown',
+    Style: 'Style',
+    Source: 'Source',
+    Tile: 'Tile',
+    Glyphs: 'Glyphs',
+    SpriteImage: 'SpriteImage',
+    SpriteJSON: 'SpriteJSON',
+    Image: 'Image'
+};
+exports.ResourceType = ResourceType;
+
+if (typeof Object.freeze == 'function') {
+    Object.freeze(ResourceType);
+}
+
+/**
+ * A `RequestParameters` object to be returned from Map.options.transformRequest callbacks.
+ * @typedef {Object} RequestParameters
+ * @property {string} url The URL to be requested.
+ * @property {Object} headers The headers to be sent with the request.
+ * @property {string} credentials `'same-origin'|'include'` Use 'include' to send cookies with cross-origin requests.
+ */
+                                 
+                
+                     
+                                           
+  
+
+var AJAXError = (function (Error) {
+  function AJAXError(message        , status        ) {
+        Error.call(this, message);
+        this.status = status;
+    }
+
+  if ( Error ) AJAXError.__proto__ = Error;
+  AJAXError.prototype = Object.create( Error && Error.prototype );
+  AJAXError.prototype.constructor = AJAXError;
+
+  return AJAXError;
+}(Error));
+
+function makeRequest(requestParameters                   )                 {
+    var xhr                 = new window.XMLHttpRequest();
+
+    xhr.open('GET', requestParameters.url, true);
+    for (var k in requestParameters.headers) {
+        xhr.setRequestHeader(k, requestParameters.headers[k]);
+    }
+    xhr.withCredentials = requestParameters.credentials === 'include';
+    return xhr;
+}
+
+exports.getJSON = function(requestParameters                   , callback                 ) {
+    var xhr = makeRequest(requestParameters);
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.onerror = function() {
+        callback(new Error(xhr.statusText));
+    };
+    xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300 && xhr.response) {
+            var data;
+            try {
+                data = JSON.parse(xhr.response);
+            } catch (err) {
+                return callback(err);
+            }
+            callback(null, data);
+        } else {
+            callback(new AJAXError(xhr.statusText, xhr.status));
+        }
+    };
+    xhr.send();
+    return xhr;
+};
+
+exports.getArrayBuffer = function(requestParameters                   , callback                                                                        ) {
+    var xhr = makeRequest(requestParameters);
+    xhr.responseType = 'arraybuffer';
+    xhr.onerror = function() {
+        callback(new Error(xhr.statusText));
+    };
+    xhr.onload = function() {
+        var response              = xhr.response;
+        if (response.byteLength === 0 && xhr.status === 200) {
+            return callback(new Error('http status 200 returned without content.'));
+        }
+        if (xhr.status >= 200 && xhr.status < 300 && xhr.response) {
+            callback(null, {
+                data: response,
+                cacheControl: xhr.getResponseHeader('Cache-Control'),
+                expires: xhr.getResponseHeader('Expires')
+            });
+        } else {
+            callback(new AJAXError(xhr.statusText, xhr.status));
+        }
+    };
+    xhr.send();
+    return xhr;
+};
+
+function sameOrigin(url) {
+    var a                    = window.document.createElement('a');
+    a.href = url;
+    return a.protocol === window.document.location.protocol && a.host === window.document.location.host;
+}
+
+var transparentPngUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=';
+
+exports.getImage = function(requestParameters                   , callback                            ) {
+    // request the image with XHR to work around caching issues
+    // see https://github.com/mapbox/mapbox-gl-js/issues/1470
+    return exports.getArrayBuffer(requestParameters, function (err, imgData) {
+        if (err) {
+            callback(err);
+        } else if (imgData) {
+            var img                   = new window.Image();
+            var URL = window.URL || window.webkitURL;
+            img.onload = function () {
+                callback(null, img);
+                URL.revokeObjectURL(img.src);
+            };
+            var blob       = new window.Blob([new Uint8Array(imgData.data)], { type: 'image/png' });
+            (img     ).cacheControl = imgData.cacheControl;
+            (img     ).expires = imgData.expires;
+            img.src = imgData.data.byteLength ? URL.createObjectURL(blob) : transparentPngUrl;
+        }
+    });
+};
+
+exports.getVideo = function(urls               , callback                            ) {
+    var video                   = window.document.createElement('video');
+    video.onloadstart = function() {
+        callback(null, video);
+    };
+    for (var i = 0; i < urls.length; i++) {
+        var s                    = window.document.createElement('source');
+        if (!sameOrigin(urls[i])) {
+            video.crossOrigin = 'Anonymous';
+        }
+        s.src = urls[i];
+        video.appendChild(s);
+    }
+    return video;
+};
+
+},{"./window":234}],232:[function(require,module,exports){
+'use strict';//      
+
+var window = require('./window');
+
+var now = window.performance && window.performance.now ?
+    window.performance.now.bind(window.performance) :
+    Date.now.bind(Date);
+
+var frame = window.requestAnimationFrame ||
+    window.mozRequestAnimationFrame ||
+    window.webkitRequestAnimationFrame ||
+    window.msRequestAnimationFrame;
+
+var cancel = window.cancelAnimationFrame ||
+    window.mozCancelAnimationFrame ||
+    window.webkitCancelAnimationFrame ||
+    window.msCancelAnimationFrame;
+
+/**
+ * @private
+ */
+module.exports = {
+    /**
+     * Provides a function that outputs milliseconds: either performance.now()
+     * or a fallback to Date.now()
+     */
+    now: now,
+
+    frame: function frame$1(fn          ) {
+        return frame(fn);
+    },
+
+    cancelFrame: function cancelFrame(id        ) {
+        return cancel(id);
+    },
+
+    timed: function timed(fn                      , dur        , ctx       ) {
+        if (!dur) {
+            fn.call(ctx, 1);
+            return null;
+        }
+
+        var abort = false;
+        var start = now();
+
+        function tick() {
+            if (abort) { return; }
+            var end = now();
+            if (end >= start + dur) {
+                fn.call(ctx, 1);
+            } else {
+                fn.call(ctx, (end - start) / dur);
+                frame(tick);
+            }
+        }
+
+        frame(tick);
+
+        return function() { abort = true; };
+    },
+
+    getImageData: function getImageData(img                   )            {
+        var canvas = window.document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        if (!context) {
+            throw new Error('failed to create canvas 2d context');
+        }
+        canvas.width = img.width;
+        canvas.height = img.height;
+        context.drawImage(img, 0, 0, img.width, img.height);
+        return context.getImageData(0, 0, img.width, img.height);
+    },
+
+    hardwareConcurrency: window.navigator.hardwareConcurrency || 4,
+
+    get devicePixelRatio() { return window.devicePixelRatio; },
+
+    supportsWebp: false
+};
+
+var webpImgTest = window.document.createElement('img');
+webpImgTest.onload = function() {
+    module.exports.supportsWebp = true;
+};
+webpImgTest.src = 'data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvAQAAAAfQ//73v/+BiOh/AAA=';
+
+},{"./window":234}],233:[function(require,module,exports){
+'use strict';//      
+
+var WebWorkify = require('webworkify');
+var window = require('../window');
+var workerURL = window.URL.createObjectURL(new WebWorkify(require('../../source/worker'), {bare: true}));
+
+                                                   
+
+module.exports = function ()                  {
+    return (new window.Worker(workerURL)     );
+};
+
+},{"../../source/worker":118,"../window":234,"webworkify":49}],234:[function(require,module,exports){
+'use strict';//      
+
+/* eslint-env browser */
+module.exports = (self        );
+
+},{}],235:[function(require,module,exports){
+'use strict';//      
+
+var quickselect = require('quickselect');
+var calculateSignedArea = require('./util').calculateSignedArea;
+
+                                                
+
+// classifies an array of rings into polygons with outer rings and holes
+module.exports = function classifyRings(rings                     , maxRings        ) {
+    var len = rings.length;
+
+    if (len <= 1) { return [rings]; }
+
+    var polygons = [];
+    var polygon,
+        ccw;
+
+    for (var i = 0; i < len; i++) {
+        var area = calculateSignedArea(rings[i]);
+        if (area === 0) { continue; }
+
+        (rings[i]     ).area = Math.abs(area);
+
+        if (ccw === undefined) { ccw = area < 0; }
+
+        if (ccw === area < 0) {
+            if (polygon) { polygons.push(polygon); }
+            polygon = [rings[i]];
+
+        } else {
+            (polygon     ).push(rings[i]);
+        }
+    }
+    if (polygon) { polygons.push(polygon); }
+
+    // Earcut performance degrages with the # of rings in a polygon. For this
+    // reason, we limit strip out all but the `maxRings` largest rings.
+    if (maxRings > 1) {
+        for (var j = 0; j < polygons.length; j++) {
+            if (polygons[j].length <= maxRings) { continue; }
+            quickselect(polygons[j], maxRings, 1, polygons[j].length - 1, compareAreas);
+            polygons[j] = polygons[j].slice(0, maxRings);
+        }
+    }
+
+    return polygons;
+};
+
+function compareAreas(a, b) {
+    return b.area - a.area;
+}
+
+},{"./util":253,"quickselect":41}],236:[function(require,module,exports){
+'use strict';//      
+
+                
+                  
+                                
+                       
+   
+
+var config         = {
+    API_URL: 'https://api.mapbox.com',
+    REQUIRE_ACCESS_TOKEN: true,
+    ACCESS_TOKEN: null
+};
+
+module.exports = config;
+
+},{}],237:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+
+var DictionaryCoder = function DictionaryCoder(strings           ) {
+    var this$1 = this;
+
+    this._stringToNumber = {};
+    this._numberToString = [];
+    for (var i = 0; i < strings.length; i++) {
+        var string = strings[i];
+        this$1._stringToNumber[string] = i;
+        this$1._numberToString[i] = string;
+    }
+};
+
+DictionaryCoder.prototype.encode = function encode (string    ) {
+    assert(string in this._stringToNumber);
+    return this._stringToNumber[string];
+};
+
+DictionaryCoder.prototype.decode = function decode (n    ) {
+    assert(n < this._numberToString.length);
+    return this._numberToString[n];
+};
+
+module.exports = DictionaryCoder;
+
+},{"assert":11}],238:[function(require,module,exports){
+'use strict';//      
+
+var util = require('./util');
+var Actor = require('./actor');
+
+                                            
+
+/**
+ * Responsible for sending messages from a {@link Source} to an associated
+ * {@link WorkerSource}.
+ *
+ * @interface Dispatcher
+ * @private
+ */
+var Dispatcher = function Dispatcher(workerPool        , parent ) {
+    var this$1 = this;
+
+    this.workerPool = workerPool;
+    this.actors = [];
+    this.currentActor = 0;
+    this.id = util.uniqueId();
+    var workers = this.workerPool.acquire(this.id);
+    for (var i = 0; i < workers.length; i++) {
+        var worker = workers[i];
+        var actor = new Actor(worker, parent, this$1.id);
+        actor.name = "Worker " + i;
+        this$1.actors.push(actor);
+    }
+};
+
+/**
+ * Broadcast a message to all Workers.
+ */
+Dispatcher.prototype.broadcast = function broadcast (type    , data   , cb       ) {
+    cb = cb || function () {};
+    util.asyncAll(this.actors, function (actor, done) {
+        actor.send(type, data, done);
+    }, cb);
+};
+
+/**
+ * Send a message to a Worker.
+ * @param targetID The ID of the Worker to which to send this message. Omit to allow the dispatcher to choose.
+ * @returns The ID of the worker to which the message was sent.
+ */
+Dispatcher.prototype.send = function send (type    , data   , callback       , targetID     , buffers                  )     {
+    if (typeof targetID !== 'number' || isNaN(targetID)) {
+        // Use round robin to send requests to web workers.
+        targetID = this.currentActor = (this.currentActor + 1) % this.actors.length;
+    }
+
+    this.actors[targetID].send(type, data, callback, buffers);
+    return targetID;
+};
+
+Dispatcher.prototype.remove = function remove () {
+    this.actors.forEach(function (actor) { actor.remove(); });
+    this.actors = [];
+    this.workerPool.release(this.id);
+};
+
+module.exports = Dispatcher;
+
+},{"./actor":230,"./util":253}],239:[function(require,module,exports){
+'use strict';//      
+
+var Point = require('@mapbox/point-geometry');
+var window = require('./window');
+
+exports.create = function (tagName   , className         , container              ) {
+    var el = window.document.createElement(tagName);
+    if (className) { el.className = className; }
+    if (container) { container.appendChild(el); }
+    return el;
+};
+
+var docStyle = (window.document.documentElement     ).style;
+
+function testProp(props) {
+    for (var i = 0; i < props.length; i++) {
+        if (props[i] in docStyle) {
+            return props[i];
+        }
+    }
+    return props[0];
+}
+
+var selectProp = testProp(['userSelect', 'MozUserSelect', 'WebkitUserSelect', 'msUserSelect']);
+var userSelect;
+exports.disableDrag = function () {
+    if (selectProp) {
+        userSelect = docStyle[selectProp];
+        docStyle[selectProp] = 'none';
+    }
+};
+exports.enableDrag = function () {
+    if (selectProp) {
+        docStyle[selectProp] = userSelect;
+    }
+};
+
+var transformProp = testProp(['transform', 'WebkitTransform']);
+exports.setTransform = function(el             , value        ) {
+    (el.style     )[transformProp] = value;
+};
+
+// Suppress the next click, but only if it's immediate.
+var suppressClick                     = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.removeEventListener('click', suppressClick, true);
+};
+
+exports.suppressClick = function() {
+    window.addEventListener('click', suppressClick, true);
+    window.setTimeout(function () {
+        window.removeEventListener('click', suppressClick, true);
+    }, 0);
+};
+
+exports.mousePos = function (el             , e     ) {
+    var rect = el.getBoundingClientRect();
+    e = e.touches ? e.touches[0] : e;
+    return new Point(
+        e.clientX - rect.left - el.clientLeft,
+        e.clientY - rect.top - el.clientTop
+    );
+};
+
+exports.touchPos = function (el             , e     ) {
+    var rect = el.getBoundingClientRect(),
+        points = [];
+    var touches = (e.type === 'touchend') ? e.changedTouches : e.touches;
+    for (var i = 0; i < touches.length; i++) {
+        points.push(new Point(
+            touches[i].clientX - rect.left - el.clientLeft,
+            touches[i].clientY - rect.top - el.clientTop
+        ));
+    }
+    return points;
+};
+
+exports.remove = function(node             ) {
+    if (node.parentNode) {
+        node.parentNode.removeChild(node);
+    }
+};
+
+},{"./window":234,"@mapbox/point-geometry":2}],240:[function(require,module,exports){
+'use strict';//      
+
+var util = require('./util');
+
+                                
+                                               
+
+function _addEventListener(type        , listener          , listenerList           ) {
+    listenerList[type] = listenerList[type] || [];
+    listenerList[type].push(listener);
+}
+
+function _removeEventListener(type        , listener          , listenerList           ) {
+    if (listenerList && listenerList[type]) {
+        var index = listenerList[type].indexOf(listener);
+        if (index !== -1) {
+            listenerList[type].splice(index, 1);
+        }
+    }
+}
+
+/**
+ * Methods mixed in to other classes for event capabilities.
+ *
+ * @mixin Evented
+ */
+var Evented = function Evented () {};
+
+Evented.prototype.on = function on (type   , listener      )   {
+    this._listeners = this._listeners || {};
+    _addEventListener(type, listener, this._listeners);
+
+    return this;
+};
+
+/**
+ * Removes a previously registered event listener.
+ *
+ * @param {string} type The event type to remove listeners for.
+ * @param {Function} listener The listener function to remove.
+ * @returns {Object} `this`
+ */
+Evented.prototype.off = function off (type   , listener      ) {
+    _removeEventListener(type, listener, this._listeners);
+    _removeEventListener(type, listener, this._oneTimeListeners);
+
+    return this;
+};
+
+/**
+ * Adds a listener that will be called only once to a specified event type.
+ *
+ * The listener will be called first time the event fires after the listener is registered.
+ *
+ * @param {string} type The event type to listen for.
+ * @param {Function} listener The function to be called when the event is fired the first time.
+ * @returns {Object} `this`
+ */
+Evented.prototype.once = function once (type    , listener      ) {
+    this._oneTimeListeners = this._oneTimeListeners || {};
+    _addEventListener(type, listener, this._oneTimeListeners);
+
+    return this;
+};
+
+/**
+ * Fires an event of the specified type.
+ *
+ * @param {string} type The type of event to fire.
+ * @param {Object} [data] Data to be passed to any listeners.
+ * @returns {Object} `this`
+ */
+Evented.prototype.fire = function fire (type    , data     ) {
+        var this$1 = this;
+
+    if (this.listens(type)) {
+        data = util.extend({}, data, {type: type, target: this});
+
+        // make sure adding or removing listeners inside other listeners won't cause an infinite loop
+        var listeners = this._listeners && this._listeners[type] ? this._listeners[type].slice() : [];
+
+        for (var i = 0; i < listeners.length; i++) {
+            listeners[i].call(this$1, data);
+        }
+
+        var oneTimeListeners = this._oneTimeListeners && this._oneTimeListeners[type] ? this._oneTimeListeners[type].slice() : [];
+
+        for (var i$1 = 0; i$1 < oneTimeListeners.length; i$1++) {
+            oneTimeListeners[i$1].call(this$1, data);
+            _removeEventListener(type, oneTimeListeners[i$1], this$1._oneTimeListeners);
+        }
+
+        if (this._eventedParent) {
+            this._eventedParent.fire(type, util.extend({}, data, typeof this._eventedParentData === 'function' ? this._eventedParentData() : this._eventedParentData));
+        }
+
+    // To ensure that no error events are dropped, print them to the
+    // console if they have no listeners.
+    } else if (util.endsWith(type, 'error')) {
+        console.error((data && data.error) || data || 'Empty error event');
+    }
+
+    return this;
+};
+
+/**
+ * Returns a true if this instance of Evented or any forwardeed instances of Evented have a listener for the specified type.
+ *
+ * @param {string} type The event type
+ * @returns {boolean} `true` if there is at least one registered listener for specified event type, `false` otherwise
+ */
+Evented.prototype.listens = function listens (type    ) {
+    return (
+        (this._listeners && this._listeners[type] && this._listeners[type].length > 0) ||
+        (this._oneTimeListeners && this._oneTimeListeners[type] && this._oneTimeListeners[type].length > 0) ||
+        (this._eventedParent && this._eventedParent.listens(type))
+    );
+};
+
+/**
+ * Bubble all events fired by this instance of Evented to this parent instance of Evented.
+ *
+ * @private
+ * @returns {Object} `this`
+ */
+Evented.prototype.setEventedParent = function setEventedParent (parent      , data                    ) {
+    this._eventedParent = parent;
+    this._eventedParentData = data;
+
+    return this;
+};
+
+module.exports = Evented;
+
+},{"./util":253}],241:[function(require,module,exports){
+'use strict';//      
+
+var Queue = require('tinyqueue');
+var Point = require('@mapbox/point-geometry');
+var distToSegmentSquared = require('./intersection_tests').distToSegmentSquared;
+
+/**
+ * Finds an approximation of a polygon's Pole Of Inaccessibiliy https://en.wikipedia.org/wiki/Pole_of_inaccessibility
+ * This is a copy of http://github.com/mapbox/polylabel adapted to use Points
+ *
+ * @param polygonRings first item in array is the outer ring followed optionally by the list of holes, should be an element of the result of util/classify_rings
+ * @param precision Specified in input coordinate units. If 0 returns after first run, if > 0 repeatedly narrows the search space until the radius of the area searched for the best pole is less than precision
+ * @param debug Print some statistics to the console during execution
+ * @returns Pole of Inaccessibiliy.
+ * @private
+ */
+module.exports = function (polygonRings                     , precision, debug)        {
+    if ( precision === void 0 ) precision          = 1;
+    if ( debug === void 0 ) debug           = false;
+
+    // find the bounding box of the outer ring
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    var outerRing = polygonRings[0];
+    for (var i = 0; i < outerRing.length; i++) {
+        var p = outerRing[i];
+        if (!i || p.x < minX) { minX = p.x; }
+        if (!i || p.y < minY) { minY = p.y; }
+        if (!i || p.x > maxX) { maxX = p.x; }
+        if (!i || p.y > maxY) { maxY = p.y; }
+    }
+
+    var width = maxX - minX;
+    var height = maxY - minY;
+    var cellSize = Math.min(width, height);
+    var h = cellSize / 2;
+
+    // a priority queue of cells in order of their "potential" (max distance to polygon)
+    var cellQueue = new Queue(null, compareMax);
+
+    if (cellSize === 0) { return new Point(minX, minY); }
+
+    // cover polygon with initial cells
+    for (var x = minX; x < maxX; x += cellSize) {
+        for (var y = minY; y < maxY; y += cellSize) {
+            cellQueue.push(new Cell(x + h, y + h, h, polygonRings));
+        }
+    }
+
+    // take centroid as the first best guess
+    var bestCell = getCentroidCell(polygonRings);
+    var numProbes = cellQueue.length;
+
+    while (cellQueue.length) {
+        // pick the most promising cell from the queue
+        var cell = cellQueue.pop();
+
+        // update the best cell if we found a better one
+        if (cell.d > bestCell.d || !bestCell.d) {
+            bestCell = cell;
+            if (debug) { console.log('found best %d after %d probes', Math.round(1e4 * cell.d) / 1e4, numProbes); }
+        }
+
+        // do not drill down further if there's no chance of a better solution
+        if (cell.max - bestCell.d <= precision) { continue; }
+
+        // split the cell into four cells
+        h = cell.h / 2;
+        cellQueue.push(new Cell(cell.p.x - h, cell.p.y - h, h, polygonRings));
+        cellQueue.push(new Cell(cell.p.x + h, cell.p.y - h, h, polygonRings));
+        cellQueue.push(new Cell(cell.p.x - h, cell.p.y + h, h, polygonRings));
+        cellQueue.push(new Cell(cell.p.x + h, cell.p.y + h, h, polygonRings));
+        numProbes += 4;
+    }
+
+    if (debug) {
+        console.log(("num probes: " + numProbes));
+        console.log(("best distance: " + (bestCell.d)));
+    }
+
+    return bestCell.p;
+};
+
+function compareMax(a, b) {
+    return b.max - a.max;
+}
+
+function Cell(x, y, h, polygon) {
+    this.p = new Point(x, y);
+    this.h = h; // half the cell size
+    this.d = pointToPolygonDist(this.p, polygon); // distance from cell center to polygon
+    this.max = this.d + this.h * Math.SQRT2; // max distance to polygon within a cell
+}
+
+// signed distance from point to polygon outline (negative if point is outside)
+function pointToPolygonDist(p, polygon) {
+    var inside = false;
+    var minDistSq = Infinity;
+
+    for (var k = 0; k < polygon.length; k++) {
+        var ring = polygon[k];
+
+        for (var i = 0, len = ring.length, j = len - 1; i < len; j = i++) {
+            var a = ring[i];
+            var b = ring[j];
+
+            if ((a.y > p.y !== b.y > p.y) &&
+                (p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)) { inside = !inside; }
+
+            minDistSq = Math.min(minDistSq, distToSegmentSquared(p, a, b));
+        }
+    }
+
+    return (inside ? 1 : -1) * Math.sqrt(minDistSq);
+}
+
+// get polygon centroid
+function getCentroidCell(polygon) {
+    var area = 0;
+    var x = 0;
+    var y = 0;
+    var points = polygon[0];
+    for (var i = 0, len = points.length, j = len - 1; i < len; j = i++) {
+        var a = points[i];
+        var b = points[j];
+        var f = a.x * b.y - b.x * a.y;
+        x += (a.x + b.x) * f;
+        y += (a.y + b.y) * f;
+        area += f * 3;
+    }
+    return new Cell(x / area, y / area, 0, polygon);
+}
+
+},{"./intersection_tests":244,"@mapbox/point-geometry":2,"tinyqueue":43}],242:[function(require,module,exports){
+'use strict';//      
+
+var WorkerPool = require('./worker_pool');
+
+var globalWorkerPool;
+
+/**
+ * Creates (if necessary) and returns the single, global WorkerPool instance
+ * to be shared across each Map
+ * @private
+ */
+module.exports = function getGlobalWorkerPool () {
+    if (!globalWorkerPool) {
+        globalWorkerPool = new WorkerPool();
+    }
+    return globalWorkerPool;
+};
+
+},{"./worker_pool":256}],243:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+
+                    
+                  
+                  
+  
+
+              
+              
+             
+  
+
+function createImage(ref      , channels        , data             ) {
+    var width = ref.width;
+    var height = ref.height;
+
+    if (!data) {
+        data = new Uint8Array(width * height * channels);
+    } else if (data.length !== width * height * channels) {
+        throw new RangeError('mismatched image size');
+    }
+    return { width: width, height: height, data: data };
+}
+
+function resizeImage(image   , ref      , channels        ) {
+    var width = ref.width;
+    var height = ref.height;
+
+    if (width === image.width && height === image.height) {
+        return image;
+    }
+
+    var newImage = createImage({width: width, height: height}, channels);
+
+    copyImage(image, newImage, {x: 0, y: 0}, {x: 0, y: 0}, {
+        width: Math.min(image.width, width),
+        height: Math.min(image.height, height)
+    }, channels);
+
+    image.width = width;
+    image.height = height;
+    image.data = newImage.data;
+}
+
+function copyImage(srcImg   , dstImg   , srcPt       , dstPt       , size      , channels        ) {
+    if (size.width === 0 || size.height === 0) {
+        return dstImg;
+    }
+
+    if (size.width > srcImg.width ||
+        size.height > srcImg.height ||
+        srcPt.x > srcImg.width - size.width ||
+        srcPt.y > srcImg.height - size.height) {
+        throw new RangeError('out of range source coordinates for image copy');
+    }
+
+    if (size.width > dstImg.width ||
+        size.height > dstImg.height ||
+        dstPt.x > dstImg.width - size.width ||
+        dstPt.y > dstImg.height - size.height) {
+        throw new RangeError('out of range destination coordinates for image copy');
+    }
+
+    var srcData = srcImg.data;
+    var dstData = dstImg.data;
+
+    assert(srcData !== dstData);
+
+    for (var y = 0; y < size.height; y++) {
+        var srcOffset = ((srcPt.y + y) * srcImg.width + srcPt.x) * channels;
+        var dstOffset = ((dstPt.y + y) * dstImg.width + dstPt.x) * channels;
+        for (var i = 0; i < size.width * channels; i++) {
+            dstData[dstOffset + i] = srcData[srcOffset + i];
+        }
+    }
+
+    return dstImg;
+}
+
+// These "classes" are really just a combination of type (for the properties)
+// and namespace (for the static methods). In reality, the type at runtime is
+// a plain old object; we can't use instance methods because these values are
+// transferred to and from workers.
+var AlphaImage = function AlphaImage () {};
+
+AlphaImage.create = function create (size    , data           ) {
+      return ((createImage(size, 1, data)   )          );
+  };
+
+  AlphaImage.resize = function resize (image          , size    ) {
+      resizeImage(image, size, 1);
+  };
+
+  AlphaImage.copy = function copy (srcImg          , dstImg          , srcPt     , dstPt     , size    ) {
+      copyImage(srcImg, dstImg, srcPt, dstPt, size, 1);
+  };
+
+// Not premultiplied, because ImageData is not premultiplied.
+// UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
+var RGBAImage = function RGBAImage () {};
+
+RGBAImage.create = function create (size    , data           ) {
+      return ((createImage(size, 4, data)   )         );
+  };
+
+  RGBAImage.resize = function resize (image         , size    ) {
+      resizeImage(image, size, 4);
+  };
+
+  RGBAImage.copy = function copy (srcImg                     , dstImg         , srcPt     , dstPt     , size    ) {
+      copyImage(srcImg, dstImg, srcPt, dstPt, size, 4);
+  };
+
+module.exports = {
+    AlphaImage: AlphaImage,
+    RGBAImage: RGBAImage
+};
+
+},{"assert":11}],244:[function(require,module,exports){
+'use strict';//      
+
+var ref = require('./util');
+var isCounterClockwise = ref.isCounterClockwise;
+
+                                                
+
+module.exports = {
+    multiPolygonIntersectsBufferedMultiPoint: multiPolygonIntersectsBufferedMultiPoint,
+    multiPolygonIntersectsMultiPolygon: multiPolygonIntersectsMultiPolygon,
+    multiPolygonIntersectsBufferedMultiLine: multiPolygonIntersectsBufferedMultiLine,
+    polygonIntersectsPolygon: polygonIntersectsPolygon,
+    distToSegmentSquared: distToSegmentSquared
+};
+
+                         
+                             
+                         
+                            
+                                   
+
+function polygonIntersectsPolygon(polygonA         , polygonB         ) {
+    for (var i = 0; i < polygonA.length; i++) {
+        if (polygonContainsPoint(polygonB, polygonA[i])) { return true; }
+    }
+
+    for (var i$1 = 0; i$1 < polygonB.length; i$1++) {
+        if (polygonContainsPoint(polygonA, polygonB[i$1])) { return true; }
+    }
+
+    if (lineIntersectsLine(polygonA, polygonB)) { return true; }
+
+    return false;
+}
+
+function multiPolygonIntersectsBufferedMultiPoint(multiPolygon              , rings             , radius        ) {
+    for (var j = 0; j < multiPolygon.length; j++) {
+        var polygon = multiPolygon[j];
+        for (var i = 0; i < rings.length; i++) {
+            var ring = rings[i];
+            for (var k = 0; k < ring.length; k++) {
+                var point = ring[k];
+                if (polygonContainsPoint(polygon, point)) { return true; }
+                if (pointIntersectsBufferedLine(point, polygon, radius)) { return true; }
+            }
+        }
+    }
+    return false;
+}
+
+function multiPolygonIntersectsMultiPolygon(multiPolygonA              , multiPolygonB              ) {
+
+    if (multiPolygonA.length === 1 && multiPolygonA[0].length === 1) {
+        return multiPolygonContainsPoint(multiPolygonB, multiPolygonA[0][0]);
+    }
+
+    for (var m = 0; m < multiPolygonB.length; m++) {
+        var ring = multiPolygonB[m];
+        for (var n = 0; n < ring.length; n++) {
+            if (multiPolygonContainsPoint(multiPolygonA, ring[n])) { return true; }
+        }
+    }
+
+    for (var j = 0; j < multiPolygonA.length; j++) {
+        var polygon = multiPolygonA[j];
+        for (var i = 0; i < polygon.length; i++) {
+            if (multiPolygonContainsPoint(multiPolygonB, polygon[i])) { return true; }
+        }
+
+        for (var k = 0; k < multiPolygonB.length; k++) {
+            if (lineIntersectsLine(polygon, multiPolygonB[k])) { return true; }
+        }
+    }
+
+    return false;
+}
+
+function multiPolygonIntersectsBufferedMultiLine(multiPolygon              , multiLine           , radius        ) {
+    for (var i = 0; i < multiLine.length; i++) {
+        var line = multiLine[i];
+
+        for (var j = 0; j < multiPolygon.length; j++) {
+            var polygon = multiPolygon[j];
+
+            if (polygon.length >= 3) {
+                for (var k = 0; k < line.length; k++) {
+                    if (polygonContainsPoint(polygon, line[k])) { return true; }
+                }
+            }
+
+            if (lineIntersectsBufferedLine(polygon, line, radius)) { return true; }
+        }
+    }
+    return false;
+}
+
+function lineIntersectsBufferedLine(lineA      , lineB      , radius        ) {
+
+    if (lineA.length > 1) {
+        if (lineIntersectsLine(lineA, lineB)) { return true; }
+
+        // Check whether any point in either line is within radius of the other line
+        for (var j = 0; j < lineB.length; j++) {
+            if (pointIntersectsBufferedLine(lineB[j], lineA, radius)) { return true; }
+        }
+    }
+
+    for (var k = 0; k < lineA.length; k++) {
+        if (pointIntersectsBufferedLine(lineA[k], lineB, radius)) { return true; }
+    }
+
+    return false;
+}
+
+function lineIntersectsLine(lineA      , lineB      ) {
+    if (lineA.length === 0 || lineB.length === 0) { return false; }
+    for (var i = 0; i < lineA.length - 1; i++) {
+        var a0 = lineA[i];
+        var a1 = lineA[i + 1];
+        for (var j = 0; j < lineB.length - 1; j++) {
+            var b0 = lineB[j];
+            var b1 = lineB[j + 1];
+            if (lineSegmentIntersectsLineSegment(a0, a1, b0, b1)) { return true; }
+        }
+    }
+    return false;
+}
+
+function lineSegmentIntersectsLineSegment(a0       , a1       , b0       , b1       ) {
+    return isCounterClockwise(a0, b0, b1) !== isCounterClockwise(a1, b0, b1) &&
+        isCounterClockwise(a0, a1, b0) !== isCounterClockwise(a0, a1, b1);
+}
+
+function pointIntersectsBufferedLine(p       , line      , radius        ) {
+    var radiusSquared = radius * radius;
+
+    if (line.length === 1) { return p.distSqr(line[0]) < radiusSquared; }
+
+    for (var i = 1; i < line.length; i++) {
+        // Find line segments that have a distance <= radius^2 to p
+        // In that case, we treat the line as "containing point p".
+        var v = line[i - 1], w = line[i];
+        if (distToSegmentSquared(p, v, w) < radiusSquared) { return true; }
+    }
+    return false;
+}
+
+// Code from http://stackoverflow.com/a/1501725/331379.
+function distToSegmentSquared(p       , v       , w       ) {
+    var l2 = v.distSqr(w);
+    if (l2 === 0) { return p.distSqr(v); }
+    var t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    if (t < 0) { return p.distSqr(v); }
+    if (t > 1) { return p.distSqr(w); }
+    return p.distSqr(w.sub(v)._mult(t)._add(v));
+}
+
+// point in polygon ray casting algorithm
+function multiPolygonContainsPoint(rings             , p       ) {
+    var c = false,
+        ring, p1, p2;
+
+    for (var k = 0; k < rings.length; k++) {
+        ring = rings[k];
+        for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            p1 = ring[i];
+            p2 = ring[j];
+            if (((p1.y > p.y) !== (p2.y > p.y)) && (p.x < (p2.x - p1.x) * (p.y - p1.y) / (p2.y - p1.y) + p1.x)) {
+                c = !c;
+            }
+        }
+    }
+    return c;
+}
+
+function polygonContainsPoint(ring      , p       ) {
+    var c = false;
+    for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var p1 = ring[i];
+        var p2 = ring[j];
+        if (((p1.y > p.y) !== (p2.y > p.y)) && (p.x < (p2.x - p1.x) * (p.y - p1.y) / (p2.y - p1.y) + p1.x)) {
+            c = !c;
+        }
+    }
+    return c;
+}
+
+},{"./util":253}],245:[function(require,module,exports){
+'use strict';//      
+
+// The following table comes from <http://www.unicode.org/Public/10.0.0/ucd/Blocks.txt>.
+// Keep it synchronized with <http://www.unicode.org/Public/UCD/latest/ucd/Blocks.txt>.
+
+                                                                     
+
+var unicodeBlockLookup                     = {
+    // 'Basic Latin': (char) => char >= 0x0000 && char <= 0x007F,
+    'Latin-1 Supplement': function (char) { return char >= 0x0080 && char <= 0x00FF; },
+    // 'Latin Extended-A': (char) => char >= 0x0100 && char <= 0x017F,
+    // 'Latin Extended-B': (char) => char >= 0x0180 && char <= 0x024F,
+    // 'IPA Extensions': (char) => char >= 0x0250 && char <= 0x02AF,
+    // 'Spacing Modifier Letters': (char) => char >= 0x02B0 && char <= 0x02FF,
+    // 'Combining Diacritical Marks': (char) => char >= 0x0300 && char <= 0x036F,
+    // 'Greek and Coptic': (char) => char >= 0x0370 && char <= 0x03FF,
+    // 'Cyrillic': (char) => char >= 0x0400 && char <= 0x04FF,
+    // 'Cyrillic Supplement': (char) => char >= 0x0500 && char <= 0x052F,
+    // 'Armenian': (char) => char >= 0x0530 && char <= 0x058F,
+    //'Hebrew': (char) => char >= 0x0590 && char <= 0x05FF,
+    'Arabic': function (char) { return char >= 0x0600 && char <= 0x06FF; },
+    //'Syriac': (char) => char >= 0x0700 && char <= 0x074F,
+    'Arabic Supplement': function (char) { return char >= 0x0750 && char <= 0x077F; },
+    // 'Thaana': (char) => char >= 0x0780 && char <= 0x07BF,
+    // 'NKo': (char) => char >= 0x07C0 && char <= 0x07FF,
+    // 'Samaritan': (char) => char >= 0x0800 && char <= 0x083F,
+    // 'Mandaic': (char) => char >= 0x0840 && char <= 0x085F,
+    // 'Syriac Supplement': (char) => char >= 0x0860 && char <= 0x086F,
+    'Arabic Extended-A': function (char) { return char >= 0x08A0 && char <= 0x08FF; },
+    // 'Devanagari': (char) => char >= 0x0900 && char <= 0x097F,
+    // 'Bengali': (char) => char >= 0x0980 && char <= 0x09FF,
+    // 'Gurmukhi': (char) => char >= 0x0A00 && char <= 0x0A7F,
+    // 'Gujarati': (char) => char >= 0x0A80 && char <= 0x0AFF,
+    // 'Oriya': (char) => char >= 0x0B00 && char <= 0x0B7F,
+    // 'Tamil': (char) => char >= 0x0B80 && char <= 0x0BFF,
+    // 'Telugu': (char) => char >= 0x0C00 && char <= 0x0C7F,
+    // 'Kannada': (char) => char >= 0x0C80 && char <= 0x0CFF,
+    // 'Malayalam': (char) => char >= 0x0D00 && char <= 0x0D7F,
+    // 'Sinhala': (char) => char >= 0x0D80 && char <= 0x0DFF,
+    // 'Thai': (char) => char >= 0x0E00 && char <= 0x0E7F,
+    // 'Lao': (char) => char >= 0x0E80 && char <= 0x0EFF,
+    // 'Tibetan': (char) => char >= 0x0F00 && char <= 0x0FFF,
+    // 'Myanmar': (char) => char >= 0x1000 && char <= 0x109F,
+    // 'Georgian': (char) => char >= 0x10A0 && char <= 0x10FF,
+    'Hangul Jamo': function (char) { return char >= 0x1100 && char <= 0x11FF; },
+    // 'Ethiopic': (char) => char >= 0x1200 && char <= 0x137F,
+    // 'Ethiopic Supplement': (char) => char >= 0x1380 && char <= 0x139F,
+    // 'Cherokee': (char) => char >= 0x13A0 && char <= 0x13FF,
+    'Unified Canadian Aboriginal Syllabics': function (char) { return char >= 0x1400 && char <= 0x167F; },
+    // 'Ogham': (char) => char >= 0x1680 && char <= 0x169F,
+    // 'Runic': (char) => char >= 0x16A0 && char <= 0x16FF,
+    // 'Tagalog': (char) => char >= 0x1700 && char <= 0x171F,
+    // 'Hanunoo': (char) => char >= 0x1720 && char <= 0x173F,
+    // 'Buhid': (char) => char >= 0x1740 && char <= 0x175F,
+    // 'Tagbanwa': (char) => char >= 0x1760 && char <= 0x177F,
+    // 'Khmer': (char) => char >= 0x1780 && char <= 0x17FF,
+    // 'Mongolian': (char) => char >= 0x1800 && char <= 0x18AF,
+    'Unified Canadian Aboriginal Syllabics Extended': function (char) { return char >= 0x18B0 && char <= 0x18FF; },
+    // 'Limbu': (char) => char >= 0x1900 && char <= 0x194F,
+    // 'Tai Le': (char) => char >= 0x1950 && char <= 0x197F,
+    // 'New Tai Lue': (char) => char >= 0x1980 && char <= 0x19DF,
+    // 'Khmer Symbols': (char) => char >= 0x19E0 && char <= 0x19FF,
+    // 'Buginese': (char) => char >= 0x1A00 && char <= 0x1A1F,
+    // 'Tai Tham': (char) => char >= 0x1A20 && char <= 0x1AAF,
+    // 'Combining Diacritical Marks Extended': (char) => char >= 0x1AB0 && char <= 0x1AFF,
+    // 'Balinese': (char) => char >= 0x1B00 && char <= 0x1B7F,
+    // 'Sundanese': (char) => char >= 0x1B80 && char <= 0x1BBF,
+    // 'Batak': (char) => char >= 0x1BC0 && char <= 0x1BFF,
+    // 'Lepcha': (char) => char >= 0x1C00 && char <= 0x1C4F,
+    // 'Ol Chiki': (char) => char >= 0x1C50 && char <= 0x1C7F,
+    // 'Cyrillic Extended-C': (char) => char >= 0x1C80 && char <= 0x1C8F,
+    // 'Sundanese Supplement': (char) => char >= 0x1CC0 && char <= 0x1CCF,
+    // 'Vedic Extensions': (char) => char >= 0x1CD0 && char <= 0x1CFF,
+    // 'Phonetic Extensions': (char) => char >= 0x1D00 && char <= 0x1D7F,
+    // 'Phonetic Extensions Supplement': (char) => char >= 0x1D80 && char <= 0x1DBF,
+    // 'Combining Diacritical Marks Supplement': (char) => char >= 0x1DC0 && char <= 0x1DFF,
+    // 'Latin Extended Additional': (char) => char >= 0x1E00 && char <= 0x1EFF,
+    // 'Greek Extended': (char) => char >= 0x1F00 && char <= 0x1FFF,
+    'General Punctuation': function (char) { return char >= 0x2000 && char <= 0x206F; },
+    // 'Superscripts and Subscripts': (char) => char >= 0x2070 && char <= 0x209F,
+    // 'Currency Symbols': (char) => char >= 0x20A0 && char <= 0x20CF,
+    // 'Combining Diacritical Marks for Symbols': (char) => char >= 0x20D0 && char <= 0x20FF,
+    'Letterlike Symbols': function (char) { return char >= 0x2100 && char <= 0x214F; },
+    'Number Forms': function (char) { return char >= 0x2150 && char <= 0x218F; },
+    // 'Arrows': (char) => char >= 0x2190 && char <= 0x21FF,
+    // 'Mathematical Operators': (char) => char >= 0x2200 && char <= 0x22FF,
+    'Miscellaneous Technical': function (char) { return char >= 0x2300 && char <= 0x23FF; },
+    'Control Pictures': function (char) { return char >= 0x2400 && char <= 0x243F; },
+    'Optical Character Recognition': function (char) { return char >= 0x2440 && char <= 0x245F; },
+    'Enclosed Alphanumerics': function (char) { return char >= 0x2460 && char <= 0x24FF; },
+    // 'Box Drawing': (char) => char >= 0x2500 && char <= 0x257F,
+    // 'Block Elements': (char) => char >= 0x2580 && char <= 0x259F,
+    'Geometric Shapes': function (char) { return char >= 0x25A0 && char <= 0x25FF; },
+    'Miscellaneous Symbols': function (char) { return char >= 0x2600 && char <= 0x26FF; },
+    // 'Dingbats': (char) => char >= 0x2700 && char <= 0x27BF,
+    // 'Miscellaneous Mathematical Symbols-A': (char) => char >= 0x27C0 && char <= 0x27EF,
+    // 'Supplemental Arrows-A': (char) => char >= 0x27F0 && char <= 0x27FF,
+    // 'Braille Patterns': (char) => char >= 0x2800 && char <= 0x28FF,
+    // 'Supplemental Arrows-B': (char) => char >= 0x2900 && char <= 0x297F,
+    // 'Miscellaneous Mathematical Symbols-B': (char) => char >= 0x2980 && char <= 0x29FF,
+    // 'Supplemental Mathematical Operators': (char) => char >= 0x2A00 && char <= 0x2AFF,
+    'Miscellaneous Symbols and Arrows': function (char) { return char >= 0x2B00 && char <= 0x2BFF; },
+    // 'Glagolitic': (char) => char >= 0x2C00 && char <= 0x2C5F,
+    // 'Latin Extended-C': (char) => char >= 0x2C60 && char <= 0x2C7F,
+    // 'Coptic': (char) => char >= 0x2C80 && char <= 0x2CFF,
+    // 'Georgian Supplement': (char) => char >= 0x2D00 && char <= 0x2D2F,
+    // 'Tifinagh': (char) => char >= 0x2D30 && char <= 0x2D7F,
+    // 'Ethiopic Extended': (char) => char >= 0x2D80 && char <= 0x2DDF,
+    // 'Cyrillic Extended-A': (char) => char >= 0x2DE0 && char <= 0x2DFF,
+    // 'Supplemental Punctuation': (char) => char >= 0x2E00 && char <= 0x2E7F,
+    'CJK Radicals Supplement': function (char) { return char >= 0x2E80 && char <= 0x2EFF; },
+    'Kangxi Radicals': function (char) { return char >= 0x2F00 && char <= 0x2FDF; },
+    'Ideographic Description Characters': function (char) { return char >= 0x2FF0 && char <= 0x2FFF; },
+    'CJK Symbols and Punctuation': function (char) { return char >= 0x3000 && char <= 0x303F; },
+    'Hiragana': function (char) { return char >= 0x3040 && char <= 0x309F; },
+    'Katakana': function (char) { return char >= 0x30A0 && char <= 0x30FF; },
+    'Bopomofo': function (char) { return char >= 0x3100 && char <= 0x312F; },
+    'Hangul Compatibility Jamo': function (char) { return char >= 0x3130 && char <= 0x318F; },
+    'Kanbun': function (char) { return char >= 0x3190 && char <= 0x319F; },
+    'Bopomofo Extended': function (char) { return char >= 0x31A0 && char <= 0x31BF; },
+    'CJK Strokes': function (char) { return char >= 0x31C0 && char <= 0x31EF; },
+    'Katakana Phonetic Extensions': function (char) { return char >= 0x31F0 && char <= 0x31FF; },
+    'Enclosed CJK Letters and Months': function (char) { return char >= 0x3200 && char <= 0x32FF; },
+    'CJK Compatibility': function (char) { return char >= 0x3300 && char <= 0x33FF; },
+    'CJK Unified Ideographs Extension A': function (char) { return char >= 0x3400 && char <= 0x4DBF; },
+    'Yijing Hexagram Symbols': function (char) { return char >= 0x4DC0 && char <= 0x4DFF; },
+    'CJK Unified Ideographs': function (char) { return char >= 0x4E00 && char <= 0x9FFF; },
+    'Yi Syllables': function (char) { return char >= 0xA000 && char <= 0xA48F; },
+    'Yi Radicals': function (char) { return char >= 0xA490 && char <= 0xA4CF; },
+    // 'Lisu': (char) => char >= 0xA4D0 && char <= 0xA4FF,
+    // 'Vai': (char) => char >= 0xA500 && char <= 0xA63F,
+    // 'Cyrillic Extended-B': (char) => char >= 0xA640 && char <= 0xA69F,
+    // 'Bamum': (char) => char >= 0xA6A0 && char <= 0xA6FF,
+    // 'Modifier Tone Letters': (char) => char >= 0xA700 && char <= 0xA71F,
+    // 'Latin Extended-D': (char) => char >= 0xA720 && char <= 0xA7FF,
+    // 'Syloti Nagri': (char) => char >= 0xA800 && char <= 0xA82F,
+    // 'Common Indic Number Forms': (char) => char >= 0xA830 && char <= 0xA83F,
+    // 'Phags-pa': (char) => char >= 0xA840 && char <= 0xA87F,
+    // 'Saurashtra': (char) => char >= 0xA880 && char <= 0xA8DF,
+    // 'Devanagari Extended': (char) => char >= 0xA8E0 && char <= 0xA8FF,
+    // 'Kayah Li': (char) => char >= 0xA900 && char <= 0xA92F,
+    // 'Rejang': (char) => char >= 0xA930 && char <= 0xA95F,
+    'Hangul Jamo Extended-A': function (char) { return char >= 0xA960 && char <= 0xA97F; },
+    // 'Javanese': (char) => char >= 0xA980 && char <= 0xA9DF,
+    // 'Myanmar Extended-B': (char) => char >= 0xA9E0 && char <= 0xA9FF,
+    // 'Cham': (char) => char >= 0xAA00 && char <= 0xAA5F,
+    // 'Myanmar Extended-A': (char) => char >= 0xAA60 && char <= 0xAA7F,
+    // 'Tai Viet': (char) => char >= 0xAA80 && char <= 0xAADF,
+    // 'Meetei Mayek Extensions': (char) => char >= 0xAAE0 && char <= 0xAAFF,
+    // 'Ethiopic Extended-A': (char) => char >= 0xAB00 && char <= 0xAB2F,
+    // 'Latin Extended-E': (char) => char >= 0xAB30 && char <= 0xAB6F,
+    // 'Cherokee Supplement': (char) => char >= 0xAB70 && char <= 0xABBF,
+    // 'Meetei Mayek': (char) => char >= 0xABC0 && char <= 0xABFF,
+    'Hangul Syllables': function (char) { return char >= 0xAC00 && char <= 0xD7AF; },
+    'Hangul Jamo Extended-B': function (char) { return char >= 0xD7B0 && char <= 0xD7FF; },
+    // 'High Surrogates': (char) => char >= 0xD800 && char <= 0xDB7F,
+    // 'High Private Use Surrogates': (char) => char >= 0xDB80 && char <= 0xDBFF,
+    // 'Low Surrogates': (char) => char >= 0xDC00 && char <= 0xDFFF,
+    'Private Use Area': function (char) { return char >= 0xE000 && char <= 0xF8FF; },
+    'CJK Compatibility Ideographs': function (char) { return char >= 0xF900 && char <= 0xFAFF; },
+    // 'Alphabetic Presentation Forms': (char) => char >= 0xFB00 && char <= 0xFB4F,
+    'Arabic Presentation Forms-A': function (char) { return char >= 0xFB50 && char <= 0xFDFF; },
+    // 'Variation Selectors': (char) => char >= 0xFE00 && char <= 0xFE0F,
+    'Vertical Forms': function (char) { return char >= 0xFE10 && char <= 0xFE1F; },
+    // 'Combining Half Marks': (char) => char >= 0xFE20 && char <= 0xFE2F,
+    'CJK Compatibility Forms': function (char) { return char >= 0xFE30 && char <= 0xFE4F; },
+    'Small Form Variants': function (char) { return char >= 0xFE50 && char <= 0xFE6F; },
+    'Arabic Presentation Forms-B': function (char) { return char >= 0xFE70 && char <= 0xFEFF; },
+    'Halfwidth and Fullwidth Forms': function (char) { return char >= 0xFF00 && char <= 0xFFEF; }
+    // 'Specials': (char) => char >= 0xFFF0 && char <= 0xFFFF,
+    // 'Linear B Syllabary': (char) => char >= 0x10000 && char <= 0x1007F,
+    // 'Linear B Ideograms': (char) => char >= 0x10080 && char <= 0x100FF,
+    // 'Aegean Numbers': (char) => char >= 0x10100 && char <= 0x1013F,
+    // 'Ancient Greek Numbers': (char) => char >= 0x10140 && char <= 0x1018F,
+    // 'Ancient Symbols': (char) => char >= 0x10190 && char <= 0x101CF,
+    // 'Phaistos Disc': (char) => char >= 0x101D0 && char <= 0x101FF,
+    // 'Lycian': (char) => char >= 0x10280 && char <= 0x1029F,
+    // 'Carian': (char) => char >= 0x102A0 && char <= 0x102DF,
+    // 'Coptic Epact Numbers': (char) => char >= 0x102E0 && char <= 0x102FF,
+    // 'Old Italic': (char) => char >= 0x10300 && char <= 0x1032F,
+    // 'Gothic': (char) => char >= 0x10330 && char <= 0x1034F,
+    // 'Old Permic': (char) => char >= 0x10350 && char <= 0x1037F,
+    // 'Ugaritic': (char) => char >= 0x10380 && char <= 0x1039F,
+    // 'Old Persian': (char) => char >= 0x103A0 && char <= 0x103DF,
+    // 'Deseret': (char) => char >= 0x10400 && char <= 0x1044F,
+    // 'Shavian': (char) => char >= 0x10450 && char <= 0x1047F,
+    // 'Osmanya': (char) => char >= 0x10480 && char <= 0x104AF,
+    // 'Osage': (char) => char >= 0x104B0 && char <= 0x104FF,
+    // 'Elbasan': (char) => char >= 0x10500 && char <= 0x1052F,
+    // 'Caucasian Albanian': (char) => char >= 0x10530 && char <= 0x1056F,
+    // 'Linear A': (char) => char >= 0x10600 && char <= 0x1077F,
+    // 'Cypriot Syllabary': (char) => char >= 0x10800 && char <= 0x1083F,
+    // 'Imperial Aramaic': (char) => char >= 0x10840 && char <= 0x1085F,
+    // 'Palmyrene': (char) => char >= 0x10860 && char <= 0x1087F,
+    // 'Nabataean': (char) => char >= 0x10880 && char <= 0x108AF,
+    // 'Hatran': (char) => char >= 0x108E0 && char <= 0x108FF,
+    // 'Phoenician': (char) => char >= 0x10900 && char <= 0x1091F,
+    // 'Lydian': (char) => char >= 0x10920 && char <= 0x1093F,
+    // 'Meroitic Hieroglyphs': (char) => char >= 0x10980 && char <= 0x1099F,
+    // 'Meroitic Cursive': (char) => char >= 0x109A0 && char <= 0x109FF,
+    // 'Kharoshthi': (char) => char >= 0x10A00 && char <= 0x10A5F,
+    // 'Old South Arabian': (char) => char >= 0x10A60 && char <= 0x10A7F,
+    // 'Old North Arabian': (char) => char >= 0x10A80 && char <= 0x10A9F,
+    // 'Manichaean': (char) => char >= 0x10AC0 && char <= 0x10AFF,
+    // 'Avestan': (char) => char >= 0x10B00 && char <= 0x10B3F,
+    // 'Inscriptional Parthian': (char) => char >= 0x10B40 && char <= 0x10B5F,
+    // 'Inscriptional Pahlavi': (char) => char >= 0x10B60 && char <= 0x10B7F,
+    // 'Psalter Pahlavi': (char) => char >= 0x10B80 && char <= 0x10BAF,
+    // 'Old Turkic': (char) => char >= 0x10C00 && char <= 0x10C4F,
+    // 'Old Hungarian': (char) => char >= 0x10C80 && char <= 0x10CFF,
+    // 'Rumi Numeral Symbols': (char) => char >= 0x10E60 && char <= 0x10E7F,
+    // 'Brahmi': (char) => char >= 0x11000 && char <= 0x1107F,
+    // 'Kaithi': (char) => char >= 0x11080 && char <= 0x110CF,
+    // 'Sora Sompeng': (char) => char >= 0x110D0 && char <= 0x110FF,
+    // 'Chakma': (char) => char >= 0x11100 && char <= 0x1114F,
+    // 'Mahajani': (char) => char >= 0x11150 && char <= 0x1117F,
+    // 'Sharada': (char) => char >= 0x11180 && char <= 0x111DF,
+    // 'Sinhala Archaic Numbers': (char) => char >= 0x111E0 && char <= 0x111FF,
+    // 'Khojki': (char) => char >= 0x11200 && char <= 0x1124F,
+    // 'Multani': (char) => char >= 0x11280 && char <= 0x112AF,
+    // 'Khudawadi': (char) => char >= 0x112B0 && char <= 0x112FF,
+    // 'Grantha': (char) => char >= 0x11300 && char <= 0x1137F,
+    // 'Newa': (char) => char >= 0x11400 && char <= 0x1147F,
+    // 'Tirhuta': (char) => char >= 0x11480 && char <= 0x114DF,
+    // 'Siddham': (char) => char >= 0x11580 && char <= 0x115FF,
+    // 'Modi': (char) => char >= 0x11600 && char <= 0x1165F,
+    // 'Mongolian Supplement': (char) => char >= 0x11660 && char <= 0x1167F,
+    // 'Takri': (char) => char >= 0x11680 && char <= 0x116CF,
+    // 'Ahom': (char) => char >= 0x11700 && char <= 0x1173F,
+    // 'Warang Citi': (char) => char >= 0x118A0 && char <= 0x118FF,
+    // 'Zanabazar Square': (char) => char >= 0x11A00 && char <= 0x11A4F,
+    // 'Soyombo': (char) => char >= 0x11A50 && char <= 0x11AAF,
+    // 'Pau Cin Hau': (char) => char >= 0x11AC0 && char <= 0x11AFF,
+    // 'Bhaiksuki': (char) => char >= 0x11C00 && char <= 0x11C6F,
+    // 'Marchen': (char) => char >= 0x11C70 && char <= 0x11CBF,
+    // 'Masaram Gondi': (char) => char >= 0x11D00 && char <= 0x11D5F,
+    // 'Cuneiform': (char) => char >= 0x12000 && char <= 0x123FF,
+    // 'Cuneiform Numbers and Punctuation': (char) => char >= 0x12400 && char <= 0x1247F,
+    // 'Early Dynastic Cuneiform': (char) => char >= 0x12480 && char <= 0x1254F,
+    // 'Egyptian Hieroglyphs': (char) => char >= 0x13000 && char <= 0x1342F,
+    // 'Anatolian Hieroglyphs': (char) => char >= 0x14400 && char <= 0x1467F,
+    // 'Bamum Supplement': (char) => char >= 0x16800 && char <= 0x16A3F,
+    // 'Mro': (char) => char >= 0x16A40 && char <= 0x16A6F,
+    // 'Bassa Vah': (char) => char >= 0x16AD0 && char <= 0x16AFF,
+    // 'Pahawh Hmong': (char) => char >= 0x16B00 && char <= 0x16B8F,
+    // 'Miao': (char) => char >= 0x16F00 && char <= 0x16F9F,
+    // 'Ideographic Symbols and Punctuation': (char) => char >= 0x16FE0 && char <= 0x16FFF,
+    // 'Tangut': (char) => char >= 0x17000 && char <= 0x187FF,
+    // 'Tangut Components': (char) => char >= 0x18800 && char <= 0x18AFF,
+    // 'Kana Supplement': (char) => char >= 0x1B000 && char <= 0x1B0FF,
+    // 'Kana Extended-A': (char) => char >= 0x1B100 && char <= 0x1B12F,
+    // 'Nushu': (char) => char >= 0x1B170 && char <= 0x1B2FF,
+    // 'Duployan': (char) => char >= 0x1BC00 && char <= 0x1BC9F,
+    // 'Shorthand Format Controls': (char) => char >= 0x1BCA0 && char <= 0x1BCAF,
+    // 'Byzantine Musical Symbols': (char) => char >= 0x1D000 && char <= 0x1D0FF,
+    // 'Musical Symbols': (char) => char >= 0x1D100 && char <= 0x1D1FF,
+    // 'Ancient Greek Musical Notation': (char) => char >= 0x1D200 && char <= 0x1D24F,
+    // 'Tai Xuan Jing Symbols': (char) => char >= 0x1D300 && char <= 0x1D35F,
+    // 'Counting Rod Numerals': (char) => char >= 0x1D360 && char <= 0x1D37F,
+    // 'Mathematical Alphanumeric Symbols': (char) => char >= 0x1D400 && char <= 0x1D7FF,
+    // 'Sutton SignWriting': (char) => char >= 0x1D800 && char <= 0x1DAAF,
+    // 'Glagolitic Supplement': (char) => char >= 0x1E000 && char <= 0x1E02F,
+    // 'Mende Kikakui': (char) => char >= 0x1E800 && char <= 0x1E8DF,
+    // 'Adlam': (char) => char >= 0x1E900 && char <= 0x1E95F,
+    // 'Arabic Mathematical Alphabetic Symbols': (char) => char >= 0x1EE00 && char <= 0x1EEFF,
+    // 'Mahjong Tiles': (char) => char >= 0x1F000 && char <= 0x1F02F,
+    // 'Domino Tiles': (char) => char >= 0x1F030 && char <= 0x1F09F,
+    // 'Playing Cards': (char) => char >= 0x1F0A0 && char <= 0x1F0FF,
+    // 'Enclosed Alphanumeric Supplement': (char) => char >= 0x1F100 && char <= 0x1F1FF,
+    // 'Enclosed Ideographic Supplement': (char) => char >= 0x1F200 && char <= 0x1F2FF,
+    // 'Miscellaneous Symbols and Pictographs': (char) => char >= 0x1F300 && char <= 0x1F5FF,
+    // 'Emoticons': (char) => char >= 0x1F600 && char <= 0x1F64F,
+    // 'Ornamental Dingbats': (char) => char >= 0x1F650 && char <= 0x1F67F,
+    // 'Transport and Map Symbols': (char) => char >= 0x1F680 && char <= 0x1F6FF,
+    // 'Alchemical Symbols': (char) => char >= 0x1F700 && char <= 0x1F77F,
+    // 'Geometric Shapes Extended': (char) => char >= 0x1F780 && char <= 0x1F7FF,
+    // 'Supplemental Arrows-C': (char) => char >= 0x1F800 && char <= 0x1F8FF,
+    // 'Supplemental Symbols and Pictographs': (char) => char >= 0x1F900 && char <= 0x1F9FF,
+    // 'CJK Unified Ideographs Extension B': (char) => char >= 0x20000 && char <= 0x2A6DF,
+    // 'CJK Unified Ideographs Extension C': (char) => char >= 0x2A700 && char <= 0x2B73F,
+    // 'CJK Unified Ideographs Extension D': (char) => char >= 0x2B740 && char <= 0x2B81F,
+    // 'CJK Unified Ideographs Extension E': (char) => char >= 0x2B820 && char <= 0x2CEAF,
+    // 'CJK Unified Ideographs Extension F': (char) => char >= 0x2CEB0 && char <= 0x2EBEF,
+    // 'CJK Compatibility Ideographs Supplement': (char) => char >= 0x2F800 && char <= 0x2FA1F,
+    // 'Tags': (char) => char >= 0xE0000 && char <= 0xE007F,
+    // 'Variation Selectors Supplement': (char) => char >= 0xE0100 && char <= 0xE01EF,
+    // 'Supplementary Private Use Area-A': (char) => char >= 0xF0000 && char <= 0xFFFFF,
+    // 'Supplementary Private Use Area-B': (char) => char >= 0x100000 && char <= 0x10FFFF,
+};
+
+module.exports = unicodeBlockLookup;
+
+},{}],246:[function(require,module,exports){
+'use strict';//      
+
+/**
+ * A [least-recently-used cache](http://en.wikipedia.org/wiki/Cache_algorithms)
+ * with hash lookup made possible by keeping a list of keys in parallel to
+ * an array of dictionary of values
+ *
+ * @private
+ */
+var LRUCache = function LRUCache(max    , onRemove                  ) {
+    this.max = max;
+    this.onRemove = onRemove;
+    this.reset();
+};
+
+/**
+ * Clear the cache
+ *
+ * @returns {LRUCache} this cache
+ * @private
+ */
+LRUCache.prototype.reset = function reset () {
+        var this$1 = this;
+
+    for (var key in this$1.data) {
+        this$1.onRemove(this$1.data[key]);
+    }
+
+    this.data = {};
+    this.order = [];
+
+    return this;
+};
+
+/**
+ * Add a key, value combination to the cache, trimming its size if this pushes
+ * it over max length.
+ *
+ * @param {string} key lookup key for the item
+ * @param {*} data any value
+ *
+ * @returns {LRUCache} this cache
+ * @private
+ */
+LRUCache.prototype.add = function add (key    , data   ) {
+
+    if (this.has(key)) {
+        this.order.splice(this.order.indexOf(key), 1);
+        this.data[key] = data;
+        this.order.push(key);
+
+    } else {
+        this.data[key] = data;
+        this.order.push(key);
+
+        if (this.order.length > this.max) {
+            var removedData = this.get(this.order[0]);
+            if (removedData) { this.onRemove(removedData); }
+        }
+    }
+
+    return this;
+};
+
+/**
+ * Determine whether the value attached to `key` is present
+ *
+ * @param {string} key the key to be looked-up
+ * @returns {boolean} whether the cache has this value
+ * @private
+ */
+LRUCache.prototype.has = function has (key    )      {
+    return key in this.data;
+};
+
+/**
+ * List all keys in the cache
+ *
+ * @returns {Array<string>} an array of keys in this cache.
+ * @private
+ */
+LRUCache.prototype.keys = function keys ()            {
+    return this.order;
+};
+
+/**
+ * Get the value attached to a specific key. If the key is not found,
+ * returns `null`
+ *
+ * @param {string} key the key to look up
+ * @returns {*} the data, or null if it isn't found
+ * @private
+ */
+LRUCache.prototype.get = function get (key    ) {
+    if (!this.has(key)) { return null; }
+
+    var data = this.data[key];
+
+    delete this.data[key];
+    this.order.splice(this.order.indexOf(key), 1);
+
+    return data;
+};
+
+/**
+ * Get the value attached to a specific key without removing data
+ * from the cache. If the key is not found, returns `null`
+ *
+ * @param {string} key the key to look up
+ * @returns {*} the data, or null if it isn't found
+ * @private
+ */
+LRUCache.prototype.getWithoutRemoving = function getWithoutRemoving (key    ) {
+    if (!this.has(key)) { return null; }
+
+    var data = this.data[key];
+    return data;
+};
+
+/**
+ * Remove a key/value combination from the cache.
+ *
+ * @param {string} key the key for the pair to delete
+ * @returns {LRUCache} this cache
+ * @private
+ */
+LRUCache.prototype.remove = function remove (key    ) {
+    if (!this.has(key)) { return this; }
+
+    var data = this.data[key];
+    delete this.data[key];
+    this.onRemove(data);
+    this.order.splice(this.order.indexOf(key), 1);
+
+    return this;
+};
+
+/**
+ * Change the max size of the cache.
+ *
+ * @param {number} max the max size of the cache
+ * @returns {LRUCache} this cache
+ * @private
+ */
+LRUCache.prototype.setMaxSize = function setMaxSize (max    )          {
+        var this$1 = this;
+
+    this.max = max;
+
+    while (this.order.length > this.max) {
+        var removedData = this$1.get(this$1.order[0]);
+        if (removedData) { this$1.onRemove(removedData); }
+    }
+
+    return this;
+};
+
+module.exports = LRUCache;
+
+},{}],247:[function(require,module,exports){
+'use strict';//      
+
+var config = require('./config');
+var browser = require('./browser');
+
+var help = 'See https://www.mapbox.com/api-documentation/#access-tokens';
+
+                   
+                     
+                      
+                 
+                         
+   
+
+function makeAPIURL(urlObject           , accessToken                      )         {
+    var apiUrlObject = parseUrl(config.API_URL);
+    urlObject.protocol = apiUrlObject.protocol;
+    urlObject.authority = apiUrlObject.authority;
+
+    if (apiUrlObject.path !== '/') {
+        urlObject.path = "" + (apiUrlObject.path) + (urlObject.path);
+    }
+
+    if (!config.REQUIRE_ACCESS_TOKEN) { return formatUrl(urlObject); }
+
+    accessToken = accessToken || config.ACCESS_TOKEN;
+    if (!accessToken)
+        { throw new Error(("An API access token is required to use Mapbox GL. " + help)); }
+    if (accessToken[0] === 's')
+        { throw new Error(("Use a public access token (pk.*) with Mapbox GL, not a secret access token (sk.*). " + help)); }
+
+    urlObject.params.push(("access_token=" + accessToken));
+    return formatUrl(urlObject);
+}
+
+function isMapboxURL(url        ) {
+    return url.indexOf('mapbox:') === 0;
+}
+
+exports.isMapboxURL = isMapboxURL;
+
+exports.normalizeStyleURL = function(url        , accessToken         )         {
+    if (!isMapboxURL(url)) { return url; }
+    var urlObject = parseUrl(url);
+    urlObject.path = "/styles/v1" + (urlObject.path);
+    return makeAPIURL(urlObject, accessToken);
+};
+
+exports.normalizeGlyphsURL = function(url        , accessToken         )         {
+    if (!isMapboxURL(url)) { return url; }
+    var urlObject = parseUrl(url);
+    urlObject.path = "/fonts/v1" + (urlObject.path);
+    return makeAPIURL(urlObject, accessToken);
+};
+
+exports.normalizeSourceURL = function(url        , accessToken         )         {
+    if (!isMapboxURL(url)) { return url; }
+    var urlObject = parseUrl(url);
+    urlObject.path = "/v4/" + (urlObject.authority) + ".json";
+    // TileJSON requests need a secure flag appended to their URLs so
+    // that the server knows to send SSL-ified resource references.
+    urlObject.params.push('secure');
+    return makeAPIURL(urlObject, accessToken);
+};
+
+exports.normalizeSpriteURL = function(url        , format        , extension        , accessToken         )         {
+    var urlObject = parseUrl(url);
+    if (!isMapboxURL(url)) {
+        urlObject.path += "" + format + extension;
+        return formatUrl(urlObject);
+    }
+    urlObject.path = "/styles/v1" + (urlObject.path) + "/sprite" + format + extension;
+    return makeAPIURL(urlObject, accessToken);
+};
+
+var imageExtensionRe = /(\.(png|jpg)\d*)(?=$)/;
+
+exports.normalizeTileURL = function(tileURL        , sourceURL          , tileSize          )         {
+    if (!sourceURL || !isMapboxURL(sourceURL)) { return tileURL; }
+
+    var urlObject = parseUrl(tileURL);
+
+    // The v4 mapbox tile API supports 512x512 image tiles only when @2x
+    // is appended to the tile URL. If `tileSize: 512` is specified for
+    // a Mapbox raster source force the @2x suffix even if a non hidpi device.
+    var suffix = browser.devicePixelRatio >= 2 || tileSize === 512 ? '@2x' : '';
+    var extension = browser.supportsWebp ? '.webp' : '$1';
+    urlObject.path = urlObject.path.replace(imageExtensionRe, ("" + suffix + extension));
+
+    replaceTempAccessToken(urlObject.params);
+    return formatUrl(urlObject);
+};
+
+function replaceTempAccessToken(params               ) {
+    for (var i = 0; i < params.length; i++) {
+        if (params[i].indexOf('access_token=tk.') === 0) {
+            params[i] = "access_token=" + (config.ACCESS_TOKEN || '');
+        }
+    }
+}
+
+var urlRe = /^(\w+):\/\/([^/?]*)(\/[^?]+)?\??(.+)?/;
+
+function parseUrl(url        )            {
+    var parts = url.match(urlRe);
+    if (!parts) {
+        throw new Error('Unable to parse URL object');
+    }
+    return {
+        protocol: parts[1],
+        authority: parts[2],
+        path: parts[3] || '/',
+        params: parts[4] ? parts[4].split('&') : []
+    };
+}
+
+function formatUrl(obj           )         {
+    var params = obj.params.length ? ("?" + (obj.params.join('&'))) : '';
+    return ((obj.protocol) + "://" + (obj.authority) + (obj.path) + params);
+}
+
+},{"./browser":232,"./config":236}],248:[function(require,module,exports){
+'use strict';//      
+
+/* eslint-disable new-cap */
+
+var isChar = require('./is_char_in_unicode_block');
+
+module.exports.allowsIdeographicBreaking = function(chars        ) {
+    for (var i = 0, list = chars; i < list.length; i += 1) {
+        var char = list[i];
+
+        if (!exports.charAllowsIdeographicBreaking(char.charCodeAt(0))) { return false; }
+    }
+    return true;
+};
+
+module.exports.allowsVerticalWritingMode = function(chars        ) {
+    for (var i = 0, list = chars; i < list.length; i += 1) {
+        var char = list[i];
+
+        if (exports.charHasUprightVerticalOrientation(char.charCodeAt(0))) { return true; }
+    }
+    return false;
+};
+
+module.exports.allowsLetterSpacing = function(chars        ) {
+    for (var i = 0, list = chars; i < list.length; i += 1) {
+        var char = list[i];
+
+        if (!exports.charAllowsLetterSpacing(char.charCodeAt(0))) { return false; }
+    }
+    return true;
+};
+
+module.exports.charAllowsLetterSpacing = function(char        ) {
+    if (isChar['Arabic'](char)) { return false; }
+    if (isChar['Arabic Supplement'](char)) { return false; }
+    if (isChar['Arabic Extended-A'](char)) { return false; }
+    if (isChar['Arabic Presentation Forms-A'](char)) { return false; }
+    if (isChar['Arabic Presentation Forms-B'](char)) { return false; }
+
+    return true;
+};
+
+module.exports.charAllowsIdeographicBreaking = function(char        ) {
+    // Return early for characters outside all ideographic ranges.
+    if (char < 0x2E80) { return false; }
+
+    if (isChar['Bopomofo Extended'](char)) { return true; }
+    if (isChar['Bopomofo'](char)) { return true; }
+    if (isChar['CJK Compatibility Forms'](char)) { return true; }
+    if (isChar['CJK Compatibility Ideographs'](char)) { return true; }
+    if (isChar['CJK Compatibility'](char)) { return true; }
+    if (isChar['CJK Radicals Supplement'](char)) { return true; }
+    if (isChar['CJK Strokes'](char)) { return true; }
+    if (isChar['CJK Symbols and Punctuation'](char)) { return true; }
+    if (isChar['CJK Unified Ideographs Extension A'](char)) { return true; }
+    if (isChar['CJK Unified Ideographs'](char)) { return true; }
+    if (isChar['Enclosed CJK Letters and Months'](char)) { return true; }
+    if (isChar['Halfwidth and Fullwidth Forms'](char)) { return true; }
+    if (isChar['Hiragana'](char)) { return true; }
+    if (isChar['Ideographic Description Characters'](char)) { return true; }
+    if (isChar['Kangxi Radicals'](char)) { return true; }
+    if (isChar['Katakana Phonetic Extensions'](char)) { return true; }
+    if (isChar['Katakana'](char)) { return true; }
+    if (isChar['Vertical Forms'](char)) { return true; }
+    if (isChar['Yi Radicals'](char)) { return true; }
+    if (isChar['Yi Syllables'](char)) { return true; }
+
+    return false;
+};
+
+// The following logic comes from
+// <http://www.unicode.org/Public/vertical/revision-17/VerticalOrientation-17.txt>.
+// The data file denotes with â€œUâ€ or â€œTuâ€ any codepoint that may be drawn
+// upright in vertical text but does not distinguish between upright and
+// â€œneutralâ€ characters.
+
+// Blocks in the Unicode supplementary planes are excluded from this module due
+// to <https://github.com/mapbox/mapbox-gl/issues/29>.
+
+/**
+ * Returns true if the given Unicode codepoint identifies a character with
+ * upright orientation.
+ *
+ * A character has upright orientation if it is drawn upright (unrotated)
+ * whether the line is oriented horizontally or vertically, even if both
+ * adjacent characters can be rotated. For example, a Chinese character is
+ * always drawn upright. An uprightly oriented character causes an adjacent
+ * â€œneutralâ€ character to be drawn upright as well.
+ */
+exports.charHasUprightVerticalOrientation = function(char        ) {
+    if (char === 0x02EA /* modifier letter yin departing tone mark */ ||
+        char === 0x02EB /* modifier letter yang departing tone mark */) {
+        return true;
+    }
+
+    // Return early for characters outside all ranges whose characters remain
+    // upright in vertical writing mode.
+    if (char < 0x1100) { return false; }
+
+    if (isChar['Bopomofo Extended'](char)) { return true; }
+    if (isChar['Bopomofo'](char)) { return true; }
+    if (isChar['CJK Compatibility Forms'](char)) {
+        if (!(char >= 0xFE49 /* dashed overline */ && char <= 0xFE4F /* wavy low line */)) {
+            return true;
+        }
+    }
+    if (isChar['CJK Compatibility Ideographs'](char)) { return true; }
+    if (isChar['CJK Compatibility'](char)) { return true; }
+    if (isChar['CJK Radicals Supplement'](char)) { return true; }
+    if (isChar['CJK Strokes'](char)) { return true; }
+    if (isChar['CJK Symbols and Punctuation'](char)) {
+        if (!(char >= 0x3008 /* left angle bracket */ && char <= 0x3011 /* right black lenticular bracket */) &&
+            !(char >= 0x3014 /* left tortoise shell bracket */ && char <= 0x301F /* low double prime quotation mark */) &&
+            char !== 0x3030 /* wavy dash */) {
+            return true;
+        }
+    }
+    if (isChar['CJK Unified Ideographs Extension A'](char)) { return true; }
+    if (isChar['CJK Unified Ideographs'](char)) { return true; }
+    if (isChar['Enclosed CJK Letters and Months'](char)) { return true; }
+    if (isChar['Hangul Compatibility Jamo'](char)) { return true; }
+    if (isChar['Hangul Jamo Extended-A'](char)) { return true; }
+    if (isChar['Hangul Jamo Extended-B'](char)) { return true; }
+    if (isChar['Hangul Jamo'](char)) { return true; }
+    if (isChar['Hangul Syllables'](char)) { return true; }
+    if (isChar['Hiragana'](char)) { return true; }
+    if (isChar['Ideographic Description Characters'](char)) { return true; }
+    if (isChar['Kanbun'](char)) { return true; }
+    if (isChar['Kangxi Radicals'](char)) { return true; }
+    if (isChar['Katakana Phonetic Extensions'](char)) { return true; }
+    if (isChar['Katakana'](char)) {
+        if (char !== 0x30FC /* katakana-hiragana prolonged sound mark */) {
+            return true;
+        }
+    }
+    if (isChar['Halfwidth and Fullwidth Forms'](char)) {
+        if (char !== 0xFF08 /* fullwidth left parenthesis */ &&
+            char !== 0xFF09 /* fullwidth right parenthesis */ &&
+            char !== 0xFF0D /* fullwidth hyphen-minus */ &&
+            !(char >= 0xFF1A /* fullwidth colon */ && char <= 0xFF1E /* fullwidth greater-than sign */) &&
+            char !== 0xFF3B /* fullwidth left square bracket */ &&
+            char !== 0xFF3D /* fullwidth right square bracket */ &&
+            char !== 0xFF3F /* fullwidth low line */ &&
+            !(char >= 0xFF5B /* fullwidth left curly bracket */ && char <= 0xFFDF) &&
+            char !== 0xFFE3 /* fullwidth macron */ &&
+            !(char >= 0xFFE8 /* halfwidth forms light vertical */ && char <= 0xFFEF)) {
+            return true;
+        }
+    }
+    if (isChar['Small Form Variants'](char)) {
+        if (!(char >= 0xFE58 /* small em dash */ && char <= 0xFE5E /* small right tortoise shell bracket */) &&
+            !(char >= 0xFE63 /* small hyphen-minus */ && char <= 0xFE66 /* small equals sign */)) {
+            return true;
+        }
+    }
+    if (isChar['Unified Canadian Aboriginal Syllabics'](char)) { return true; }
+    if (isChar['Unified Canadian Aboriginal Syllabics Extended'](char)) { return true; }
+    if (isChar['Vertical Forms'](char)) { return true; }
+    if (isChar['Yijing Hexagram Symbols'](char)) { return true; }
+    if (isChar['Yi Syllables'](char)) { return true; }
+    if (isChar['Yi Radicals'](char)) { return true; }
+
+    return false;
+};
+
+/**
+ * Returns true if the given Unicode codepoint identifies a character with
+ * neutral orientation.
+ *
+ * A character has neutral orientation if it may be drawn rotated or unrotated
+ * when the line is oriented vertically, depending on the orientation of the
+ * adjacent characters. For example, along a verticlly oriented line, the vulgar
+ * fraction Â½ is drawn upright among Chinese characters but rotated among Latin
+ * letters. A neutrally oriented character does not influence whether an
+ * adjacent character is drawn upright or rotated.
+ */
+exports.charHasNeutralVerticalOrientation = function(char        ) {
+    if (isChar['Latin-1 Supplement'](char)) {
+        if (char === 0x00A7 /* section sign */ ||
+            char === 0x00A9 /* copyright sign */ ||
+            char === 0x00AE /* registered sign */ ||
+            char === 0x00B1 /* plus-minus sign */ ||
+            char === 0x00BC /* vulgar fraction one quarter */ ||
+            char === 0x00BD /* vulgar fraction one half */ ||
+            char === 0x00BE /* vulgar fraction three quarters */ ||
+            char === 0x00D7 /* multiplication sign */ ||
+            char === 0x00F7 /* division sign */) {
+            return true;
+        }
+    }
+    if (isChar['General Punctuation'](char)) {
+        if (char === 0x2016 /* double vertical line */ ||
+            char === 0x2020 /* dagger */ ||
+            char === 0x2021 /* double dagger */ ||
+            char === 0x2030 /* per mille sign */ ||
+            char === 0x2031 /* per ten thousand sign */ ||
+            char === 0x203B /* reference mark */ ||
+            char === 0x203C /* double exclamation mark */ ||
+            char === 0x2042 /* asterism */ ||
+            char === 0x2047 /* double question mark */ ||
+            char === 0x2048 /* question exclamation mark */ ||
+            char === 0x2049 /* exclamation question mark */ ||
+            char === 0x2051 /* two asterisks aligned vertically */) {
+            return true;
+        }
+    }
+    if (isChar['Letterlike Symbols'](char)) { return true; }
+    if (isChar['Number Forms'](char)) { return true; }
+    if (isChar['Miscellaneous Technical'](char)) {
+        if ((char >= 0x2300 /* diameter sign */ && char <= 0x2307 /* wavy line */) ||
+            (char >= 0x230C /* bottom right crop */ && char <= 0x231F /* bottom right corner */) ||
+            (char >= 0x2324 /* up arrowhead between two horizontal bars */ && char <= 0x2328 /* keyboard */) ||
+            char === 0x232B /* erase to the left */ ||
+            (char >= 0x237D /* shouldered open box */ && char <= 0x239A /* clear screen symbol */) ||
+            (char >= 0x23BE /* dentistry symbol light vertical and top right */ && char <= 0x23CD /* square foot */) ||
+            char === 0x23CF /* eject symbol */ ||
+            (char >= 0x23D1 /* metrical breve */ && char <= 0x23DB /* fuse */) ||
+            (char >= 0x23E2 /* white trapezium */ && char <= 0x23FF)) {
+            return true;
+        }
+    }
+    if (isChar['Control Pictures'](char) && char !== 0x2423 /* open box */) { return true; }
+    if (isChar['Optical Character Recognition'](char)) { return true; }
+    if (isChar['Enclosed Alphanumerics'](char)) { return true; }
+    if (isChar['Geometric Shapes'](char)) { return true; }
+    if (isChar['Miscellaneous Symbols'](char)) {
+        if (!(char >= 0x261A /* black left pointing index */ && char <= 0x261F /* white down pointing index */)) {
+            return true;
+        }
+    }
+    if (isChar['Miscellaneous Symbols and Arrows'](char)) {
+        if ((char >= 0x2B12 /* square with top half black */ && char <= 0x2B2F /* white vertical ellipse */) ||
+            (char >= 0x2B50 /* white medium star */ && char <= 0x2B59 /* heavy circled saltire */) ||
+            (char >= 0x2BB8 /* upwards white arrow from bar with horizontal bar */ && char <= 0x2BEB)) {
+            return true;
+        }
+    }
+    if (isChar['CJK Symbols and Punctuation'](char)) { return true; }
+    if (isChar['Katakana'](char)) { return true; }
+    if (isChar['Private Use Area'](char)) { return true; }
+    if (isChar['CJK Compatibility Forms'](char)) { return true; }
+    if (isChar['Small Form Variants'](char)) { return true; }
+    if (isChar['Halfwidth and Fullwidth Forms'](char)) { return true; }
+
+    if (char === 0x221E /* infinity */ ||
+        char === 0x2234 /* therefore */ ||
+        char === 0x2235 /* because */ ||
+        (char >= 0x2700 /* black safety scissors */ && char <= 0x2767 /* rotated floral heart bullet */) ||
+        (char >= 0x2776 /* dingbat negative circled digit one */ && char <= 0x2793 /* dingbat negative circled sans-serif number ten */) ||
+        char === 0xFFFC /* object replacement character */ ||
+        char === 0xFFFD /* replacement character */) {
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Returns true if the given Unicode codepoint identifies a character with
+ * rotated orientation.
+ *
+ * A character has rotated orientation if it is drawn rotated when the line is
+ * oriented vertically, even if both adjacent characters are upright. For
+ * example, a Latin letter is drawn rotated along a vertical line. A rotated
+ * character causes an adjacent â€œneutralâ€ character to be drawn rotated as well.
+ */
+exports.charHasRotatedVerticalOrientation = function(char        ) {
+    return !(exports.charHasUprightVerticalOrientation(char) ||
+             exports.charHasNeutralVerticalOrientation(char));
+};
+
+},{"./is_char_in_unicode_block":245}],249:[function(require,module,exports){
+'use strict';//      
+
+var LngLat = require('../geo/lng_lat');
+
+                                                
+                                              
+
+/**
+ * Given a LngLat, prior projected position, and a transform, return a new LngLat shifted
+ * n Ã— 360Â° east or west for some n â‰¥ 0 such that:
+ *
+ * * the projected location of the result is on screen, if possible, and secondarily:
+ * * the difference between the projected location of the result and the prior position
+ *   is minimized.
+ *
+ * The object is to preserve perceived object constancy for Popups and Markers as much as
+ * possible; they should avoid shifting large distances across the screen, even when the
+ * map center changes by Â±360Â° due to automatic wrapping, and when about to go off screen,
+ * should wrap just enough to avoid doing so.
+ *
+ * @private
+ */
+module.exports = function(lngLat        , priorPos        , transform           )         {
+    lngLat = new LngLat(lngLat.lng, lngLat.lat);
+
+    // First, try shifting one world in either direction, and see if either is closer to the
+    // prior position. This preserves object constancy when the map center is auto-wrapped
+    // during animations.
+    if (priorPos) {
+        var left  = new LngLat(lngLat.lng - 360, lngLat.lat);
+        var right = new LngLat(lngLat.lng + 360, lngLat.lat);
+        var delta = transform.locationPoint(lngLat).distSqr(priorPos);
+        if (transform.locationPoint(left).distSqr(priorPos) < delta) {
+            lngLat = left;
+        } else if (transform.locationPoint(right).distSqr(priorPos) < delta) {
+            lngLat = right;
+        }
+    }
+
+    // Second, wrap toward the center until the new position is on screen, or we can't get
+    // any closer.
+    while (Math.abs(lngLat.lng - transform.center.lng) > 180) {
+        var pos = transform.locationPoint(lngLat);
+        if (pos.x >= 0 && pos.y >= 0 && pos.x <= transform.width && pos.y <= transform.height) {
+            break;
+        }
+        if (lngLat.lng > transform.center.lng) {
+            lngLat.lng -= 360;
+        } else {
+            lngLat.lng += 360;
+        }
+    }
+
+    return lngLat;
+};
+
+},{"../geo/lng_lat":69}],250:[function(require,module,exports){
+'use strict';//      
+
+// Note: all "sizes" are measured in bytes
+
+var assert = require('assert');
+
+module.exports = createStructArrayType;
+
+var viewTypes = {
+    'Int8': Int8Array,
+    'Uint8': Uint8Array,
+    'Int16': Int16Array,
+    'Uint16': Uint16Array,
+    'Int32': Int32Array,
+    'Uint32': Uint32Array,
+    'Float32': Float32Array
+};
+
+                                               
+
+/**
+ * @typedef {Object} StructMember
+ * @private
+ * @property {string} name
+ * @property {string} type
+ * @property {number} components
+ */
+
+/**
+ * @private
+ */
+var Struct = function Struct(structArray           , index      ) {
+      this._structArray = structArray;
+      this._pos1 = index * this.size;
+      this._pos2 = this._pos1 / 2;
+      this._pos4 = this._pos1 / 4;
+      this._pos8 = this._pos1 / 8;
+  };
+
+var DEFAULT_CAPACITY = 128;
+var RESIZE_MULTIPLIER = 5;
+
+                                 
+                 
+                   
+                       
+                  
+  
+
+                                     
+                   
+                            
+  
+
+                                         
+                             
+                     
+                       
+                             
+       
+                      
+  
+
+/**
+ * The StructArray class is inherited by the custom StructArrayType classes created with
+ * `createStructArrayType(members, options)`.
+ * @private
+ */
+var StructArray = function StructArray(serialized                      ) {
+      this.isTransferred = false;
+
+      if (serialized !== undefined) {
+      // Create from an serialized StructArray
+          this.arrayBuffer = serialized.arrayBuffer;
+          this.length = serialized.length;
+          this.capacity = this.arrayBuffer.byteLength / this.bytesPerElement;
+          this._refreshViews();
+
+      // Create a new StructArray
+      } else {
+          this.capacity = -1;
+          this.resize(0);
+      }
+  };
+
+  /**
+   * Serialize the StructArray type. This serializes the *type* not an instance of the type.
+   */
+  StructArray.serialize = function serialize ()                          {
+      return {
+          members: this.prototype.members,
+          alignment: this.prototype.StructType.prototype.alignment
+      };
+  };
+
+  /**
+   * Serialize this StructArray instance
+   */
+  StructArray.prototype.serialize = function serialize (transferables                    )                      {
+      assert(!this.isTransferred);
+
+      this._trim();
+
+      if (transferables) {
+          this.isTransferred = true;
+          transferables.push(this.arrayBuffer);
+      }
+      return {
+          length: this.length,
+          arrayBuffer: this.arrayBuffer
+      };
+  };
+
+  /**
+   * Return the Struct at the given location in the array.
+   * @param {number} index The index of the element.
+   */
+  StructArray.prototype.get = function get (index      ) {
+      assert(!this.isTransferred);
+      return new this.StructType(this, index);
+  };
+
+  /**
+   * Resize the array to discard unused capacity.
+   */
+  StructArray.prototype._trim = function _trim () {
+      if (this.length !== this.capacity) {
+          this.capacity = this.length;
+          this.arrayBuffer = this.arrayBuffer.slice(0, this.length * this.bytesPerElement);
+          this._refreshViews();
+      }
+  };
+
+  /**
+   * Resets the the length of the array to 0 without de-allocating capcacity.
+   */
+  StructArray.prototype.clear = function clear () {
+      this.length = 0;
+  };
+
+  /**
+   * Resize the array.
+   * If `n` is greater than the current length then additional elements with undefined values are added.
+   * If `n` is less than the current length then the array will be reduced to the first `n` elements.
+   * @param {number} n The new size of the array.
+   */
+  StructArray.prototype.resize = function resize (n      ) {
+      assert(!this.isTransferred);
+
+      this.length = n;
+      if (n > this.capacity) {
+          this.capacity = Math.max(n, Math.floor(this.capacity * RESIZE_MULTIPLIER), DEFAULT_CAPACITY);
+          this.arrayBuffer = new ArrayBuffer(this.capacity * this.bytesPerElement);
+
+          var oldUint8Array = this.uint8;
+          this._refreshViews();
+          if (oldUint8Array) { this.uint8.set(oldUint8Array); }
+      }
+  };
+
+  /**
+   * Create TypedArray views for the current ArrayBuffer.
+   */
+  StructArray.prototype._refreshViews = function _refreshViews () {
+        var this$1 = this;
+
+      for (var i = 0, list = this$1._usedTypes; i < list.length; i += 1) {
+          // $FlowFixMe
+          var type = list[i];
+
+          this$1[getArrayViewName(type)] = new viewTypes[type](this$1.arrayBuffer);
+      }
+  };
+
+  /**
+   * Output the `StructArray` between indices `startIndex` and `endIndex` as an array of `StructTypes` to enable sorting
+   * @param {number} startIndex
+   * @param {number} endIndex
+   */
+  StructArray.prototype.toArray = function toArray (startIndex      , endIndex      ) {
+        var this$1 = this;
+
+      assert(!this.isTransferred);
+
+      var array = [];
+
+      for (var i = startIndex; i < endIndex; i++) {
+          var struct = this$1.get(i);
+          array.push(struct);
+      }
+
+      return array;
+  };
+
+                                           
+
+var structArrayTypeCache                                      = {};
+
+/**
+ * `createStructArrayType` is used to create new `StructArray` types.
+ *
+ * `StructArray` provides an abstraction over `ArrayBuffer` and `TypedArray` making it behave like
+ * an array of typed structs. A StructArray is comprised of elements. Each element has a set of
+ * members that are defined when the `StructArrayType` is created.
+ *
+ * StructArrays useful for creating large arrays that:
+ * - can be transferred from workers as a Transferable object
+ * - can be copied cheaply
+ * - use less memory for lower-precision members
+ * - can be used as buffers in WebGL.
+ *
+ * @class
+ * @param {Object} options
+ * @param {number} options.alignment Use `4` to align members to 4 byte boundaries. Default is 1.
+ * @param {Array<StructMember>} options.members
+ * @example
+ *
+ * var PointArrayType = createStructArrayType({
+ *  members: [
+ *      { type: 'Int16', name: 'x' },
+ *      { type: 'Int16', name: 'y' }
+ *  ]});
+ *
+ *  var pointArray = new PointArrayType();
+ *  pointArray.emplaceBack(10, 15);
+ *  pointArray.emplaceBack(20, 35);
+ *
+ *  point = pointArray.get(0);
+ *  assert(point.x === 10);
+ *  assert(point.y === 15);
+ *
+ * @private
+ */
+
+function createStructArrayType(options                           )                     {
+    var key = JSON.stringify(options);
+
+    if (structArrayTypeCache[key]) {
+        return structArrayTypeCache[key];
+    }
+
+    var alignment = options.alignment === undefined ? 1 : options.alignment;
+
+    var offset = 0;
+    var maxSize = 0;
+    var usedTypes = ['Uint8'];
+
+    var members = options.members.map(function (member) {
+        assert(member.name.length);
+        assert(member.type in viewTypes);
+
+        if (usedTypes.indexOf(member.type) < 0) { usedTypes.push(member.type); }
+
+        var typeSize = sizeOf(member.type);
+        var memberOffset = offset = align(offset, Math.max(alignment, typeSize));
+        var components = member.components || 1;
+
+        maxSize = Math.max(maxSize, typeSize);
+        offset += typeSize * components;
+
+        return {
+            name: member.name,
+            type: member.type,
+            components: components,
+            offset: memberOffset
+        };
+    });
+
+    var size = align(offset, Math.max(maxSize, alignment));
+
+    var StructType = (function (Struct) {
+      function StructType () {
+        Struct.apply(this, arguments);
+      }if ( Struct ) StructType.__proto__ = Struct;
+      StructType.prototype = Object.create( Struct && Struct.prototype );
+      StructType.prototype.constructor = StructType;
+
+      
+
+      return StructType;
+    }(Struct));
+
+    StructType.prototype.alignment = alignment;
+    StructType.prototype.size = size;
+
+    for (var i = 0, list = members; i < list.length; i += 1) {
+        var member = list[i];
+
+      for (var c = 0; c < member.components; c++) {
+            var name = member.name;
+            if (member.components > 1) {
+                name += c;
+            }
+            if (name in StructType.prototype) {
+                throw new Error((name + " is a reserved name and cannot be used as a member name."));
+            }
+            Object.defineProperty(
+                StructType.prototype,
+                name,
+                createAccessors(member, c)
+            );
+        }
+    }
+
+    var StructArrayType = (function (StructArray) {
+      function StructArrayType () {
+        StructArray.apply(this, arguments);
+      }if ( StructArray ) StructArrayType.__proto__ = StructArray;
+      StructArrayType.prototype = Object.create( StructArray && StructArray.prototype );
+      StructArrayType.prototype.constructor = StructArrayType;
+
+      
+
+      return StructArrayType;
+    }(StructArray));
+
+    StructArrayType.prototype.members = members;
+    StructArrayType.prototype.StructType = StructType;
+    StructArrayType.prototype.bytesPerElement = size;
+    StructArrayType.prototype.emplaceBack = createEmplaceBack(members, size);
+    StructArrayType.prototype._usedTypes = usedTypes;
+
+    structArrayTypeCache[key] = StructArrayType;
+
+    return StructArrayType;
+}
+
+function align(offset        , size        )         {
+    return Math.ceil(offset / size) * size;
+}
+
+function sizeOf(type          )         {
+    return viewTypes[type].BYTES_PER_ELEMENT;
+}
+
+function getArrayViewName(type          )         {
+    return type.toLowerCase();
+}
+
+/*
+ * > I saw major perf gains by shortening the source of these generated methods (i.e. renaming
+ * > elementIndex to i) (likely due to v8 inlining heuristics).
+ * - lucaswoj
+ */
+function createEmplaceBack(members, bytesPerElement)           {
+    var usedTypeSizes = [];
+    var argNames = [];
+    var body =
+        'var i = this.length;\n' +
+        'this.resize(this.length + 1);\n';
+
+    for (var i = 0, list = members; i < list.length; i += 1) {
+        var member = list[i];
+
+      var size = sizeOf(member.type);
+
+        // array offsets to the end of current data for each type size
+        // var o{SIZE} = i * ROUNDED(bytesPerElement / size);
+        if (usedTypeSizes.indexOf(size) < 0) {
+            usedTypeSizes.push(size);
+            body += "var o" + (size.toFixed(0)) + " = i * " + ((bytesPerElement / size).toFixed(0)) + ";\n";
+        }
+
+        for (var c = 0; c < member.components; c++) {
+            // arguments v0, v1, v2, ... are, in order, the components of
+            // member 0, then the components of member 1, etc.
+            var argName = "v" + (argNames.length);
+            // The index for `member` component `c` into the appropriate type array is:
+            // this.{TYPE}[o{SIZE} + MEMBER_OFFSET + {c}] = v{X}
+            // where MEMBER_OFFSET = ROUND(member.offset / size) is the per-element
+            // offset of this member into the array
+            var index = "o" + (size.toFixed(0)) + " + " + ((member.offset / size + c).toFixed(0));
+            body += "this." + (getArrayViewName(member.type)) + "[" + index + "] = " + argName + ";\n";
+            argNames.push(argName);
+        }
+    }
+
+    body += 'return i;';
+
+    return new Function(argNames.toString(), body);
+}
+
+function createMemberComponentString(member, component) {
+    var elementOffset = "this._pos" + (sizeOf(member.type).toFixed(0));
+    var componentOffset = (member.offset / sizeOf(member.type) + component).toFixed(0);
+    var index = elementOffset + " + " + componentOffset;
+    return ("this._structArray." + (getArrayViewName(member.type)) + "[" + index + "]");
+}
+
+function createAccessors(member, c) {
+    var code = createMemberComponentString(member, c);
+    return {
+        get: new Function(("return " + code + ";")),
+        set: new Function('x', (code + " = x;"))
+    };
+}
+
+},{"assert":11}],251:[function(require,module,exports){
+'use strict';//      
+
+var browser = require('./browser');
+
+/**
+ * Throttles the provided function to run at most every
+ * 'frequency' milliseconds
+ *
+ * @interface Throttler
+ * @private
+ */
+var Throttler = function Throttler(frequency    , throttledFunction        ) {
+    this.frequency = frequency;
+    this.throttledFunction = throttledFunction;
+    this.lastInvocation = 0;
+};
+
+/**
+ * Request an invocation of the throttled function.
+ *
+ * @memberof Throttler
+ * @instance
+ */
+Throttler.prototype.invoke = function invoke () {
+        var this$1 = this;
+
+    if (this.pendingInvocation) {
+        return;
+    }
+
+    var timeToNextInvocation = this.lastInvocation === 0 ?
+        0 :
+        (this.lastInvocation + this.frequency) - browser.now();
+
+    if (timeToNextInvocation <= 0) {
+        this.lastInvocation = browser.now();
+        this.throttledFunction();
+    } else {
+        this.pendingInvocation = setTimeout(function () {
+            this$1.pendingInvocation = undefined;
+            this$1.lastInvocation = browser.now();
+            this$1.throttledFunction();
+        }, timeToNextInvocation);
+    }
+};
+
+Throttler.prototype.stop = function stop () {
+    if (this.pendingInvocation) {
+        clearTimeout(this.pendingInvocation);
+        this.pendingInvocation = undefined;
+    }
+};
+
+module.exports = Throttler;
+
+},{"./browser":232}],252:[function(require,module,exports){
+'use strict';//      
+
+module.exports = resolveTokens;
+
+/**
+ * Replace tokens in a string template with values in an object
+ *
+ * @param properties a key/value relationship between tokens and replacements
+ * @param text the template string
+ * @returns the template with tokens replaced
+ * @private
+ */
+function resolveTokens(properties                    , text        )         {
+    return text.replace(/{([^{}]+)}/g, function (match, key        ) {
+        return key in properties ? String(properties[key]) : '';
+    });
+}
+
+},{}],253:[function(require,module,exports){
+'use strict';//      
+
+var UnitBezier = require('@mapbox/unitbezier');
+var Coordinate = require('../geo/coordinate');
+var Point = require('@mapbox/point-geometry');
+
+/**
+ * @module util
+ * @private
+ */
+
+/**
+ * Given a value `t` that varies between 0 and 1, return
+ * an interpolation function that eases between 0 and 1 in a pleasing
+ * cubic in-out fashion.
+ *
+ * @private
+ */
+exports.easeCubicInOut = function(t        )         {
+    if (t <= 0) { return 0; }
+    if (t >= 1) { return 1; }
+    var t2 = t * t,
+        t3 = t2 * t;
+    return 4 * (t < 0.5 ? t3 : 3 * (t - t2) + t3 - 0.75);
+};
+
+/**
+ * Given given (x, y), (x1, y1) control points for a bezier curve,
+ * return a function that interpolates along that curve.
+ *
+ * @param p1x control point 1 x coordinate
+ * @param p1y control point 1 y coordinate
+ * @param p2x control point 2 x coordinate
+ * @param p2y control point 2 y coordinate
+ * @private
+ */
+exports.bezier = function(p1x        , p1y        , p2x        , p2y        )                        {
+    var bezier = new UnitBezier(p1x, p1y, p2x, p2y);
+    return function(t        ) {
+        return bezier.solve(t);
+    };
+};
+
+/**
+ * A default bezier-curve powered easing function with
+ * control points (0.25, 0.1) and (0.25, 1)
+ *
+ * @private
+ */
+exports.ease = exports.bezier(0.25, 0.1, 0.25, 1);
+
+/**
+ * constrain n to the given range via min + max
+ *
+ * @param n value
+ * @param min the minimum value to be returned
+ * @param max the maximum value to be returned
+ * @returns the clamped value
+ * @private
+ */
+exports.clamp = function (n        , min        , max        )         {
+    return Math.min(max, Math.max(min, n));
+};
+
+/**
+ * constrain n to the given range, excluding the minimum, via modular arithmetic
+ *
+ * @param n value
+ * @param min the minimum value to be returned, exclusive
+ * @param max the maximum value to be returned, inclusive
+ * @returns constrained number
+ * @private
+ */
+exports.wrap = function (n        , min        , max        )         {
+    var d = max - min;
+    var w = ((n - min) % d + d) % d + min;
+    return (w === min) ? max : w;
+};
+
+/*
+ * Call an asynchronous function on an array of arguments,
+ * calling `callback` with the completed results of all calls.
+ *
+ * @param array input to each call of the async function.
+ * @param fn an async function with signature (data, callback)
+ * @param callback a callback run after all async work is done.
+ * called with an array, containing the results of each async call.
+ * @private
+ */
+exports.asyncAll = function               (
+    array             ,
+    fn                                                    ,
+    callback                         
+) {
+    if (!array.length) { return callback(null, []); }
+    var remaining = array.length;
+    var results = new Array(array.length);
+    var error = null;
+    array.forEach(function (item, i) {
+        fn(item, function (err, result) {
+            if (err) { error = err; }
+            results[i] = ((result     )        ); // https://github.com/facebook/flow/issues/2123
+            if (--remaining === 0) { callback(error, results); }
+        });
+    });
+};
+
+/*
+ * Polyfill for Object.values. Not fully spec compliant, but we don't
+ * need it to be.
+ *
+ * @private
+ */
+exports.values = function   (obj                    )           {
+    var result = [];
+    for (var k in obj) {
+        result.push(obj[k]);
+    }
+    return result;
+};
+
+/*
+ * Compute the difference between the keys in one object and the keys
+ * in another object.
+ *
+ * @returns keys difference
+ * @private
+ */
+exports.keysDifference = function      (obj                    , other                    )                {
+    var difference = [];
+    for (var i in obj) {
+        if (!(i in other)) {
+            difference.push(i);
+        }
+    }
+    return difference;
+};
+
+/**
+ * Given a destination object and optionally many source objects,
+ * copy all properties from the source objects into the destination.
+ * The last source object given overrides properties from previous
+ * source objects.
+ *
+ * @param dest destination object
+ * @param sources sources from which properties are pulled
+ * @private
+ */
+exports.extend = function (dest                )         {
+    var sources = [], len = arguments.length - 1;
+    while ( len-- > 0 ) sources[ len ] = arguments[ len + 1 ];
+
+    for (var i = 0, list = sources; i < list.length; i += 1) {
+        var src = list[i];
+
+        for (var k in src) {
+            dest[k] = src[k];
+        }
+    }
+    return dest;
+};
+
+/**
+ * Given an object and a number of properties as strings, return version
+ * of that object with only those properties.
+ *
+ * @param src the object
+ * @param properties an array of property names chosen
+ * to appear on the resulting object.
+ * @returns object with limited properties.
+ * @example
+ * var foo = { name: 'Charlie', age: 10 };
+ * var justName = pick(foo, ['name']);
+ * // justName = { name: 'Charlie' }
+ * @private
+ */
+exports.pick = function (src        , properties               )         {
+    var result = {};
+    for (var i = 0; i < properties.length; i++) {
+        var k = properties[i];
+        if (k in src) {
+            result[k] = src[k];
+        }
+    }
+    return result;
+};
+
+var id = 1;
+
+/**
+ * Return a unique numeric id, starting at 1 and incrementing with
+ * each call.
+ *
+ * @returns unique numeric id.
+ * @private
+ */
+exports.uniqueId = function ()         {
+    return id++;
+};
+
+/**
+ * Given an array of member function names as strings, replace all of them
+ * with bound versions that will always refer to `context` as `this`. This
+ * is useful for classes where otherwise event bindings would reassign
+ * `this` to the evented object or some other value: this lets you ensure
+ * the `this` value always.
+ *
+ * @param fns list of member function names
+ * @param context the context value
+ * @example
+ * function MyClass() {
+ *   bindAll(['ontimer'], this);
+ *   this.name = 'Tom';
+ * }
+ * MyClass.prototype.ontimer = function() {
+ *   alert(this.name);
+ * };
+ * var myClass = new MyClass();
+ * setTimeout(myClass.ontimer, 100);
+ * @private
+ */
+exports.bindAll = function(fns               , context        )       {
+    fns.forEach(function (fn) {
+        if (!context[fn]) { return; }
+        context[fn] = context[fn].bind(context);
+    });
+};
+
+/**
+ * Given a list of coordinates, get their center as a coordinate.
+ *
+ * @returns centerpoint
+ * @private
+ */
+exports.getCoordinatesCenter = function(coords                   )             {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+
+    for (var i = 0; i < coords.length; i++) {
+        minX = Math.min(minX, coords[i].column);
+        minY = Math.min(minY, coords[i].row);
+        maxX = Math.max(maxX, coords[i].column);
+        maxY = Math.max(maxY, coords[i].row);
+    }
+
+    var dx = maxX - minX;
+    var dy = maxY - minY;
+    var dMax = Math.max(dx, dy);
+    var zoom = Math.max(0, Math.floor(-Math.log(dMax) / Math.LN2));
+    return new Coordinate((minX + maxX) / 2, (minY + maxY) / 2, 0)
+        .zoomTo(zoom);
+};
+
+/**
+ * Determine if a string ends with a particular substring
+ *
+ * @private
+ */
+exports.endsWith = function(string        , suffix        )          {
+    return string.indexOf(suffix, string.length - suffix.length) !== -1;
+};
+
+/**
+ * Create an object by mapping all the values of an existing object while
+ * preserving their keys.
+ *
+ * @private
+ */
+exports.mapObject = function(input        , iterator          , context         )         {
+    var this$1 = this;
+
+    var output = {};
+    for (var key in input) {
+        output[key] = iterator.call(context || this$1, input[key], key, input);
+    }
+    return output;
+};
+
+/**
+ * Create an object by filtering out values of an existing object.
+ *
+ * @private
+ */
+exports.filterObject = function(input        , iterator          , context         )         {
+    var this$1 = this;
+
+    var output = {};
+    for (var key in input) {
+        if (iterator.call(context || this$1, input[key], key, input)) {
+            output[key] = input[key];
+        }
+    }
+    return output;
+};
+
+/**
+ * Deeply compares two object literals.
+ *
+ * @private
+ */
+exports.deepEqual = function(a        , b        )          {
+    if (Array.isArray(a)) {
+        if (!Array.isArray(b) || a.length !== b.length) { return false; }
+        for (var i = 0; i < a.length; i++) {
+            if (!exports.deepEqual(a[i], b[i])) { return false; }
+        }
+        return true;
+    }
+    if (typeof a === 'object' && a !== null && b !== null) {
+        if (!(typeof b === 'object')) { return false; }
+        var keys = Object.keys(a);
+        if (keys.length !== Object.keys(b).length) { return false; }
+        for (var key in a) {
+            if (!exports.deepEqual(a[key], b[key])) { return false; }
+        }
+        return true;
+    }
+    return a === b;
+};
+
+/**
+ * Deeply clones two objects.
+ *
+ * @private
+ */
+exports.clone = function   (input   )    {
+    if (Array.isArray(input)) {
+        return input.map(exports.clone);
+    } else if (typeof input === 'object' && input) {
+        return ((exports.mapObject(input, exports.clone)     )   );
+    } else {
+        return input;
+    }
+};
+
+/**
+ * Check if two arrays have at least one common element.
+ *
+ * @private
+ */
+exports.arraysIntersect = function   (a          , b          )          {
+    for (var l = 0; l < a.length; l++) {
+        if (b.indexOf(a[l]) >= 0) { return true; }
+    }
+    return false;
+};
+
+/**
+ * Print a warning message to the console and ensure duplicate warning messages
+ * are not printed.
+ *
+ * @private
+ */
+var warnOnceHistory                           = {};
+exports.warnOnce = function(message        )       {
+    if (!warnOnceHistory[message]) {
+        // console isn't defined in some WebWorkers, see #2558
+        if (typeof console !== "undefined") { console.warn(message); }
+        warnOnceHistory[message] = true;
+    }
+};
+
+/**
+ * Indicates if the provided Points are in a counter clockwise (true) or clockwise (false) order
+ *
+ * @returns true for a counter clockwise set of points
+ */
+// http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
+exports.isCounterClockwise = function(a       , b       , c       )          {
+    return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
+};
+
+/**
+ * Returns the signed area for the polygon ring.  Postive areas are exterior rings and
+ * have a clockwise winding.  Negative areas are interior rings and have a counter clockwise
+ * ordering.
+ *
+ * @param ring Exterior or interior ring
+ */
+exports.calculateSignedArea = function(ring              )         {
+    var sum = 0;
+    for (var i = 0, len = ring.length, j = len - 1, p1 = (void 0), p2 = (void 0); i < len; j = i++) {
+        p1 = ring[i];
+        p2 = ring[j];
+        sum += (p2.x - p1.x) * (p1.y + p2.y);
+    }
+    return sum;
+};
+
+/**
+ * Detects closed polygons, first + last point are equal
+ *
+ * @param points array of points
+ * @return true if the points are a closed polygon
+ */
+exports.isClosedPolygon = function(points              )          {
+    // If it is 2 points that are the same then it is a point
+    // If it is 3 points with start and end the same then it is a line
+    if (points.length < 4)
+        { return false; }
+
+    var p1 = points[0];
+    var p2 = points[points.length - 1];
+
+    if (Math.abs(p1.x - p2.x) > 0 ||
+        Math.abs(p1.y - p2.y) > 0) {
+        return false;
+    }
+
+    // polygon simplification can produce polygons with zero area and more than 3 points
+    return (Math.abs(exports.calculateSignedArea(points)) > 0.01);
+};
+
+/**
+ * Converts spherical coordinates to cartesian coordinates.
+ *
+ * @param spherical Spherical coordinates, in [radial, azimuthal, polar]
+ * @return cartesian coordinates in [x, y, z]
+ */
+
+exports.sphericalToCartesian = function(spherical               )                {
+    var r = spherical[0];
+    var azimuthal = spherical[1],
+        polar = spherical[2];
+    // We abstract "north"/"up" (compass-wise) to be 0Â° when really this is 90Â° (Ï€/2):
+    // correct for that here
+    azimuthal += 90;
+
+    // Convert azimuthal and polar angles to radians
+    azimuthal *= Math.PI / 180;
+    polar *= Math.PI / 180;
+
+    // spherical to cartesian (x, y, z)
+    return [
+        r * Math.cos(azimuthal) * Math.sin(polar),
+        r * Math.sin(azimuthal) * Math.sin(polar),
+        r * Math.cos(polar)
+    ];
+};
+
+/**
+ * Parses data from 'Cache-Control' headers.
+ *
+ * @param cacheControl Value of 'Cache-Control' header
+ * @return object containing parsed header info.
+ */
+
+exports.parseCacheControl = function(cacheControl        )         {
+    // Taken from [Wreck](https://github.com/hapijs/wreck)
+    var re = /(?:^|(?:\s*\,\s*))([^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)(?:\=(?:([^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)|(?:\"((?:[^"\\]|\\.)*)\")))?/g;
+
+    var header = {};
+    cacheControl.replace(re, function ($0, $1, $2, $3) {
+        var value = $2 || $3;
+        header[$1] = value ? value.toLowerCase() : true;
+        return '';
+    });
+
+    if (header['max-age']) {
+        var maxAge = parseInt(header['max-age'], 10);
+        if (isNaN(maxAge)) { delete header['max-age']; }
+        else { header['max-age'] = maxAge; }
+    }
+
+    return header;
+};
+
+},{"../geo/coordinate":68,"@mapbox/point-geometry":2,"@mapbox/unitbezier":5}],254:[function(require,module,exports){
+'use strict';//      
+
+var Feature = function Feature(vectorTileFeature               , z    , x    , y    ) {
+    this.type = 'Feature';
+
+    this._vectorTileFeature = vectorTileFeature;
+    (vectorTileFeature )._z = z;
+    (vectorTileFeature )._x = x;
+    (vectorTileFeature )._y = y;
+
+    this.properties = vectorTileFeature.properties;
+
+    if (vectorTileFeature.id != null) {
+        this.id = vectorTileFeature.id;
+    }
+};
+
+var prototypeAccessors = { geometry: {} };
+
+prototypeAccessors.geometry.get = function ()               {
+    if (this._geometry === undefined) {
+        this._geometry = this._vectorTileFeature.toGeoJSON(
+            (this._vectorTileFeature )._x,
+            (this._vectorTileFeature )._y,
+            (this._vectorTileFeature )._z).geometry;
+    }
+    return this._geometry;
+};
+
+prototypeAccessors.geometry.set = function (g              ) {
+    this._geometry = g;
+};
+
+Feature.prototype.toJSON = function toJSON () {
+        var this$1 = this;
+
+    var json = {
+        geometry: this.geometry
+    };
+    for (var i in this$1) {
+        if (i === '_geometry' || i === '_vectorTileFeature') { continue; }
+        json[i] = (this$1 )[i];
+    }
+    return json;
+};
+
+Object.defineProperties( Feature.prototype, prototypeAccessors );
+
+module.exports = Feature;
+
+},{}],255:[function(require,module,exports){
+'use strict';//      
+
+var scriptDetection = require('./script_detection');
+
+module.exports = function verticalizePunctuation(input        ) {
+    var output = '';
+
+    for (var i = 0; i < input.length; i++) {
+        var nextCharCode = input.charCodeAt(i + 1) || null;
+        var prevCharCode = input.charCodeAt(i - 1) || null;
+
+        var canReplacePunctuation = (
+            (!nextCharCode || !scriptDetection.charHasRotatedVerticalOrientation(nextCharCode) || module.exports.lookup[input[i + 1]]) &&
+            (!prevCharCode || !scriptDetection.charHasRotatedVerticalOrientation(prevCharCode) || module.exports.lookup[input[i - 1]])
+        );
+
+        if (canReplacePunctuation && module.exports.lookup[input[i]]) {
+            output += module.exports.lookup[input[i]];
+        } else {
+            output += input[i];
+        }
+    }
+
+    return output;
+};
+
+module.exports.lookup = {
+    '!': 'ï¸•',
+    '#': 'ï¼ƒ',
+    '$': 'ï¼„',
+    '%': 'ï¼…',
+    '&': 'ï¼†',
+    '(': 'ï¸µ',
+    ')': 'ï¸¶',
+    '*': 'ï¼Š',
+    '+': 'ï¼‹',
+    ',': 'ï¸',
+    '-': 'ï¸²',
+    '.': 'ãƒ»',
+    '/': 'ï¼',
+    ':': 'ï¸“',
+    ';': 'ï¸”',
+    '<': 'ï¸¿',
+    '=': 'ï¼',
+    '>': 'ï¹€',
+    '?': 'ï¸–',
+    '@': 'ï¼ ',
+    '[': 'ï¹‡',
+    '\\': 'ï¼¼',
+    ']': 'ï¹ˆ',
+    '^': 'ï¼¾',
+    '_': 'ï¸³',
+    '`': 'ï½€',
+    '{': 'ï¸·',
+    '|': 'â€•',
+    '}': 'ï¸¸',
+    '~': 'ï½ž',
+    'Â¢': 'ï¿ ',
+    'Â£': 'ï¿¡',
+    'Â¥': 'ï¿¥',
+    'Â¦': 'ï¿¤',
+    'Â¬': 'ï¿¢',
+    'Â¯': 'ï¿£',
+    'â€“': 'ï¸²',
+    'â€”': 'ï¸±',
+    'â€˜': 'ï¹ƒ',
+    'â€™': 'ï¹„',
+    'â€œ': 'ï¹',
+    'â€': 'ï¹‚',
+    'â€¦': 'ï¸™',
+    'â€§': 'ãƒ»',
+    'â‚©': 'ï¿¦',
+    'ã€': 'ï¸‘',
+    'ã€‚': 'ï¸’',
+    'ã€ˆ': 'ï¸¿',
+    'ã€‰': 'ï¹€',
+    'ã€Š': 'ï¸½',
+    'ã€‹': 'ï¸¾',
+    'ã€Œ': 'ï¹',
+    'ã€': 'ï¹‚',
+    'ã€Ž': 'ï¹ƒ',
+    'ã€': 'ï¹„',
+    'ã€': 'ï¸»',
+    'ã€‘': 'ï¸¼',
+    'ã€”': 'ï¸¹',
+    'ã€•': 'ï¸º',
+    'ã€–': 'ï¸—',
+    'ã€—': 'ï¸˜',
+    'ï¼': 'ï¸•',
+    'ï¼ˆ': 'ï¸µ',
+    'ï¼‰': 'ï¸¶',
+    'ï¼Œ': 'ï¸',
+    'ï¼': 'ï¸²',
+    'ï¼Ž': 'ãƒ»',
+    'ï¼š': 'ï¸“',
+    'ï¼›': 'ï¸”',
+    'ï¼œ': 'ï¸¿',
+    'ï¼ž': 'ï¹€',
+    'ï¼Ÿ': 'ï¸–',
+    'ï¼»': 'ï¹‡',
+    'ï¼½': 'ï¹ˆ',
+    'ï¼¿': 'ï¸³',
+    'ï½›': 'ï¸·',
+    'ï½œ': 'â€•',
+    'ï½': 'ï¸¸',
+    'ï½Ÿ': 'ï¸µ',
+    'ï½ ': 'ï¸¶',
+    'ï½¡': 'ï¸’',
+    'ï½¢': 'ï¹',
+    'ï½£': 'ï¹‚'
+};
+
+},{"./script_detection":248}],256:[function(require,module,exports){
+'use strict';//      
+
+var assert = require('assert');
+var WebWorker = require('./web_worker');
+
+                                                  
+
+/**
+ * Constructs a worker pool.
+ * @private
+ */
+var WorkerPool = function WorkerPool() {
+    this.active = {};
+};
+
+WorkerPool.prototype.acquire = function acquire (mapId    ) {
+        var this$1 = this;
+
+    if (!this.workers) {
+        // Lazily look up the value of mapboxgl.workerCount.  This allows
+        // client code a chance to set it while circumventing cyclic
+        // dependency problems
+        var workerCount = require('../').workerCount;
+        assert(typeof workerCount === 'number' && workerCount < Infinity);
+
+        this.workers = [];
+        while (this.workers.length < workerCount) {
+            this$1.workers.push(new WebWorker());
+        }
+    }
+
+    this.active[mapId] = true;
+    return this.workers.slice();
+};
+
+WorkerPool.prototype.release = function release (mapId    ) {
+    delete this.active[mapId];
+    if (Object.keys(this.active).length === 0) {
+        this.workers.forEach(function (w) {
+            w.terminate();
+        });
+        this.workers = (null );
+    }
+};
+
+module.exports = WorkerPool;
+
+},{"../":74,"./web_worker":233,"assert":11}]},{},[74])(74)
+});
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIm5vZGVfbW9kdWxlcy9icm93c2VyLXBhY2svX3ByZWx1ZGUuanMiLCJub2RlX21vZHVsZXMvQG1hcGJveC9nbC1tYXRyaXgvZGlzdC9nbC1tYXRyaXguanMiLCJub2RlX21vZHVsZXMvQG1hcGJveC9wb2ludC1nZW9tZXRyeS9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9AbWFwYm94L3NoZWxmLXBhY2svaW5kZXgudW1kLmpzIiwibm9kZV9tb2R1bGVzL0BtYXBib3gvdGlueS1zZGYvaW5kZXguanMiLCJub2RlX21vZHVsZXMvQG1hcGJveC91bml0YmV6aWVyL2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL0BtYXBib3gvdmVjdG9yLXRpbGUvaW5kZXguanMiLCJub2RlX21vZHVsZXMvQG1hcGJveC92ZWN0b3ItdGlsZS9saWIvdmVjdG9ydGlsZS5qcyIsIm5vZGVfbW9kdWxlcy9AbWFwYm94L3ZlY3Rvci10aWxlL2xpYi92ZWN0b3J0aWxlZmVhdHVyZS5qcyIsIm5vZGVfbW9kdWxlcy9AbWFwYm94L3ZlY3Rvci10aWxlL2xpYi92ZWN0b3J0aWxlbGF5ZXIuanMiLCJub2RlX21vZHVsZXMvQG1hcGJveC93aG9vdHMtanMvaW5kZXgudW1kLmpzIiwibm9kZV9tb2R1bGVzL2Fzc2VydC9hc3NlcnQuanMiLCJub2RlX21vZHVsZXMvY3NzY29sb3JwYXJzZXIvY3NzY29sb3JwYXJzZXIuanMiLCJub2RlX21vZHVsZXMvZWFyY3V0L3NyYy9lYXJjdXQuanMiLCJub2RlX21vZHVsZXMvZ2VvanNvbi1hcmVhL2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL2dlb2pzb24tcmV3aW5kL2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL2dlb2pzb24tdnQvc3JjL2NsaXAuanMiLCJub2RlX21vZHVsZXMvZ2VvanNvbi12dC9zcmMvY29udmVydC5qcyIsIm5vZGVfbW9kdWxlcy9nZW9qc29uLXZ0L3NyYy9mZWF0dXJlLmpzIiwibm9kZV9tb2R1bGVzL2dlb2pzb24tdnQvc3JjL2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL2dlb2pzb24tdnQvc3JjL3NpbXBsaWZ5LmpzIiwibm9kZV9tb2R1bGVzL2dlb2pzb24tdnQvc3JjL3RpbGUuanMiLCJub2RlX21vZHVsZXMvZ2VvanNvbi12dC9zcmMvdHJhbnNmb3JtLmpzIiwibm9kZV9tb2R1bGVzL2dlb2pzb24tdnQvc3JjL3dyYXAuanMiLCJub2RlX21vZHVsZXMvZ3JpZC1pbmRleC9ncmlkLWluZGV4LmpzIiwibm9kZV9tb2R1bGVzL2llZWU3NTQvaW5kZXguanMiLCJub2RlX21vZHVsZXMva2RidXNoL3NyYy9rZGJ1c2guanMiLCJub2RlX21vZHVsZXMva2RidXNoL3NyYy9yYW5nZS5qcyIsIm5vZGVfbW9kdWxlcy9rZGJ1c2gvc3JjL3NvcnQuanMiLCJub2RlX21vZHVsZXMva2RidXNoL3NyYy93aXRoaW4uanMiLCJub2RlX21vZHVsZXMvbG9kYXNoLl9iYXNlaXNlcXVhbC9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9sb2Rhc2guX2JpbmRjYWxsYmFjay9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9sb2Rhc2guX2dldG5hdGl2ZS9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9sb2Rhc2guaXNhcmd1bWVudHMvaW5kZXguanMiLCJub2RlX21vZHVsZXMvbG9kYXNoLmlzYXJyYXkvaW5kZXguanMiLCJub2RlX21vZHVsZXMvbG9kYXNoLmlzZXF1YWwvaW5kZXguanMiLCJub2RlX21vZHVsZXMvbG9kYXNoLmlzdHlwZWRhcnJheS9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9sb2Rhc2gua2V5cy9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9tYXBib3gtZ2wtc3VwcG9ydGVkL2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL3BiZi9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy9wcm9jZXNzL2Jyb3dzZXIuanMiLCJub2RlX21vZHVsZXMvcXVpY2tzZWxlY3QvaW5kZXguanMiLCJub2RlX21vZHVsZXMvc3VwZXJjbHVzdGVyL2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL3RpbnlxdWV1ZS9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy91dGlsL25vZGVfbW9kdWxlcy9pbmhlcml0cy9pbmhlcml0c19icm93c2VyLmpzIiwibm9kZV9tb2R1bGVzL3V0aWwvc3VwcG9ydC9pc0J1ZmZlckJyb3dzZXIuanMiLCJub2RlX21vZHVsZXMvdXRpbC91dGlsLmpzIiwibm9kZV9tb2R1bGVzL3Z0LXBiZi9pbmRleC5qcyIsIm5vZGVfbW9kdWxlcy92dC1wYmYvbGliL2dlb2pzb25fd3JhcHBlci5qcyIsIm5vZGVfbW9kdWxlcy93ZWJ3b3JraWZ5L2luZGV4LmpzIiwibm9kZV9tb2R1bGVzL3dnczg0L2luZGV4LmpzIiwicGFja2FnZS5qc29uIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9kYXRhL2J1Y2tldC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZGF0YS9idWNrZXQvY2lyY2xlX2J1Y2tldC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZGF0YS9idWNrZXQvZmlsbF9idWNrZXQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2RhdGEvYnVja2V0L2ZpbGxfZXh0cnVzaW9uX2J1Y2tldC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZGF0YS9idWNrZXQvaGVhdG1hcF9idWNrZXQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2RhdGEvYnVja2V0L2xpbmVfYnVja2V0LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9kYXRhL2J1Y2tldC9zeW1ib2xfYnVja2V0LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9kYXRhL2V4dGVudC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZGF0YS9mZWF0dXJlX2luZGV4LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9kYXRhL2luZGV4X2FycmF5X3R5cGUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2RhdGEvbG9hZF9nZW9tZXRyeS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZGF0YS9wb3NfYXJyYXkuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2RhdGEvcHJvZ3JhbV9jb25maWd1cmF0aW9uLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9kYXRhL3Jhc3Rlcl9ib3VuZHNfYXJyYXkuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2RhdGEvc2VnbWVudC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZGF0YS92ZXJ0ZXhfYXJyYXlfdHlwZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZ2VvL2Nvb3JkaW5hdGUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2dlby9sbmdfbGF0LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9nZW8vbG5nX2xhdF9ib3VuZHMuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2dlby90cmFuc2Zvcm0uanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL2dsL2luZGV4X2J1ZmZlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvZ2wvdmVydGV4X2J1ZmZlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvaW5kZXguanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9kcmF3X2JhY2tncm91bmQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9kcmF3X2NpcmNsZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2RyYXdfY29sbGlzaW9uX2RlYnVnLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9yZW5kZXIvZHJhd19kZWJ1Zy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2RyYXdfZmlsbC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2RyYXdfZmlsbF9leHRydXNpb24uanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9kcmF3X2hlYXRtYXAuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9kcmF3X2xpbmUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9kcmF3X3Jhc3Rlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2RyYXdfc3ltYm9sLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9yZW5kZXIvZnJhbWVfaGlzdG9yeS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2dseXBoX2F0bGFzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9yZW5kZXIvZ2x5cGhfbWFuYWdlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2ltYWdlX2F0bGFzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9yZW5kZXIvaW1hZ2VfbWFuYWdlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL2xpbmVfYXRsYXMuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9wYWludGVyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9yZW5kZXIvcGF0dGVybi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL3Byb2dyYW0uanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci9yZW5kZXJfdGV4dHVyZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvcmVuZGVyL3RleHR1cmUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci90aWxlX21hc2suanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3JlbmRlci92ZXJ0ZXhfYXJyYXlfb2JqZWN0LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zaGFkZXJzL2VuY29kZV9hdHRyaWJ1dGUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NoYWRlcnMvaW5kZXguanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS9jYW52YXNfc291cmNlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zb3VyY2UvZ2VvanNvbl9zb3VyY2UuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS9nZW9qc29uX3dvcmtlcl9zb3VyY2UuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS9nZW9qc29uX3dyYXBwZXIuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS9pbWFnZV9zb3VyY2UuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS9sb2FkX3RpbGVqc29uLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zb3VyY2UvcGl4ZWxzX3RvX3RpbGVfdW5pdHMuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS9xdWVyeV9mZWF0dXJlcy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc291cmNlL3Jhc3Rlcl90aWxlX3NvdXJjZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc291cmNlL3J0bF90ZXh0X3BsdWdpbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc291cmNlL3NvdXJjZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc291cmNlL3NvdXJjZV9jYWNoZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc291cmNlL3RpbGUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS90aWxlX2JvdW5kcy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc291cmNlL3RpbGVfY29vcmQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS92ZWN0b3JfdGlsZV9zb3VyY2UuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3NvdXJjZS92ZWN0b3JfdGlsZV93b3JrZXJfc291cmNlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zb3VyY2UvdmlkZW9fc291cmNlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zb3VyY2Uvd29ya2VyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zb3VyY2Uvd29ya2VyX3RpbGUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZGVyZWYuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZGlmZi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9lcnJvci92YWxpZGF0aW9uX2Vycm9yLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vY29tcG91bmRfZXhwcmVzc2lvbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9leHByZXNzaW9uL2RlZmluaXRpb25zL2FycmF5LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vZGVmaW5pdGlvbnMvYXNzZXJ0aW9uLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vZGVmaW5pdGlvbnMvYXQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9kZWZpbml0aW9ucy9jYXNlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vZGVmaW5pdGlvbnMvY29hbGVzY2UuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9kZWZpbml0aW9ucy9jb2VyY2lvbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9leHByZXNzaW9uL2RlZmluaXRpb25zL2N1cnZlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vZGVmaW5pdGlvbnMvaW5kZXguanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9kZWZpbml0aW9ucy9sZXQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9kZWZpbml0aW9ucy9saXRlcmFsLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vZGVmaW5pdGlvbnMvbWF0Y2guanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9kZWZpbml0aW9ucy92YXIuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9ldmFsdWF0aW9uX2NvbnRleHQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9pbmRleC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9leHByZXNzaW9uL2lzX2NvbnN0YW50LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vcGFyc2luZ19jb250ZXh0LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vcGFyc2luZ19lcnJvci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9leHByZXNzaW9uL3J1bnRpbWVfZXJyb3IuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvZXhwcmVzc2lvbi9zY29wZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9leHByZXNzaW9uL3R5cGVzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2V4cHJlc3Npb24vdmFsdWVzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2ZlYXR1cmVfZmlsdGVyL2luZGV4LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2Z1bmN0aW9uL2luZGV4LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL2dyb3VwX2J5X2xheW91dC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy9yZWZlcmVuY2UvbGF0ZXN0LmpzIiwic3JjL3N0eWxlLXNwZWMvcmVmZXJlbmNlL3Y4Lmpzb24iLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdXRpbC9jb2xvcl9zcGFjZXMuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdXRpbC9leHRlbmQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdXRpbC9nZXRfdHlwZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy91dGlsL2ludGVycG9sYXRlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3V0aWwvcGFyc2VfY29sb3IuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdXRpbC9yZWZfcHJvcGVydGllcy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy91dGlsL3VuYnVuZGxlX2pzb25saW50LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3ZhbGlkYXRlL3ZhbGlkYXRlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3ZhbGlkYXRlL3ZhbGlkYXRlX2FycmF5LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3ZhbGlkYXRlL3ZhbGlkYXRlX2Jvb2xlYW4uanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfY29sb3IuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfY29uc3RhbnRzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3ZhbGlkYXRlL3ZhbGlkYXRlX2VudW0uanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfZXhwcmVzc2lvbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy92YWxpZGF0ZS92YWxpZGF0ZV9maWx0ZXIuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfZnVuY3Rpb24uanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfZ2x5cGhzX3VybC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy92YWxpZGF0ZS92YWxpZGF0ZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy92YWxpZGF0ZS92YWxpZGF0ZV9sYXlvdXRfcHJvcGVydHkuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfbGlnaHQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfbnVtYmVyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3ZhbGlkYXRlL3ZhbGlkYXRlX29iamVjdC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy92YWxpZGF0ZS92YWxpZGF0ZV9wYWludF9wcm9wZXJ0eS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy92YWxpZGF0ZS92YWxpZGF0ZV9wcm9wZXJ0eS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUtc3BlYy92YWxpZGF0ZS92YWxpZGF0ZV9zb3VyY2UuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlLXNwZWMvdmFsaWRhdGUvdmFsaWRhdGVfc3RyaW5nLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS1zcGVjL3ZhbGlkYXRlX3N0eWxlLm1pbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvYW5pbWF0aW9uX2xvb3AuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlL2xpZ2h0LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9sb2FkX2dseXBoX3JhbmdlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9sb2FkX3Nwcml0ZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvcGFyc2VfZ2x5cGhfcGJmLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9xdWVyeV91dGlscy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGUuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlL3N0eWxlX2RlY2xhcmF0aW9uLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9zdHlsZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGVfbGF5ZXIvYmFja2dyb3VuZF9zdHlsZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGVfbGF5ZXIvY2lyY2xlX3N0eWxlX2xheWVyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9zdHlsZV9sYXllci9maWxsX2V4dHJ1c2lvbl9zdHlsZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGVfbGF5ZXIvZmlsbF9zdHlsZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGVfbGF5ZXIvaGVhdG1hcF9zdHlsZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGVfbGF5ZXIvbGluZV9zdHlsZV9sYXllci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3R5bGUvc3R5bGVfbGF5ZXIvcmFzdGVyX3N0eWxlX2xheWVyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9zdHlsZV9sYXllci9zeW1ib2xfc3R5bGVfbGF5ZXIuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N0eWxlL3N0eWxlX2xheWVyX2luZGV4LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS9zdHlsZV90cmFuc2l0aW9uLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zdHlsZS92YWxpZGF0ZV9zdHlsZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL2FuY2hvci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL2NoZWNrX21heF9hbmdsZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL2NsaXBfbGluZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL2NvbGxpc2lvbl9ib3guanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N5bWJvbC9jb2xsaXNpb25fZmVhdHVyZS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL2NvbGxpc2lvbl90aWxlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zeW1ib2wvZ2V0X2FuY2hvcnMuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3N5bWJvbC9tZXJnZWxpbmVzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zeW1ib2wvcHJvamVjdGlvbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL3F1YWRzLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zeW1ib2wvc2hhcGluZy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvc3ltYm9sL3N5bWJvbF9zaXplLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy9zeW1ib2wvdHJhbnNmb3JtX3RleHQuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3VpL2JpbmRfaGFuZGxlcnMuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3VpL2NhbWVyYS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdWkvY29udHJvbC9hdHRyaWJ1dGlvbl9jb250cm9sLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9jb250cm9sL2Z1bGxzY3JlZW5fY29udHJvbC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdWkvY29udHJvbC9nZW9sb2NhdGVfY29udHJvbC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdWkvY29udHJvbC9sb2dvX2NvbnRyb2wuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3VpL2NvbnRyb2wvbmF2aWdhdGlvbl9jb250cm9sLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9jb250cm9sL3NjYWxlX2NvbnRyb2wuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3VpL2V2ZW50cy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdWkvaGFuZGxlci9ib3hfem9vbS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdWkvaGFuZGxlci9kYmxjbGlja196b29tLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9oYW5kbGVyL2RyYWdfcGFuLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9oYW5kbGVyL2RyYWdfcm90YXRlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9oYW5kbGVyL2tleWJvYXJkLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9oYW5kbGVyL3Njcm9sbF96b29tLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9oYW5kbGVyL3RvdWNoX3pvb21fcm90YXRlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9oYXNoLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91aS9tYXAuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3VpL21hcmtlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdWkvcG9wdXAuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3V0aWwvYWN0b3IuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3V0aWwvYWpheC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9icm93c2VyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL2Jyb3dzZXIvd2ViX3dvcmtlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9icm93c2VyL3dpbmRvdy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9jbGFzc2lmeV9yaW5ncy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9jb25maWcuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3V0aWwvZGljdGlvbmFyeV9jb2Rlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9kaXNwYXRjaGVyLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL2RvbS5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9ldmVudGVkLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL2ZpbmRfcG9sZV9vZl9pbmFjY2Vzc2liaWxpdHkuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3V0aWwvZ2xvYmFsX3dvcmtlcl9wb29sLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL2ltYWdlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL2ludGVyc2VjdGlvbl90ZXN0cy5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9pc19jaGFyX2luX3VuaWNvZGVfYmxvY2suanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3V0aWwvbHJ1X2NhY2hlLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL21hcGJveC5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC9zY3JpcHRfZGV0ZWN0aW9uLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL3NtYXJ0X3dyYXAuanMiLCIvcm9vdC9tYXBib3gtZ2wtanMvc3JjL3V0aWwvc3RydWN0X2FycmF5LmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL3Rocm90dGxlci5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC90b2tlbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC91dGlsLmpzIiwiL3Jvb3QvbWFwYm94LWdsLWpzL3NyYy91dGlsL3ZlY3RvcnRpbGVfdG9fZ2VvanNvbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC92ZXJ0aWNhbGl6ZV9wdW5jdHVhdGlvbi5qcyIsIi9yb290L21hcGJveC1nbC1qcy9zcmMvdXRpbC93b3JrZXJfcG9vbC5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQTtBQ0FBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNoZ0JBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ3hUQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNyY0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ3hHQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUN6R0E7QUFDQTtBQUNBO0FBQ0E7O0FDSEE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ2pCQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDek9BO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDN0RBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7O0FDekZBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7Ozs7QUMxZUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDek1BO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNwb0JBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDaEVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDakRBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNySkE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUN6SEE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUMzQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ2xQQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDMUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDMUdBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUN6Q0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ3hEQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ2hLQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNwRkE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQzVDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQzlDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNsRUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ2xEQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUN0VkE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ2pFQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDeklBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDck9BO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ3BMQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDOURBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDcEpBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUM1T0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDaklBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQzFtQkE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUN4TEE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDNURBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUM1VUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNyRkE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ3ZCQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7OztBQ0xBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7Ozs7QUMxa0JBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBOztBQ3JLQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7QUNsRUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7O0FDakZBO0FBQ0E7QUFDQTtBQUNBOztBQ0hBO0FBQ0E7QUFDQTs7QUNGQTs7QUFFQSxHQUFLLENBQUMsSUFBSSxHQUFHLE9BQU8sQ0FBQyxjQUFjLENBQUMsQ0FBQzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUEwRXJDLE1BQU0sQ0FBQyxPQUFPLEdBQUc7SUFDYixXQUFXLHNCQUFBLENBQUMsS0FBSywyQkFBMkIsS0FBSyw2QkFBNkI7UUFDMUUsR0FBSyxDQUFDLE1BQU0sR0FBRyxFQUFFLENBQUM7Ozs7UUFJbEIsSUFBSSxDQUFDLEtBQUssRUFBRSxFQUFBLE9BQU8sTUFBTSxDQUFDLEVBQUE7O1FBRTFCLEtBQXFCLEFBQUksa0JBQUEsS0FBSyx5QkFBQSxFQUFFO1lBQTNCLEdBQUssQ0FBQyxVQUFVOztZQUNqQixHQUFLLENBQUMsTUFBTSxHQUFHLFVBQVUsQ0FBQyxRQUFRO2lCQUM3QixHQUFHLENBQUMsU0FBQSxDQUFDLEVBQUUsRUFBRSxBQUFHLFNBQUEsS0FBSyxDQUFDLFFBQVEsQ0FBQyxFQUFFLENBQUMsR0FBQSxDQUFDO2lCQUMvQixNQUFNLENBQUMsT0FBTyxDQUFDLENBQUM7O1lBRXJCLElBQUksTUFBTSxDQUFDLE1BQU0sS0FBSyxDQUFDLEVBQUU7Z0JBQ3JCLFNBQVM7YUFDWjs7WUFFRCxHQUFLLENBQUMsTUFBTSxHQUFHLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBQyxZQUFZLENBQUMsSUFBSSxDQUFDLE1BQU0sQ0FBQyxDQUFDLFFBQUEsTUFBTSxDQUFDLEVBQUUsVUFBVSxDQUFDLENBQUMsQ0FBQztZQUN6RSxLQUFnQixBQUFJLHNCQUFBLE1BQU0sK0JBQUEsRUFBRTtnQkFBdkIsR0FBSyxDQUFDLEtBQUs7O2dCQUNaLE1BQU0sQ0FBQyxLQUFLLENBQUMsRUFBRSxDQUFDLEdBQUcsTUFBTSxDQUFDO2FBQzdCO1NBQ0o7O1FBRUQsT0FBTyxNQUFNLENBQUM7S0FDakI7Q0FDSixDQUFDOzs7QUNyR0Y7O0FBRUEsQUFBSyxBQUFnQixPQUFBLEdBQUcsT0FBTyxDQUFDLFlBQVksQ0FBQztBQUF0QyxJQUFBLGFBQWEscUJBQWQsQUFBYyxBQUF5QixBQUFDO0FBQzlDLEdBQUssQ0FBQyxZQUFZLEdBQUcsT0FBTyxDQUFDLHdCQUF3QixDQUFDLENBQUM7QUFDdkQsR0FBSyxDQUFDLFdBQVcsR0FBRyxPQUFPLENBQUMsdUJBQXVCLENBQUMsQ0FBQztBQUNyRCxBQUFLLEFBQTBCLFNBQUEsR0FBRyxPQUFPLENBQUMsMEJBQTBCLENBQUM7QUFBOUQsSUFBQSx1QkFBdUIsaUNBQXhCLEFBQXdCLEFBQXVDLEFBQUM7QUFDdEUsR0FBSyxDQUFDLHFCQUFxQixHQUFHLE9BQU8sQ0FBQyxzQkFBc0IsQ0FBQyxDQUFDO0FBQzlELEFBQUssQUFBcUIsU0FBQSxHQUFHLE9BQU8sQ0FBQyxxQkFBcUIsQ0FBQztBQUFwRCxJQUFBLGtCQUFrQiw0QkFBbkIsQUFBbUIsQUFBa0MsQUFBQztBQUM1RCxHQUFLLENBQUMsWUFBWSxHQUFHLE9BQU8sQ0FBQyxrQkFBa0IsQ0FBQyxDQUFDO0FBQ2pELEdBQUssQ0FBQyxNQUFNLEdBQUcsT0FBTyxDQUFDLFdBQVcsQ0FBQyxDQUFDOzs7Ozs7OztBQVFwQyxHQUFLLENBQUMsZUFBZSxHQUFHO0lBQ3BCLGdCQUFnQixFQUFFO1FBQ2QsQ0FBQyxJQUFJLEVBQUUsT0FBTyxFQUFFLFVBQVUsRUFBRSxDQUFDLEVBQUUsSUFBSSxFQUFFLE9BQU8sQ0FBQztLQUNoRDtJQUNELGNBQWMsRUFBRSxrQkFBa0I7O0lBRWxDLGVBQWUsRUFBRTtRQUNiLENBQUMsUUFBUSxFQUFFLGNBQWMsQ0FBQztRQUMxQixDQUFDLFFBQVEsRUFBRSxlQUFlLENBQUM7UUFDM0IsQ0FBQyxRQUFRLEVBQUUsYUFBYSxDQUFDO1FBQ3pCLENBQUMsUUFBUSxFQUFFLGdCQUFnQixDQUFDO1FBQzVCLENBQUMsUUFBUSxFQUFFLHFCQUFxQixDQUFDO1FBQ2pDLENBQUMsUUFBUSxFQUFFLHFCQUFxQixDQUFDO1FBQ2pDLENBQUMsUUFBUSxFQUFFLHVCQUF1QixDQUFDO0tBQ3RDO0NBQ0osQ0FBQzs7QUFFRixTQUFTLGVBQWUsQ0FBQyxpQkFBaUIsRUFBRSxDQUFDLEVBQUUsQ0FBQyxFQUFFLFFBQVEsRUFBRSxRQUFRLEVBQUU7SUFDbEUsaUJBQWlCLENBQUMsV0FBVztRQUN6QixDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsUUFBUSxHQUFHLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQztRQUM5QixDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsUUFBUSxHQUFHLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxDQUFDLENBQUM7Q0FDdkM7O0FBRUQsR0FBSyxDQUFDLHFCQUFxQixHQUFHLHFCQUFxQixDQUFDLGVBQWUsQ0FBQyxnQkFBZ0IsQ0FBQyxDQUFDOzs7Ozs7Ozs7QUFTdEYsSUFBTSxZQUFZLEdBQWUsQUFBSSxBQWtCckMsQUFBSSxxQkFBVyxDQUFDLE9BQU8sQ0FBQyxBQUFJLEVBQUU7SUFDMUIsQUFBSSxJQUFJLENBQUMsSUFBSSxHQUFHLE9BQU8sQ0FBQyxJQUFJLENBQUM7SUFDN0IsQUFBSSxJQUFJLENBQUMsV0FBVyxHQUFHLE9BQU8sQ0FBQyxXQUFXLENBQUM7SUFDM0MsQUFBSSxJQUFJLENBQUMsTUFBTSxHQUFHLE9BQU8sQ0FBQyxNQUFNLENBQUM7SUFDakMsQUFBSSxJQUFJLENBQUMsS0FBSyxHQUFHLE9BQU8sQ0FBQyxLQUFLLENBQUM7O0lBRS9CLEFBQUksSUFBSSxDQUFDLGlCQUFpQixHQUFHLElBQUkscUJBQXFCLENBQUMsT0FBTyxDQUFDLGlCQUFpQixDQUFDLENBQUM7SUFDbEYsQUFBSSxJQUFJLENBQUMsVUFBVSxHQUFHLElBQUksa0JBQWtCLENBQUMsT0FBTyxDQUFDLFVBQVUsQ0FBQyxDQUFDO0lBQ2pFLEFBQUksSUFBSSxDQUFDLFFBQVEsR0FBRyxJQUFJLGFBQWEsQ0FBQyxPQUFPLENBQUMsUUFBUSxDQUFDLENBQUM7SUFDeEQsQUFBSSxJQUFJLENBQUMscUJBQXFCLEdBQUcsSUFBSSx1QkFBdUI7UUFDeEQsQUFBSSxJQUFJLENBQUMsV0FBVyxDQUFDLGdCQUFnQixFQUFFLE9BQU8sQ0FBQyxNQUFNLEVBQUUsT0FBTyxDQUFDLElBQUksRUFBRSxPQUFPLENBQUMscUJBQXFCLENBQUMsQ0FBQztBQUM1RyxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLHVCQUFBLFFBQVEscUJBQUEsQ0FBQyxRQUFRLG1CQUFtQixBQUFJLEVBQUUsT0FBTyxnQkFBZ0IsQUFBSSxFQUFFLENBQUM7O0FBQUE7SUFDeEUsQUFBSSxLQUE2QyxBQUFJLGtCQUFBLFFBQVEseUJBQUEsRUFBRTtRQUF0RCxBQUNMLEdBRFUsQ0FBQyxHQUFBLEFBQVEsQUFBTyxBQUFrQixBQUFDO1lBQWpDLElBQUEsT0FBTztZQUFFLElBQUEsS0FBSztZQUFFLElBQUEsZ0JBQWdCOztZQUN4QyxJQUFJLE1BQUksQ0FBQyxNQUFNLENBQUMsQ0FBQyxDQUFDLENBQUMsY0FBYyxDQUFDLENBQUMsSUFBSSxFQUFFLE1BQUksQ0FBQyxJQUFJLENBQUMsRUFBRSxPQUFPLENBQUMsRUFBRTtZQUMvRCxBQUFJLEdBQUssQ0FBQyxRQUFRLEdBQUcsWUFBWSxDQUFDLE9BQU8sQ0FBQyxDQUFDO1lBQzNDLEFBQUksTUFBSSxDQUFDLFVBQVUsQ0FBQyxPQUFPLEVBQUUsUUFBUSxDQUFDLENBQUM7WUFDdkMsQUFBSSxPQUFPLENBQUMsWUFBWSxDQUFDLE1BQU0sQ0FBQyxPQUFPLEVBQUUsUUFBUSxFQUFFLEtBQUssRUFBRSxnQkFBZ0IsRUFBRSxNQUFJLENBQUMsS0FBSyxDQUFDLENBQUM7UUFDNUYsQUFBSSxDQUFDO0lBQ1QsQUFBSSxDQUFDO0FBQ1QsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSx1QkFBQSxPQUFPLG9CQUFBLEdBQUc7SUFDVixBQUFJLE9BQU8sSUFBSSxDQUFDLGlCQUFpQixDQUFDLE1BQU0sS0FBSyxDQUFDLENBQUM7QUFDbkQsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSx1QkFBQSxTQUFTLHNCQUFBLENBQUMsYUFBYSxrQkFBa0IsQUFBSSxnQkFBZ0IsQUFBSTtJQUNqRSxBQUFJLE9BQU87UUFDUCxBQUFJLElBQUksRUFBRSxJQUFJLENBQUMsSUFBSTtRQUNuQixBQUFJLFFBQVEsRUFBRSxJQUFJLENBQUMsTUFBTSxDQUFDLEdBQUcsQ0FBQyxTQUFBLENBQUMsQ0FBQyxFQUFFLEFBQUcsU0FBQSxDQUFDLENBQUMsRUFBRSxHQUFBLENBQUM7UUFDMUMsQUFBSSxpQkFBaUIsRUFBRSxJQUFJLENBQUMsaUJBQWlCLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUN0RSxBQUFJLFVBQVUsRUFBRSxJQUFJLENBQUMsVUFBVSxDQUFDLFNBQVMsQ0FBQyxhQUFhLENBQUM7UUFDeEQsQUFBSSxxQkFBcUIsRUFBRSxJQUFJLENBQUMscUJBQXFCLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUM5RSxBQUFJLFFBQVEsRUFBRSxJQUFJLENBQUMsUUFBUSxDQUFDLEdBQUcsRUFBRTtJQUNyQyxBQUFJLENBQUMsQ0FBQztBQUNWLEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUksdUJBQUEsTUFBTSxtQkFBQSxDQUFDLEVBQUUsbUJBQW1CLEFBQUksRUFBRTtJQUNsQyxBQUFJLElBQUksQ0FBQyxrQkFBa0IsR0FBRyxJQUFJLFlBQVksQ0FBQyxFQUFFLEVBQUUsSUFBSSxDQUFDLGlCQUFpQixDQUFDLENBQUM7SUFDM0UsQUFBSSxJQUFJLENBQUMsV0FBVyxHQUFHLElBQUksV0FBVyxDQUFDLEVBQUUsRUFBRSxJQUFJLENBQUMsVUFBVSxDQUFDLENBQUM7SUFDNUQsQUFBSSxJQUFJLENBQUMscUJBQXFCLENBQUMsTUFBTSxDQUFDLEVBQUUsQ0FBQyxDQUFDO0FBQzlDLEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUksdUJBQUEsT0FBTyxvQkFBQSxHQUFHO0lBQ1YsQUFBSSxJQUFJLENBQUMsSUFBSSxDQUFDLGtCQUFrQixFQUFFLEVBQUEsT0FBTyxFQUFBO0lBQ3pDLEFBQUksSUFBSSxDQUFDLGtCQUFrQixDQUFDLE9BQU8sRUFBRSxDQUFDO0lBQ3RDLEFBQUksSUFBSSxDQUFDLFdBQVcsQ0FBQyxPQUFPLEVBQUUsQ0FBQztJQUMvQixBQUFJLElBQUksQ0FBQyxxQkFBcUIsQ0FBQyxPQUFPLEVBQUUsQ0FBQztJQUN6QyxBQUFJLElBQUksQ0FBQyxRQUFRLENBQUMsT0FBTyxFQUFFLENBQUM7QUFDaEMsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSx1QkFBQSxVQUFVLHVCQUFBLENBQUMsT0FBTyxlQUFlLEFBQUksRUFBRSxRQUFRLGlCQUFpQixBQUFJLEVBQUUsQ0FBQzs7QUFBQTtJQUN2RSxBQUFJLEtBQWUsQUFBSSxrQkFBQSxRQUFRLHlCQUFBLEVBQUU7UUFBeEIsQUFDTCxHQURVLENBQUMsSUFBSTs7WUFDWCxLQUFnQixBQUFJLHNCQUFBLElBQUksK0JBQUEsRUFBRTtZQUFyQixBQUNMLEdBRFUsQ0FBQyxLQUFLOztnQkFDWixHQUFLLENBQUMsQ0FBQyxHQUFHLEtBQUssQ0FBQyxDQUFDLENBQUM7WUFDdEIsQUFBSSxHQUFLLENBQUMsQ0FBQyxHQUFHLEtBQUssQ0FBQyxDQUFDLENBQUM7O1lBRXRCLEFBQUk7WUFDSixBQUFJLElBQUksQ0FBQyxHQUFHLENBQUMsSUFBSSxDQUFDLElBQUksTUFBTSxJQUFJLENBQUMsR0FBRyxDQUFDLElBQUksQ0FBQyxJQUFJLE1BQU0sRUFBRSxFQUFBLFNBQVMsRUFBQTs7WUFFL0QsQUFBSTtZQUNKLEFBQUk7WUFDSixBQUFJO1lBQ0osQUFBSTtZQUNKLEFBQUksT0FBTyxBQUFJO1lBQ2YsQUFBSSxTQUFTLEFBQUk7WUFDakIsQUFBSSxPQUFPLEFBQUk7WUFDZixBQUFJOztZQUVKLEFBQUksR0FBSyxDQUFDLE9BQU8sR0FBRyxNQUFJLENBQUMsUUFBUSxDQUFDLGNBQWMsQ0FBQyxDQUFDLEVBQUUsTUFBSSxDQUFDLGlCQUFpQixFQUFFLE1BQUksQ0FBQyxVQUFVLENBQUMsQ0FBQztZQUM3RixBQUFJLEdBQUssQ0FBQyxLQUFLLEdBQUcsT0FBTyxDQUFDLFlBQVksQ0FBQzs7WUFFdkMsQUFBSSxlQUFlLENBQUMsTUFBSSxDQUFDLGlCQUFpQixFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQztZQUMxRCxBQUFJLGVBQWUsQ0FBQyxNQUFJLENBQUMsaUJBQWlCLEVBQUUsQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQztZQUN6RCxBQUFJLGVBQWUsQ0FBQyxNQUFJLENBQUMsaUJBQWlCLEVBQUUsQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUM7WUFDeEQsQUFBSSxlQUFlLENBQUMsTUFBSSxDQUFDLGlCQUFpQixFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUM7O1lBRXpELEFBQUksTUFBSSxDQUFDLFVBQVUsQ0FBQyxXQUFXLENBQUMsS0FBSyxFQUFFLEtBQUssR0FBRyxDQUFDLEVBQUUsS0FBSyxHQUFHLENBQUMsQ0FBQyxDQUFDO1lBQzdELEFBQUksTUFBSSxDQUFDLFVBQVUsQ0FBQyxXQUFXLENBQUMsS0FBSyxFQUFFLEtBQUssR0FBRyxDQUFDLEVBQUUsS0FBSyxHQUFHLENBQUMsQ0FBQyxDQUFDOztZQUU3RCxBQUFJLE9BQU8sQ0FBQyxZQUFZLElBQUksQ0FBQyxDQUFDO1lBQzlCLEFBQUksT0FBTyxDQUFDLGVBQWUsSUFBSSxDQUFDLENBQUM7UUFDckMsQUFBSSxDQUFDO0lBQ1QsQUFBSSxDQUFDOztJQUVMLEFBQUksSUFBSSxDQUFDLHFCQUFxQixDQUFDLG1CQUFtQixDQUFDLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxNQUFNLEVBQUUsT0FBTyxDQUFDLENBQUM7QUFDL0YsQUFBSSxDQUFDLENBQUEsQUFDSjs7QUFFRCxZQUFZLENBQUMsZ0JBQWdCLEdBQUcsZUFBZSxDQUFDOztBQUVoRCxNQUFNLENBQUMsT0FBTyxHQUFHLFlBQVksQ0FBQzs7O0FDL0o5Qjs7QUFFQSxBQUFLLEFBQWdCLE9BQUEsR0FBRyxPQUFPLENBQUMsWUFBWSxDQUFDO0FBQXRDLElBQUEsYUFBYSxxQkFBZCxBQUFjLEFBQXlCLEFBQUM7QUFDOUMsR0FBSyxDQUFDLFlBQVksR0FBRyxPQUFPLENBQUMsd0JBQXdCLENBQUMsQ0FBQztBQUN2RCxHQUFLLENBQUMsV0FBVyxHQUFHLE9BQU8sQ0FBQyx1QkFBdUIsQ0FBQyxDQUFDO0FBQ3JELEFBQUssQUFBMEIsU0FBQSxHQUFHLE9BQU8sQ0FBQywwQkFBMEIsQ0FBQztBQUE5RCxJQUFBLHVCQUF1QixpQ0FBeEIsQUFBd0IsQUFBdUMsQUFBQztBQUN0RSxHQUFLLENBQUMscUJBQXFCLEdBQUcsT0FBTyxDQUFDLHNCQUFzQixDQUFDLENBQUM7QUFDOUQsQUFBSyxBQUFxQyxTQUFBLEdBQUcsT0FBTyxDQUFDLHFCQUFxQixDQUFDO0FBQXBFLElBQUEsY0FBYztBQUFFLElBQUEsa0JBQWtCLDRCQUFuQyxBQUFlLEFBQW9CLEFBQWtDLEFBQUM7QUFDNUUsR0FBSyxDQUFDLFlBQVksR0FBRyxPQUFPLENBQUMsa0JBQWtCLENBQUMsQ0FBQztBQUNqRCxHQUFLLENBQUMsTUFBTSxHQUFHLE9BQU8sQ0FBQyxRQUFRLENBQUMsQ0FBQztBQUNqQyxHQUFLLENBQUMsYUFBYSxHQUFHLE9BQU8sQ0FBQywyQkFBMkIsQ0FBQyxDQUFDO0FBQzNELEdBQUssQ0FBQyxNQUFNLEdBQUcsT0FBTyxDQUFDLFFBQVEsQ0FBQyxDQUFDO0FBQ2pDLEdBQUssQ0FBQyxnQkFBZ0IsR0FBRyxHQUFHLENBQUM7Ozs7Ozs7O0FBUTdCLEdBQUssQ0FBQyxhQUFhLEdBQUc7SUFDbEIsZ0JBQWdCLEVBQUU7UUFDZCxDQUFDLElBQUksRUFBRSxPQUFPLEVBQUUsVUFBVSxFQUFFLENBQUMsRUFBRSxJQUFJLEVBQUUsT0FBTyxDQUFDO0tBQ2hEO0lBQ0QsY0FBYyxFQUFFLGtCQUFrQjtJQUNsQyxlQUFlLEVBQUUsY0FBYzs7SUFFL0IsZUFBZSxFQUFFO1FBQ2IsQ0FBQyxRQUFRLEVBQUUsWUFBWSxDQUFDO1FBQ3hCLENBQUMsUUFBUSxFQUFFLG9CQUFvQixDQUFDO1FBQ2hDLENBQUMsUUFBUSxFQUFFLGNBQWMsQ0FBQztLQUM3QjtDQUNKLENBQUM7O0FBRUYsR0FBSyxDQUFDLHFCQUFxQixHQUFHLHFCQUFxQixDQUFDLGFBQWEsQ0FBQyxnQkFBZ0IsQ0FBQyxDQUFDOztBQUVwRixJQUFNLFVBQVUsR0FBZSxBQUFJLEFBc0JuQyxBQUFJLG1CQUFXLENBQUMsT0FBTyxDQUFDLEFBQUksRUFBRTtJQUMxQixBQUFJLElBQUksQ0FBQyxJQUFJLEdBQUcsT0FBTyxDQUFDLElBQUksQ0FBQztJQUM3QixBQUFJLElBQUksQ0FBQyxXQUFXLEdBQUcsT0FBTyxDQUFDLFdBQVcsQ0FBQztJQUMzQyxBQUFJLElBQUksQ0FBQyxNQUFNLEdBQUcsT0FBTyxDQUFDLE1BQU0sQ0FBQztJQUNqQyxBQUFJLElBQUksQ0FBQyxLQUFLLEdBQUcsT0FBTyxDQUFDLEtBQUssQ0FBQzs7SUFFL0IsQUFBSSxJQUFJLENBQUMsaUJBQWlCLEdBQUcsSUFBSSxxQkFBcUIsQ0FBQyxPQUFPLENBQUMsaUJBQWlCLENBQUMsQ0FBQztJQUNsRixBQUFJLElBQUksQ0FBQyxVQUFVLEdBQUcsSUFBSSxrQkFBa0IsQ0FBQyxPQUFPLENBQUMsVUFBVSxDQUFDLENBQUM7SUFDakUsQUFBSSxJQUFJLENBQUMsV0FBVyxHQUFHLElBQUksY0FBYyxDQUFDLE9BQU8sQ0FBQyxXQUFXLENBQUMsQ0FBQztJQUMvRCxBQUFJLElBQUksQ0FBQyxxQkFBcUIsR0FBRyxJQUFJLHVCQUF1QixDQUFDLGFBQWEsRUFBRSxPQUFPLENBQUMsTUFBTSxFQUFFLE9BQU8sQ0FBQyxJQUFJLEVBQUUsT0FBTyxDQUFDLHFCQUFxQixDQUFDLENBQUM7SUFDekksQUFBSSxJQUFJLENBQUMsUUFBUSxHQUFHLElBQUksYUFBYSxDQUFDLE9BQU8sQ0FBQyxRQUFRLENBQUMsQ0FBQztJQUN4RCxBQUFJLElBQUksQ0FBQyxTQUFTLEdBQUcsSUFBSSxhQUFhLENBQUMsT0FBTyxDQUFDLFNBQVMsQ0FBQyxDQUFDO0FBQzlELEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUkscUJBQUEsUUFBUSxxQkFBQSxDQUFDLFFBQVEsbUJBQW1CLEFBQUksRUFBRSxPQUFPLGdCQUFnQixBQUFJLEVBQUUsQ0FBQzs7QUFBQTtJQUN4RSxBQUFJLEtBQTZDLEFBQUksa0JBQUEsUUFBUSx5QkFBQSxFQUFFO1FBQXRELEFBQ0wsR0FEVSxDQUFDLEdBQUEsQUFBUSxBQUFPLEFBQWtCLEFBQUM7WUFBakMsSUFBQSxPQUFPO1lBQUUsSUFBQSxLQUFLO1lBQUUsSUFBQSxnQkFBZ0I7O1lBQ3hDLElBQUksTUFBSSxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBQyxjQUFjLENBQUMsQ0FBQyxJQUFJLEVBQUUsTUFBSSxDQUFDLElBQUksQ0FBQyxFQUFFLE9BQU8sQ0FBQyxFQUFFO1lBQy9ELEFBQUksR0FBSyxDQUFDLFFBQVEsR0FBRyxZQUFZLENBQUMsT0FBTyxDQUFDLENBQUM7WUFDM0MsQUFBSSxNQUFJLENBQUMsVUFBVSxDQUFDLE9BQU8sRUFBRSxRQUFRLENBQUMsQ0FBQztZQUN2QyxBQUFJLE9BQU8sQ0FBQyxZQUFZLENBQUMsTUFBTSxDQUFDLE9BQU8sRUFBRSxRQUFRLEVBQUUsS0FBSyxFQUFFLGdCQUFnQixFQUFFLE1BQUksQ0FBQyxLQUFLLENBQUMsQ0FBQztRQUM1RixBQUFJLENBQUM7SUFDVCxBQUFJLENBQUM7QUFDVCxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLHFCQUFBLE9BQU8sb0JBQUEsR0FBRztJQUNWLEFBQUksT0FBTyxJQUFJLENBQUMsaUJBQWlCLENBQUMsTUFBTSxLQUFLLENBQUMsQ0FBQztBQUNuRCxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLHFCQUFBLFNBQVMsc0JBQUEsQ0FBQyxhQUFhLGtCQUFrQixBQUFJLGdCQUFnQixBQUFJO0lBQ2pFLEFBQUksT0FBTztRQUNQLEFBQUksSUFBSSxFQUFFLElBQUksQ0FBQyxJQUFJO1FBQ25CLEFBQUksUUFBUSxFQUFFLElBQUksQ0FBQyxNQUFNLENBQUMsR0FBRyxDQUFDLFNBQUEsQ0FBQyxDQUFDLEVBQUUsQUFBRyxTQUFBLENBQUMsQ0FBQyxFQUFFLEdBQUEsQ0FBQztRQUMxQyxBQUFJLGlCQUFpQixFQUFFLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxTQUFTLENBQUMsYUFBYSxDQUFDO1FBQ3RFLEFBQUksVUFBVSxFQUFFLElBQUksQ0FBQyxVQUFVLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUN4RCxBQUFJLFdBQVcsRUFBRSxJQUFJLENBQUMsV0FBVyxDQUFDLFNBQVMsQ0FBQyxhQUFhLENBQUM7UUFDMUQsQUFBSSxxQkFBcUIsRUFBRSxJQUFJLENBQUMscUJBQXFCLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUM5RSxBQUFJLFFBQVEsRUFBRSxJQUFJLENBQUMsUUFBUSxDQUFDLEdBQUcsRUFBRTtRQUNqQyxBQUFJLFNBQVMsRUFBRSxJQUFJLENBQUMsU0FBUyxDQUFDLEdBQUcsRUFBRTtJQUN2QyxBQUFJLENBQUMsQ0FBQztBQUNWLEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUkscUJBQUEsTUFBTSxtQkFBQSxDQUFDLEVBQUUsbUJBQW1CLEFBQUksRUFBRTtJQUNsQyxBQUFJLElBQUksQ0FBQyxrQkFBa0IsR0FBRyxJQUFJLFlBQVksQ0FBQyxFQUFFLEVBQUUsSUFBSSxDQUFDLGlCQUFpQixDQUFDLENBQUM7SUFDM0UsQUFBSSxJQUFJLENBQUMsV0FBVyxHQUFHLElBQUksV0FBVyxDQUFDLEVBQUUsRUFBRSxJQUFJLENBQUMsVUFBVSxDQUFDLENBQUM7SUFDNUQsQUFBSSxJQUFJLENBQUMsWUFBWSxHQUFHLElBQUksV0FBVyxDQUFDLEVBQUUsRUFBRSxJQUFJLENBQUMsV0FBVyxDQUFDLENBQUM7SUFDOUQsQUFBSSxJQUFJLENBQUMscUJBQXFCLENBQUMsTUFBTSxDQUFDLEVBQUUsQ0FBQyxDQUFDO0FBQzlDLEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUkscUJBQUEsT0FBTyxvQkFBQSxHQUFHO0lBQ1YsQUFBSSxJQUFJLENBQUMsSUFBSSxDQUFDLGtCQUFrQixFQUFFLEVBQUEsT0FBTyxFQUFBO0lBQ3pDLEFBQUksSUFBSSxDQUFDLGtCQUFrQixDQUFDLE9BQU8sRUFBRSxDQUFDO0lBQ3RDLEFBQUksSUFBSSxDQUFDLFdBQVcsQ0FBQyxPQUFPLEVBQUUsQ0FBQztJQUMvQixBQUFJLElBQUksQ0FBQyxZQUFZLENBQUMsT0FBTyxFQUFFLENBQUM7SUFDaEMsQUFBSSxJQUFJLENBQUMscUJBQXFCLENBQUMsT0FBTyxFQUFFLENBQUM7SUFDekMsQUFBSSxJQUFJLENBQUMsUUFBUSxDQUFDLE9BQU8sRUFBRSxDQUFDO0lBQzVCLEFBQUksSUFBSSxDQUFDLFNBQVMsQ0FBQyxPQUFPLEVBQUUsQ0FBQztBQUNqQyxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLHFCQUFBLFVBQVUsdUJBQUEsQ0FBQyxPQUFPLGVBQWUsQUFBSSxFQUFFLFFBQVEsaUJBQWlCLEFBQUksRUFBRSxDQUFDOztBQUFBO0lBQ3ZFLEFBQUksS0FBa0IsQUFBSSxvQkFBQSxhQUFhLENBQUMsUUFBUSxFQUFFLGdCQUFnQixDQUFDLDZCQUFBLEVBQUU7UUFBNUQsQUFDTCxHQURVLENBQUMsT0FBTzs7WUFDZCxHQUFHLENBQUMsV0FBVyxHQUFHLENBQUMsQ0FBQztRQUN4QixBQUFJLEtBQWUsQUFBSSxzQkFBQSxPQUFPLCtCQUFBLEVBQUU7WUFBdkIsQUFDTCxHQURVLENBQUMsSUFBSTs7Z0JBQ1gsV0FBVyxJQUFJLElBQUksQ0FBQyxNQUFNLENBQUM7UUFDbkMsQUFBSSxDQUFDOztRQUVMLEFBQUksR0FBSyxDQUFDLGVBQWUsR0FBRyxNQUFJLENBQUMsUUFBUSxDQUFDLGNBQWMsQ0FBQyxXQUFXLEVBQUUsTUFBSSxDQUFDLGlCQUFpQixFQUFFLE1BQUksQ0FBQyxVQUFVLENBQUMsQ0FBQztRQUMvRyxBQUFJLEdBQUssQ0FBQyxhQUFhLEdBQUcsZUFBZSxDQUFDLFlBQVksQ0FBQzs7UUFFdkQsQUFBSSxHQUFLLENBQUMsU0FBUyxHQUFHLEVBQUUsQ0FBQztRQUN6QixBQUFJLEdBQUssQ0FBQyxXQUFXLEdBQUcsRUFBRSxDQUFDOztRQUUzQixBQUFJLEtBQWUsQUFBSSxzQkFBQSxPQUFPLCtCQUFBLEVBQUU7WUFBdkIsQUFDTCxHQURVLENBQUMsTUFBSTs7Z0JBQ1gsSUFBSSxNQUFJLENBQUMsTUFBTSxLQUFLLENBQUMsRUFBRTtnQkFDdkIsQUFBSSxTQUFTO1lBQ2pCLEFBQUksQ0FBQzs7WUFFTCxBQUFJLElBQUksTUFBSSxLQUFLLE9BQU8sQ0FBQyxDQUFDLENBQUMsRUFBRTtnQkFDekIsQUFBSSxXQUFXLENBQUMsSUFBSSxDQUFDLFNBQVMsQ0FBQyxNQUFNLEdBQUcsQ0FBQyxDQUFDLENBQUM7WUFDL0MsQUFBSSxDQUFDOztZQUVMLEFBQUksR0FBSyxDQUFDLFdBQVcsR0FBRyxNQUFJLENBQUMsU0FBUyxDQUFDLGNBQWMsQ0FBQyxNQUFJLENBQUMsTUFBTSxFQUFFLE1BQUksQ0FBQyxpQkFBaUIsRUFBRSxNQUFJLENBQUMsV0FBVyxDQUFDLENBQUM7WUFDN0csQUFBSSxHQUFLLENBQUMsU0FBUyxHQUFHLFdBQVcsQ0FBQyxZQUFZLENBQUM7O1lBRS9DLEFBQUksTUFBSSxDQUFDLGlCQUFpQixDQUFDLFdBQVcsQ0FBQyxNQUFJLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxFQUFFLE1BQUksQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQztZQUM3RCxBQUFJLE1BQUksQ0FBQyxXQUFXLENBQUMsV0FBVyxDQUFDLFNBQVMsR0FBRyxNQUFJLENBQUMsTUFBTSxHQUFHLENBQUMsRUFBRSxTQUFTLENBQUMsQ0FBQztZQUN6RSxBQUFJLFNBQVMsQ0FBQyxJQUFJLENBQUMsTUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDO1lBQzlCLEFBQUksU0FBUyxDQUFDLElBQUksQ0FBQyxNQUFJLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUM7O1lBRTlCLEFBQUksS0FBSyxHQUFHLENBQUMsQ0FBQyxHQUFHLENBQUMsRUFBRSxDQUFDLEdBQUcsTUFBSSxDQUFDLE1BQU0sRUFBRSxDQUFDLEVBQUUsRUFBRTtnQkFDdEMsQUFBSSxNQUFJLENBQUMsaUJBQWlCLENBQUMsV0FBVyxDQUFDLE1BQUksQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLEVBQUUsTUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDO2dCQUM3RCxBQUFJLE1BQUksQ0FBQyxXQUFXLENBQUMsV0FBVyxDQUFDLFNBQVMsR0FBRyxDQUFDLEdBQUcsQ0FBQyxFQUFFLFNBQVMsR0FBRyxDQUFDLENBQUMsQ0FBQztnQkFDbkUsQUFBSSxTQUFTLENBQUMsSUFBSSxDQUFDLE1BQUksQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQztnQkFDOUIsQUFBSSxTQUFTLENBQUMsSUFBSSxDQUFDLE1BQUksQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQztZQUNsQyxBQUFJLENBQUM7O1lBRUwsQUFBSSxXQUFXLENBQUMsWUFBWSxJQUFJLE1BQUksQ0FBQyxNQUFNLENBQUM7WUFDNUMsQUFBSSxXQUFXLENBQUMsZUFBZSxJQUFJLE1BQUksQ0FBQyxNQUFNLENBQUM7UUFDbkQsQUFBSSxDQUFDOztRQUVMLEFBQUksR0FBSyxDQUFDLE9BQU8sR0FBRyxNQUFNLENBQUMsU0FBUyxFQUFFLFdBQVcsQ0FBQyxDQUFDO1FBQ25ELEFBQUksTUFBTSxDQUFDLE9BQU8sQ0FBQyxNQUFNLEdBQUcsQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDOztRQUVyQyxBQUFJLEtBQUssR0FBRyxDQUFDLEdBQUMsR0FBRyxDQUFDLEVBQUUsR0FBQyxHQUFHLE9BQU8sQ0FBQyxNQUFNLEVBQUUsR0FBQyxJQUFJLENBQUMsRUFBRTtZQUM1QyxBQUFJLE1BQUksQ0FBQyxVQUFVLENBQUMsV0FBVztnQkFDM0IsQUFBSSxhQUFhLEdBQUcsT0FBTyxDQUFDLEdBQUMsQ0FBQztnQkFDOUIsQUFBSSxhQUFhLEdBQUcsT0FBTyxDQUFDLEdBQUMsR0FBRyxDQUFDLENBQUM7Z0JBQ2xDLEFBQUksYUFBYSxHQUFHLE9BQU8sQ0FBQyxHQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUM1QyxBQUFJLENBQUM7O1FBRUwsQUFBSSxlQUFlLENBQUMsWUFBWSxJQUFJLFdBQVcsQ0FBQztRQUNoRCxBQUFJLGVBQWUsQ0FBQyxlQUFlLElBQUksT0FBTyxDQUFDLE1BQU0sR0FBRyxDQUFDLENBQUM7SUFDOUQsQUFBSSxDQUFDOztJQUVMLEFBQUksSUFBSSxDQUFDLHFCQUFxQixDQUFDLG1CQUFtQixDQUFDLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxNQUFNLEVBQUUsT0FBTyxDQUFDLENBQUM7QUFDL0YsQUFBSSxDQUFDLENBQUEsQUFDSjs7QUFFRCxVQUFVLENBQUMsZ0JBQWdCLEdBQUcsYUFBYSxDQUFDOztBQUU1QyxNQUFNLENBQUMsT0FBTyxHQUFHLFVBQVUsQ0FBQzs7O0FDakw1Qjs7QUFFQSxBQUFLLEFBQXlDLE9BQUEsR0FBRyxPQUFPLENBQUMsWUFBWSxDQUFDO0FBQS9ELElBQUEsYUFBYTtBQUFFLElBQUEsdUJBQXVCLCtCQUF2QyxBQUFjLEFBQXlCLEFBQXlCLEFBQUM7QUFDdkUsR0FBSyxDQUFDLFlBQVksR0FBRyxPQUFPLENBQUMsd0JBQXdCLENBQUMsQ0FBQztBQUN2RCxHQUFLLENBQUMsV0FBVyxHQUFHLE9BQU8sQ0FBQyx1QkFBdUIsQ0FBQyxDQUFDO0FBQ3JELEFBQUssQUFBMEIsU0FBQSxHQUFHLE9BQU8sQ0FBQywwQkFBMEIsQ0FBQztBQUE5RCxJQUFBLHVCQUF1QixpQ0FBeEIsQUFBd0IsQUFBdUMsQUFBQztBQUN0RSxHQUFLLENBQUMscUJBQXFCLEdBQUcsT0FBTyxDQUFDLHNCQUFzQixDQUFDLENBQUM7QUFDOUQsQUFBSyxBQUFxQixTQUFBLEdBQUcsT0FBTyxDQUFDLHFCQUFxQixDQUFDO0FBQXBELElBQUEsa0JBQWtCLDRCQUFuQixBQUFtQixBQUFrQyxBQUFDO0FBQzVELEdBQUssQ0FBQyxZQUFZLEdBQUcsT0FBTyxDQUFDLGtCQUFrQixDQUFDLENBQUM7QUFDakQsR0FBSyxDQUFDLE1BQU0sR0FBRyxPQUFPLENBQUMsV0FBVyxDQUFDLENBQUM7QUFDcEMsR0FBSyxDQUFDLE1BQU0sR0FBRyxPQUFPLENBQUMsUUFBUSxDQUFDLENBQUM7QUFDakMsR0FBSyxDQUFDLGFBQWEsR0FBRyxPQUFPLENBQUMsMkJBQTJCLENBQUMsQ0FBQztBQUMzRCxHQUFLLENBQUMsTUFBTSxHQUFHLE9BQU8sQ0FBQyxRQUFRLENBQUMsQ0FBQztBQUNqQyxHQUFLLENBQUMsZ0JBQWdCLEdBQUcsR0FBRyxDQUFDOzs7Ozs7OztBQVE3QixHQUFLLENBQUMsc0JBQXNCLEdBQUc7SUFDM0IsZ0JBQWdCLEVBQUU7UUFDZCxDQUFDLElBQUksRUFBRSxPQUFPLFdBQVcsVUFBVSxFQUFFLENBQUMsRUFBRSxJQUFJLEVBQUUsT0FBTyxDQUFDO1FBQ3RELENBQUMsSUFBSSxFQUFFLFVBQVUsUUFBUSxVQUFVLEVBQUUsQ0FBQyxFQUFFLElBQUksRUFBRSxPQUFPLENBQUM7UUFDdEQsQ0FBQyxJQUFJLEVBQUUsZ0JBQWdCLEVBQUUsVUFBVSxFQUFFLENBQUMsRUFBRSxJQUFJLEVBQUUsT0FBTyxDQUFDO0tBQ3pEO0lBQ0QsY0FBYyxFQUFFLGtCQUFrQjs7SUFFbEMsZUFBZSxFQUFFO1FBQ2IsQ0FBQyxRQUFRLEVBQUUscUJBQXFCLENBQUM7UUFDakMsQ0FBQyxRQUFRLEVBQUUsdUJBQXVCLENBQUM7UUFDbkMsQ0FBQyxRQUFRLEVBQUUsc0JBQXNCLENBQUM7S0FDckM7Q0FDSixDQUFDOztBQUVGLEdBQUssQ0FBQyxNQUFNLEdBQUcsSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFDLEVBQUUsRUFBRSxDQUFDLENBQUM7O0FBRS9CLFNBQVMsU0FBUyxDQUFDLFdBQVcsRUFBRSxDQUFDLEVBQUUsQ0FBQyxFQUFFLEVBQUUsRUFBRSxFQUFFLEVBQUUsRUFBRSxFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUU7SUFDcEQsV0FBVyxDQUFDLFdBQVc7O1FBRW5CLENBQUM7UUFDRCxDQUFDOztRQUVELElBQUksQ0FBQyxLQUFLLENBQUMsRUFBRSxHQUFHLE1BQU0sQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDO1FBQy9CLEVBQUUsR0FBRyxNQUFNLEdBQUcsQ0FBQztRQUNmLEVBQUUsR0FBRyxNQUFNLEdBQUcsQ0FBQzs7O1FBR2YsSUFBSSxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUM7S0FDaEIsQ0FBQztDQUNMOztBQUVELEdBQUssQ0FBQyxxQkFBcUIsR0FBRyxxQkFBcUIsQ0FBQyxzQkFBc0IsQ0FBQyxnQkFBZ0IsQ0FBQyxDQUFDOztBQUU3RixJQUFNLG1CQUFtQixHQUFlLEFBQUksQUFrQjVDLEFBQUksNEJBQVcsQ0FBQyxPQUFPLENBQUMsQUFBSSxFQUFFO0lBQzFCLEFBQUksSUFBSSxDQUFDLElBQUksR0FBRyxPQUFPLENBQUMsSUFBSSxDQUFDO0lBQzdCLEFBQUksSUFBSSxDQUFDLFdBQVcsR0FBRyxPQUFPLENBQUMsV0FBVyxDQUFDO0lBQzNDLEFBQUksSUFBSSxDQUFDLE1BQU0sR0FBRyxPQUFPLENBQUMsTUFBTSxDQUFDO0lBQ2pDLEFBQUksSUFBSSxDQUFDLEtBQUssR0FBRyxPQUFPLENBQUMsS0FBSyxDQUFDOztJQUUvQixBQUFJLElBQUksQ0FBQyxpQkFBaUIsR0FBRyxJQUFJLHFCQUFxQixDQUFDLE9BQU8sQ0FBQyxpQkFBaUIsQ0FBQyxDQUFDO0lBQ2xGLEFBQUksSUFBSSxDQUFDLFVBQVUsR0FBRyxJQUFJLGtCQUFrQixDQUFDLE9BQU8sQ0FBQyxVQUFVLENBQUMsQ0FBQztJQUNqRSxBQUFJLElBQUksQ0FBQyxxQkFBcUIsR0FBRyxJQUFJLHVCQUF1QixDQUFDLHNCQUFzQixFQUFFLE9BQU8sQ0FBQyxNQUFNLEVBQUUsT0FBTyxDQUFDLElBQUksRUFBRSxPQUFPLENBQUMscUJBQXFCLENBQUMsQ0FBQztJQUNsSixBQUFJLElBQUksQ0FBQyxRQUFRLEdBQUcsSUFBSSxhQUFhLENBQUMsT0FBTyxDQUFDLFFBQVEsQ0FBQyxDQUFDO0FBQzVELEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUksOEJBQUEsUUFBUSxxQkFBQSxDQUFDLFFBQVEsbUJBQW1CLEFBQUksRUFBRSxPQUFPLGdCQUFnQixBQUFJLEVBQUUsQ0FBQzs7QUFBQTtJQUN4RSxBQUFJLEtBQTZDLEFBQUksa0JBQUEsUUFBUSx5QkFBQSxFQUFFO1FBQXRELEFBQ0wsR0FEVSxDQUFDLEdBQUEsQUFBUSxBQUFPLEFBQWtCLEFBQUM7WUFBakMsSUFBQSxPQUFPO1lBQUUsSUFBQSxLQUFLO1lBQUUsSUFBQSxnQkFBZ0I7O1lBQ3hDLElBQUksTUFBSSxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBQyxjQUFjLENBQUMsQ0FBQyxJQUFJLEVBQUUsTUFBSSxDQUFDLElBQUksQ0FBQyxFQUFFLE9BQU8sQ0FBQyxFQUFFO1lBQy9ELEFBQUksR0FBSyxDQUFDLFFBQVEsR0FBRyxZQUFZLENBQUMsT0FBTyxDQUFDLENBQUM7WUFDM0MsQUFBSSxNQUFJLENBQUMsVUFBVSxDQUFDLE9BQU8sRUFBRSxRQUFRLENBQUMsQ0FBQztZQUN2QyxBQUFJLE9BQU8sQ0FBQyxZQUFZLENBQUMsTUFBTSxDQUFDLE9BQU8sRUFBRSxRQUFRLEVBQUUsS0FBSyxFQUFFLGdCQUFnQixFQUFFLE1BQUksQ0FBQyxLQUFLLENBQUMsQ0FBQztRQUM1RixBQUFJLENBQUM7SUFDVCxBQUFJLENBQUM7QUFDVCxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLDhCQUFBLE9BQU8sb0JBQUEsR0FBRztJQUNWLEFBQUksT0FBTyxJQUFJLENBQUMsaUJBQWlCLENBQUMsTUFBTSxLQUFLLENBQUMsQ0FBQztBQUNuRCxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLDhCQUFBLFNBQVMsc0JBQUEsQ0FBQyxhQUFhLGtCQUFrQixBQUFJLGdCQUFnQixBQUFJO0lBQ2pFLEFBQUksT0FBTztRQUNQLEFBQUksSUFBSSxFQUFFLElBQUksQ0FBQyxJQUFJO1FBQ25CLEFBQUksUUFBUSxFQUFFLElBQUksQ0FBQyxNQUFNLENBQUMsR0FBRyxDQUFDLFNBQUEsQ0FBQyxDQUFDLEVBQUUsQUFBRyxTQUFBLENBQUMsQ0FBQyxFQUFFLEdBQUEsQ0FBQztRQUMxQyxBQUFJLGlCQUFpQixFQUFFLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxTQUFTLENBQUMsYUFBYSxDQUFDO1FBQ3RFLEFBQUksVUFBVSxFQUFFLElBQUksQ0FBQyxVQUFVLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUN4RCxBQUFJLHFCQUFxQixFQUFFLElBQUksQ0FBQyxxQkFBcUIsQ0FBQyxTQUFTLENBQUMsYUFBYSxDQUFDO1FBQzlFLEFBQUksUUFBUSxFQUFFLElBQUksQ0FBQyxRQUFRLENBQUMsR0FBRyxFQUFFO0lBQ3JDLEFBQUksQ0FBQyxDQUFDO0FBQ1YsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSw4QkFBQSxNQUFNLG1CQUFBLENBQUMsRUFBRSxtQkFBbUIsQUFBSSxFQUFFO0lBQ2xDLEFBQUksSUFBSSxDQUFDLGtCQUFrQixHQUFHLElBQUksWUFBWSxDQUFDLEVBQUUsRUFBRSxJQUFJLENBQUMsaUJBQWlCLENBQUMsQ0FBQztJQUMzRSxBQUFJLElBQUksQ0FBQyxXQUFXLEdBQUcsSUFBSSxXQUFXLENBQUMsRUFBRSxFQUFFLElBQUksQ0FBQyxVQUFVLENBQUMsQ0FBQztJQUM1RCxBQUFJLElBQUksQ0FBQyxxQkFBcUIsQ0FBQyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7QUFDOUMsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSw4QkFBQSxPQUFPLG9CQUFBLEdBQUc7SUFDVixBQUFJLElBQUksQ0FBQyxJQUFJLENBQUMsa0JBQWtCLEVBQUUsRUFBQSxPQUFPLEVBQUE7SUFDekMsQUFBSSxJQUFJLENBQUMsa0JBQWtCLENBQUMsT0FBTyxFQUFFLENBQUM7SUFDdEMsQUFBSSxJQUFJLENBQUMsV0FBVyxDQUFDLE9BQU8sRUFBRSxDQUFDO0lBQy9CLEFBQUksSUFBSSxDQUFDLHFCQUFxQixDQUFDLE9BQU8sRUFBRSxDQUFDO0lBQ3pDLEFBQUksSUFBSSxDQUFDLFFBQVEsQ0FBQyxPQUFPLEVBQUUsQ0FBQztBQUNoQyxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLDhCQUFBLFVBQVUsdUJBQUEsQ0FBQyxPQUFPLGVBQWUsQUFBSSxFQUFFLFFBQVEsaUJBQWlCLEFBQUksRUFBRSxDQUFDOztBQUFBO0lBQ3ZFLEFBQUksS0FBa0IsQUFBSSxvQkFBQSxhQUFhLENBQUMsUUFBUSxFQUFFLGdCQUFnQixDQUFDLDZCQUFBLEVBQUU7UUFBNUQsQUFDTCxHQURVLENBQUMsT0FBTzs7WUFDZCxHQUFHLENBQUMsV0FBVyxHQUFHLENBQUMsQ0FBQztRQUN4QixBQUFJLEtBQWUsQUFBSSxzQkFBQSxPQUFPLCtCQUFBLEVBQUU7WUFBdkIsQUFDTCxHQURVLENBQUMsSUFBSTs7Z0JBQ1gsV0FBVyxJQUFJLElBQUksQ0FBQyxNQUFNLENBQUM7UUFDbkMsQUFBSSxDQUFDOztRQUVMLEFBQUksR0FBRyxDQUFDLE9BQU8sR0FBRyxNQUFJLENBQUMsUUFBUSxDQUFDLGNBQWMsQ0FBQyxDQUFDLEVBQUUsTUFBSSxDQUFDLGlCQUFpQixFQUFFLE1BQUksQ0FBQyxVQUFVLENBQUMsQ0FBQzs7UUFFM0YsQUFBSSxLQUFlLEFBQUksc0JBQUEsT0FBTywrQkFBQSxFQUFFO1lBQXZCLEFBQ0wsR0FEVSxDQUFDLE1BQUk7O2dCQUNYLElBQUksTUFBSSxDQUFDLE1BQU0sS0FBSyxDQUFDLEVBQUU7Z0JBQ3ZCLEFBQUksU0FBUztZQUNqQixBQUFJLENBQUM7O1lBRUwsQUFBSSxHQUFHLENBQUMsWUFBWSxHQUFHLENBQUMsQ0FBQzs7WUFFekIsQUFBSSxLQUFLLEdBQUcsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxFQUFFLENBQUMsR0FBRyxNQUFJLENBQUMsTUFBTSxFQUFFLENBQUMsRUFBRSxFQUFFO2dCQUN0QyxBQUFJLEdBQUssQ0FBQyxFQUFFLEdBQUcsTUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDOztnQkFFdkIsQUFBSSxJQUFJLENBQUMsSUFBSSxDQUFDLEVBQUU7b0JBQ1osQUFBSSxHQUFLLENBQUMsRUFBRSxHQUFHLE1BQUksQ0FBQyxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUM7O29CQUUzQixBQUFJLElBQUksQ0FBQyxjQUFjLENBQUMsRUFBRSxFQUFFLEVBQUUsQ0FBQyxFQUFFO3dCQUM3QixBQUFJLElBQUksT0FBTyxDQUFDLFlBQVksR0FBRyxDQUFDLEdBQUcsdUJBQXVCLEVBQUU7NEJBQ3hELEFBQUksT0FBTyxHQUFHLE1BQUksQ0FBQyxRQUFRLENBQUMsY0FBYyxDQUFDLENBQUMsRUFBRSxNQUFJLENBQUMsaUJBQWlCLEVBQUUsTUFBSSxDQUFDLFVBQVUsQ0FBQyxDQUFDO3dCQUMzRixBQUFJLENBQUM7O3dCQUVMLEFBQUksR0FBSyxDQUFDLElBQUksR0FBRyxFQUFFLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQyxDQUFDLEtBQUssRUFBRSxDQUFDLEtBQUssRUFBRSxDQUFDOzt3QkFFNUMsQUFBSSxTQUFTLENBQUMsTUFBSSxDQUFDLGlCQUFpQixFQUFFLEVBQUUsQ0FBQyxDQUFDLEVBQUUsRUFBRSxDQUFDLENBQUMsRUFBRSxJQUFJLENBQUMsQ0FBQyxFQUFFLElBQUksQ0FBQyxDQUFDLEVBQUUsQ0FBQyxFQUFFLENBQUMsRUFBRSxZQUFZLENBQUMsQ0FBQzt3QkFDdEYsQUFBSSxTQUFTLENBQUMsTUFBSSxDQUFDLGlCQUFpQixFQUFFLEVBQUUsQ0FBQyxDQUFDLEVBQUUsRUFBRSxDQUFDLENBQUMsRUFBRSxJQUFJLENBQUMsQ0FBQyxFQUFFLElBQUksQ0FBQyxDQUFDLEVBQUUsQ0FBQyxFQUFFLENBQUMsRUFBRSxZQUFZLENBQUMsQ0FBQzs7d0JBRXRGLEFBQUksWUFBWSxJQUFJLEVBQUUsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLENBQUM7O3dCQUVoQyxBQUFJLFNBQVMsQ0FBQyxNQUFJLENBQUMsaUJBQWlCLEVBQUUsRUFBRSxDQUFDLENBQUMsRUFBRSxFQUFFLENBQUMsQ0FBQyxFQUFFLElBQUksQ0FBQyxDQUFDLEVBQUUsSUFBSSxDQUFDLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxFQUFFLFlBQVksQ0FBQyxDQUFDO3dCQUN0RixBQUFJLFNBQVMsQ0FBQyxNQUFJLENBQUMsaUJBQWlCLEVBQUUsRUFBRSxDQUFDLENBQUMsRUFBRSxFQUFFLENBQUMsQ0FBQyxFQUFFLElBQUksQ0FBQyxDQUFDLEVBQUUsSUFBSSxDQUFDLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxFQUFFLFlBQVksQ0FBQyxDQUFDOzt3QkFFdEYsQUFBSSxHQUFLLENBQUMsV0FBVyxHQUFHLE9BQU8sQ0FBQyxZQUFZLENBQUM7O3dCQUU3QyxBQUFJLE1BQUksQ0FBQyxVQUFVLENBQUMsV0FBVyxDQUFDLFdBQVcsRUFBRSxXQUFXLEdBQUcsQ0FBQyxFQUFFLFdBQVcsR0FBRyxDQUFDLENBQUMsQ0FBQzt3QkFDL0UsQUFBSSxNQUFJLENBQUMsVUFBVSxDQUFDLFdBQVcsQ0FBQyxXQUFXLEdBQUcsQ0FBQyxFQUFFLFdBQVcsR0FBRyxDQUFDLEVBQUUsV0FBVyxHQUFHLENBQUMsQ0FBQyxDQUFDOzt3QkFFbkYsQUFBSSxPQUFPLENBQUMsWUFBWSxJQUFJLENBQUMsQ0FBQzt3QkFDOUIsQUFBSSxPQUFPLENBQUMsZUFBZSxJQUFJLENBQUMsQ0FBQztvQkFDckMsQUFBSSxDQUFDO2dCQUNULEFBQUksQ0FBQztZQUNULEFBQUksQ0FBQztRQUNULEFBQUksQ0FBQzs7UUFFTCxBQUFJLElBQUksT0FBTyxDQUFDLFlBQVksR0FBRyxXQUFXLEdBQUcsdUJBQXVCLEVBQUU7WUFDbEUsQUFBSSxPQUFPLEdBQUcsTUFBSSxDQUFDLFFBQVEsQ0FBQyxjQUFjLENBQUMsV0FBVyxFQUFFLE1BQUksQ0FBQyxpQkFBaUIsRUFBRSxNQUFJLENBQUMsVUFBVSxDQUFDLENBQUM7UUFDckcsQUFBSSxDQUFDOztRQUVMLEFBQUksR0FBSyxDQUFDLFNBQVMsR0FBRyxFQUFFLENBQUM7UUFDekIsQUFBSSxHQUFLLENBQUMsV0FBVyxHQUFHLEVBQUUsQ0FBQztRQUMzQixBQUFJLEdBQUssQ0FBQyxhQUFhLEdBQUcsT0FBTyxDQUFDLFlBQVksQ0FBQzs7UUFFL0MsQUFBSSxLQUFlLEFBQUksc0JBQUEsT0FBTywrQkFBQSxFQUFFO1lBQXZCLEFBQ0wsR0FEVSxDQUFDLE1BQUk7O2dCQUNYLElBQUksTUFBSSxDQUFDLE1BQU0sS0FBSyxDQUFDLEVBQUU7Z0JBQ3ZCLEFBQUksU0FBUztZQUNqQixBQUFJLENBQUM7O1lBRUwsQUFBSSxJQUFJLE1BQUksS0FBSyxPQUFPLENBQUMsQ0FBQyxDQUFDLEVBQUU7Z0JBQ3pCLEFBQUksV0FBVyxDQUFDLElBQUksQ0FBQyxTQUFTLENBQUMsTUFBTSxHQUFHLENBQUMsQ0FBQyxDQUFDO1lBQy9DLEFBQUksQ0FBQzs7WUFFTCxBQUFJLEtBQUssR0FBRyxDQUFDLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQyxHQUFHLE1BQUksQ0FBQyxNQUFNLEVBQUUsQ0FBQyxFQUFFLEVBQUU7Z0JBQ3RDLEFBQUksR0FBSyxDQUFDLEdBQUMsR0FBRyxNQUFJLENBQUMsQ0FBQyxDQUFDLENBQUM7O2dCQUV0QixBQUFJLFNBQVMsQ0FBQyxNQUFJLENBQUMsaUJBQWlCLEVBQUUsR0FBQyxDQUFDLENBQUMsRUFBRSxHQUFDLENBQUMsQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLENBQUMsQ0FBQzs7Z0JBRS9ELEFBQUksU0FBUyxDQUFDLElBQUksQ0FBQyxHQUFDLENBQUMsQ0FBQyxDQUFDLENBQUM7Z0JBQ3hCLEFBQUksU0FBUyxDQUFDLElBQUksQ0FBQyxHQUFDLENBQUMsQ0FBQyxDQUFDLENBQUM7WUFDNUIsQUFBSSxDQUFDO1FBQ1QsQUFBSSxDQUFDOztRQUVMLEFBQUksR0FBSyxDQUFDLE9BQU8sR0FBRyxNQUFNLENBQUMsU0FBUyxFQUFFLFdBQVcsQ0FBQyxDQUFDO1FBQ25ELEFBQUksTUFBTSxDQUFDLE9BQU8sQ0FBQyxNQUFNLEdBQUcsQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDOztRQUVyQyxBQUFJLEtBQUssR0FBRyxDQUFDLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQyxHQUFHLE9BQU8sQ0FBQyxNQUFNLEVBQUUsQ0FBQyxJQUFJLENBQUMsRUFBRTtZQUM1QyxBQUFJLE1BQUksQ0FBQyxVQUFVLENBQUMsV0FBVztnQkFDM0IsQUFBSSxhQUFhLEdBQUcsT0FBTyxDQUFDLENBQUMsQ0FBQztnQkFDOUIsQUFBSSxhQUFhLEdBQUcsT0FBTyxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUM7Z0JBQ2xDLEFBQUksYUFBYSxHQUFHLE9BQU8sQ0FBQyxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUM1QyxBQUFJLENBQUM7O1FBRUwsQUFBSSxPQUFPLENBQUMsZUFBZSxJQUFJLE9BQU8sQ0FBQyxNQUFNLEdBQUcsQ0FBQyxDQUFDO1FBQ2xELEFBQUksT0FBTyxDQUFDLFlBQVksSUFBSSxXQUFXLENBQUM7SUFDNUMsQUFBSSxDQUFDOztJQUVMLEFBQUksSUFBSSxDQUFDLHFCQUFxQixDQUFDLG1CQUFtQixDQUFDLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxNQUFNLEVBQUUsT0FBTyxDQUFDLENBQUM7QUFDL0YsQUFBSSxDQUFDLENBQUEsQUFDSjs7QUFFRCxtQkFBbUIsQ0FBQyxnQkFBZ0IsR0FBRyxzQkFBc0IsQ0FBQzs7QUFFOUQsTUFBTSxDQUFDLE9BQU8sR0FBRyxtQkFBbUIsQ0FBQzs7QUFFckMsU0FBUyxjQUFjLENBQUMsRUFBRSxFQUFFLEVBQUUsRUFBRTtJQUM1QixPQUFPLENBQUMsRUFBRSxDQUFDLENBQUMsS0FBSyxFQUFFLENBQUMsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLENBQUMsR0FBRyxDQUFDLElBQUksRUFBRSxDQUFDLENBQUMsR0FBRyxNQUFNLENBQUMsQ0FBQztRQUNqRCxDQUFDLEVBQUUsQ0FBQyxDQUFDLEtBQUssRUFBRSxDQUFDLENBQUMsSUFBSSxDQUFDLEVBQUUsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxJQUFJLEVBQUUsQ0FBQyxDQUFDLEdBQUcsTUFBTSxDQUFDLENBQUMsQ0FBQztDQUN0RDs7O0FDak9EOztBQUVBLEdBQUssQ0FBQyxZQUFZLEdBQUcsT0FBTyxDQUFDLGlCQUFpQixDQUFDLENBQUM7O0FBRWhELEdBQUssQ0FBQyxnQkFBZ0IsR0FBRztJQUNyQixnQkFBZ0IsRUFBRSxZQUFZLENBQUMsZ0JBQWdCLENBQUMsZ0JBQWdCO0lBQ2hFLGNBQWMsRUFBRSxZQUFZLENBQUMsZ0JBQWdCLENBQUMsY0FBYzs7SUFFNUQsZUFBZSxFQUFFO1FBQ2IsQ0FBQyxRQUFRLEVBQUUsZ0JBQWdCLENBQUM7S0FDL0I7Q0FDSixDQUFDOztBQUVGLElBQU0sYUFBYSxHQUFxQjtJQUFDOzs7Ozs7SUFBQSxBQUFFOzs7RUFBZixZQUFlLEdBQUE7O0FBRTNDLGFBQWEsQ0FBQyxnQkFBZ0IsR0FBRyxnQkFBZ0IsQ0FBQzs7QUFFbEQsTUFBTSxDQUFDLE9BQU8sR0FBRyxhQUFhLENBQUM7OztBQ2pCL0I7O0FBRUEsQUFBSyxBQUFnQixPQUFBLEdBQUcsT0FBTyxDQUFDLFlBQVksQ0FBQztBQUF0QyxJQUFBLGFBQWEscUJBQWQsQUFBYyxBQUF5QixBQUFDO0FBQzlDLEdBQUssQ0FBQyxZQUFZLEdBQUcsT0FBTyxDQUFDLHdCQUF3QixDQUFDLENBQUM7QUFDdkQsR0FBSyxDQUFDLFdBQVcsR0FBRyxPQUFPLENBQUMsdUJBQXVCLENBQUMsQ0FBQztBQUNyRCxBQUFLLEFBQTBCLFNBQUEsR0FBRyxPQUFPLENBQUMsMEJBQTBCLENBQUM7QUFBOUQsSUFBQSx1QkFBdUIsaUNBQXhCLEFBQXdCLEFBQXVDLEFBQUM7QUFDdEUsR0FBSyxDQUFDLHFCQUFxQixHQUFHLE9BQU8sQ0FBQyxzQkFBc0IsQ0FBQyxDQUFDO0FBQzlELEFBQUssQUFBcUIsU0FBQSxHQUFHLE9BQU8sQ0FBQyxxQkFBcUIsQ0FBQztBQUFwRCxJQUFBLGtCQUFrQiw0QkFBbkIsQUFBbUIsQUFBa0MsQUFBQztBQUM1RCxHQUFLLENBQUMsWUFBWSxHQUFHLE9BQU8sQ0FBQyxrQkFBa0IsQ0FBQyxDQUFDO0FBQ2pELEdBQUssQ0FBQyxNQUFNLEdBQUcsT0FBTyxDQUFDLFdBQVcsQ0FBQyxDQUFDO0FBQ3BDLEdBQUssQ0FBQyxzQkFBc0IsR0FBRyxPQUFPLENBQUMscUJBQXFCLENBQUMsQ0FBQyxpQkFBaUIsQ0FBQyxLQUFLLENBQUM7Ozs7Ozs7Ozs7Ozs7OztBQWV0RixHQUFLLENBQUMsYUFBYSxHQUFHLEVBQUUsQ0FBQzs7Ozs7Ozs7Ozs7OztBQWF6QixHQUFLLENBQUMscUJBQXFCLEdBQUcsSUFBSSxDQUFDLEdBQUcsQ0FBQyxFQUFFLEdBQUcsQ0FBQyxHQUFHLENBQUMsSUFBSSxDQUFDLEVBQUUsR0FBRyxHQUFHLENBQUMsQ0FBQyxDQUFDO0FBQ2pFLEdBQUssQ0FBQyxtQkFBbUIsR0FBRyxFQUFFLENBQUM7OztBQUcvQixHQUFLLENBQUMseUJBQXlCLEdBQUcsRUFBRSxDQUFDOzs7OztBQUtyQyxHQUFLLENBQUMsbUJBQW1CLEdBQUcsQ0FBQyxHQUFHLENBQUMsQ0FBQzs7O0FBR2xDLEdBQUssQ0FBQyxpQkFBaUIsR0FBRyxJQUFJLENBQUMsR0FBRyxDQUFDLENBQUMsRUFBRSx5QkFBeUIsR0FBRyxDQUFDLENBQUMsR0FBRyxtQkFBbUIsQ0FBQzs7QUFFM0YsR0FBSyxDQUFDLGFBQWEsR0FBRztJQUNsQixnQkFBZ0IsRUFBRTtRQUNkLENBQUMsSUFBSSxFQUFFLGNBQWMsRUFBRSxVQUFVLEVBQUUsQ0FBQyxFQUFFLElBQUksRUFBRSxPQUFPLENBQUM7UUFDcEQsQ0FBQyxJQUFJLEVBQUUsUUFBUSxFQUFFLFVBQVUsRUFBRSxDQUFDLEVBQUUsSUFBSSxFQUFFLE9BQU8sQ0FBQztLQUNqRDtJQUNELGVBQWUsRUFBRTtRQUNiLENBQUMsUUFBUSxFQUFFLFlBQVksQ0FBQztRQUN4QixDQUFDLFFBQVEsRUFBRSxXQUFXLENBQUM7UUFDdkIsQ0FBQyxRQUFRLEVBQUUsY0FBYyxDQUFDO1FBQzFCLENBQUMsUUFBUSxFQUFFLGdCQUFnQixFQUFFLElBQUksRUFBRSxVQUFVLENBQUM7UUFDOUMsQ0FBQyxRQUFRLEVBQUUsYUFBYSxDQUFDO1FBQ3pCLENBQUMsUUFBUSxFQUFFLFlBQVksQ0FBQztRQUN4QixDQUFDLFFBQVEsRUFBRSxZQUFZLEVBQUUsSUFBSSxFQUFFLFlBQVksRUFBRSxjQUFjLEVBQUUsSUFBSSxDQUFDLENBQ3RFLENBQUM7SUFDRCxjQUFjLEVBQUUsa0JBQWtCO0NBQ3JDLENBQUM7O0FBRUYsU0FBUyxhQUFhLENBQUMsa0JBQWtCLEVBQUUsS0FBSyxTQUFTLE9BQU8sU0FBUyxLQUFLLFdBQVcsRUFBRSxXQUFXLEdBQUcsVUFBVSxTQUFTLFVBQVU7SUFDbEksa0JBQWtCLENBQUMsV0FBVzs7UUFFMUIsS0FBSyxDQUFDLENBQUM7UUFDUCxLQUFLLENBQUMsQ0FBQztRQUNQLEtBQUssR0FBRyxDQUFDLEdBQUcsQ0FBQztRQUNiLEVBQUUsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFDOzs7UUFHWCxJQUFJLENBQUMsS0FBSyxDQUFDLGFBQWEsR0FBRyxPQUFPLENBQUMsQ0FBQyxDQUFDLEdBQUcsR0FBRztRQUMzQyxJQUFJLENBQUMsS0FBSyxDQUFDLGFBQWEsR0FBRyxPQUFPLENBQUMsQ0FBQyxDQUFDLEdBQUcsR0FBRzs7Ozs7O1FBTTNDLENBQUMsQ0FBQyxHQUFHLEtBQUssQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLEdBQUcsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsQ0FBQyxTQUFTLEdBQUcsbUJBQW1CLENBQUMsR0FBRyxJQUFJLENBQUMsSUFBSSxDQUFDLENBQUM7UUFDOUYsQ0FBQyxTQUFTLEdBQUcsbUJBQW1CLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQztDQUMvQzs7QUFFRCxHQUFLLENBQUMscUJBQXFCLEdBQUcscUJBQXFCLENBQUMsYUFBYSxDQUFDLGdCQUFnQixDQUFDLENBQUM7Ozs7O0FBS3BGLElBQU0sVUFBVSxHQUFlLEFBQUksQUF1Qm5DLEFBQUksbUJBQVcsQ0FBQyxPQUFPLENBQUMsQUFBSSxFQUFFO0lBQzFCLEFBQUksSUFBSSxDQUFDLElBQUksR0FBRyxPQUFPLENBQUMsSUFBSSxDQUFDO0lBQzdCLEFBQUksSUFBSSxDQUFDLFdBQVcsR0FBRyxPQUFPLENBQUMsV0FBVyxDQUFDO0lBQzNDLEFBQUksSUFBSSxDQUFDLE1BQU0sR0FBRyxPQUFPLENBQUMsTUFBTSxDQUFDO0lBQ2pDLEFBQUksSUFBSSxDQUFDLEtBQUssR0FBRyxPQUFPLENBQUMsS0FBSyxDQUFDOztJQUUvQixBQUFJLElBQUksQ0FBQyxpQkFBaUIsR0FBRyxJQUFJLHFCQUFxQixDQUFDLE9BQU8sQ0FBQyxpQkFBaUIsQ0FBQyxDQUFDO0lBQ2xGLEFBQUksSUFBSSxDQUFDLFVBQVUsR0FBRyxJQUFJLGtCQUFrQixDQUFDLE9BQU8sQ0FBQyxVQUFVLENBQUMsQ0FBQztJQUNqRSxBQUFJLElBQUksQ0FBQyxxQkFBcUIsR0FBRyxJQUFJLHVCQUF1QixDQUFDLGFBQWEsRUFBRSxPQUFPLENBQUMsTUFBTSxFQUFFLE9BQU8sQ0FBQyxJQUFJLEVBQUUsT0FBTyxDQUFDLHFCQUFxQixDQUFDLENBQUM7SUFDekksQUFBSSxJQUFJLENBQUMsUUFBUSxHQUFHLElBQUksYUFBYSxDQUFDLE9BQU8sQ0FBQyxRQUFRLENBQUMsQ0FBQztBQUM1RCxBQUFJLENBQUMsQ0FBQTs7QUFFTCxBQUFJLHFCQUFBLFFBQVEscUJBQUEsQ0FBQyxRQUFRLG1CQUFtQixBQUFJLEVBQUUsT0FBTyxnQkFBZ0IsQUFBSSxFQUFFLENBQUM7O0FBQUE7SUFDeEUsQUFBSSxLQUE2QyxBQUFJLGtCQUFBLFFBQVEseUJBQUEsRUFBRTtRQUF0RCxBQUNMLEdBRFUsQ0FBQyxHQUFBLEFBQVEsQUFBTyxBQUFrQixBQUFDO1lBQWpDLElBQUEsT0FBTztZQUFFLElBQUEsS0FBSztZQUFFLElBQUEsZ0JBQWdCOztZQUN4QyxJQUFJLE1BQUksQ0FBQyxNQUFNLENBQUMsQ0FBQyxDQUFDLENBQUMsY0FBYyxDQUFDLENBQUMsSUFBSSxFQUFFLE1BQUksQ0FBQyxJQUFJLENBQUMsRUFBRSxPQUFPLENBQUMsRUFBRTtZQUMvRCxBQUFJLEdBQUssQ0FBQyxRQUFRLEdBQUcsWUFBWSxDQUFDLE9BQU8sQ0FBQyxDQUFDO1lBQzNDLEFBQUksTUFBSSxDQUFDLFVBQVUsQ0FBQyxPQUFPLEVBQUUsUUFBUSxDQUFDLENBQUM7WUFDdkMsQUFBSSxPQUFPLENBQUMsWUFBWSxDQUFDLE1BQU0sQ0FBQyxPQUFPLEVBQUUsUUFBUSxFQUFFLEtBQUssRUFBRSxnQkFBZ0IsRUFBRSxNQUFJLENBQUMsS0FBSyxDQUFDLENBQUM7UUFDNUYsQUFBSSxDQUFDO0lBQ1QsQUFBSSxDQUFDO0FBQ1QsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSxxQkFBQSxPQUFPLG9CQUFBLEdBQUc7SUFDVixBQUFJLE9BQU8sSUFBSSxDQUFDLGlCQUFpQixDQUFDLE1BQU0sS0FBSyxDQUFDLENBQUM7QUFDbkQsQUFBSSxDQUFDLENBQUE7O0FBRUwsQUFBSSxxQkFBQSxTQUFTLHNCQUFBLENBQUMsYUFBYSxrQkFBa0IsQUFBSSxnQkFBZ0IsQUFBSTtJQUNqRSxBQUFJLE9BQU87UUFDUCxBQUFJLElBQUksRUFBRSxJQUFJLENBQUMsSUFBSTtRQUNuQixBQUFJLFFBQVEsRUFBRSxJQUFJLENBQUMsTUFBTSxDQUFDLEdBQUcsQ0FBQyxTQUFBLENBQUMsQ0FBQyxFQUFFLEFBQUcsU0FBQSxDQUFDLENBQUMsRUFBRSxHQUFBLENBQUM7UUFDMUMsQUFBSSxpQkFBaUIsRUFBRSxJQUFJLENBQUMsaUJBQWlCLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUN0RSxBQUFJLFVBQVUsRUFBRSxJQUFJLENBQUMsVUFBVSxDQUFDLFNBQVMsQ0FBQyxhQUFhLENBQUM7UUFDeEQsQUFBSSxxQkFBcUIsRUFBRSxJQUFJLENBQUMscUJBQXFCLENBQUMsU0FBUyxDQUFDLGFBQWEsQ0FBQztRQUM5RSxBQUFJLFFBQVEsRUFBRSxJQUFJLENBQUMsUUFBUSxDQUFDLEdBQUcsRUFBRTtJQUNyQyxBQUFJLENBQUMsQ0FBQztBQUNWLEFBQUksQ0FBQyxDQUFBOztBQUVMLEFBQUkscUJBQUEsTUFBTSxtQkFBQSxDQUFDLEVBQUUsbUJBQW1CLEFBQUksRUFBRTtJQUNsQyxBQUFJLElBQUksQ0FBQyxrQkFBa0IsR0FBRyxJQUFJLFlBQVksQ0FBQyxFQUFFLEVBQUUsSUFBSSxDQUFDLGlCQUFpQixDQUFDLENBQUM7SUFDM0UsQUFBSSxJQUFJLENBQUMsV0FBVyxHQUFHLElBQUksV0FBVyxDQUFDLEVBQUUsRUFBRSxJQUFJLENBQUMsVUFBVSxDQUFDLENBQUM7SUFDNUQ
