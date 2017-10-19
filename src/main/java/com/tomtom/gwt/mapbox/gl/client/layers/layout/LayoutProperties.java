@@ -33,13 +33,17 @@ public final class LayoutProperties {
     public static final String ICON_PADDING = "icon-padding";
     public static final String ICON_KEEP_UPRIGHT = "icon-keep-upright";
     public static final String ICON_OFFSET = "icon-offset";
+    public static final String ICON_ANCHOR = "icon-anchor";
     public static final String ICON_PITCH_ALIGNMENT = "icon-pitch-alignment";
     public static final String TEXT_PITCH_ALIGNMENT = "text-pitch-alignment";
     public static final String TEXT_ROTATION_ALIGNMENT = "text-rotation-alignment";
     public static final String TEXT_FIELD = "text-field";
     public static final String TEXT_FONT = "text-font";
     public static final String TEXT_SIZE = "text-size";
+    public static final String TEXT_LETTER_SPACING = "text-letter-spacing";
     public static final String TEXT_ANCHOR = "text-anchor";
+    public static final String TEXT_PADDING = "text-padding";
+    public static final String TEXT_OPTIONAL = "text-optional";
     public static final String TEXT_OFFSET = "text-offset";
     public static final String TEXT_ALLOW_OVERLAP = "text-allow-overlap";
     

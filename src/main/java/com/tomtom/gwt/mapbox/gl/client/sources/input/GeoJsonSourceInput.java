@@ -47,6 +47,11 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
             return sourceInput;
         }
         
+        /**
+         * @param data A URL to a GeoJSON file, or inline GeoJSON.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-data
+         */
         @JsOverlay
         private Builder withData(T data) {
             setData(data);
@@ -56,23 +61,96 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         @JsProperty
         private native void setData(T data);
     
-        @JsProperty
-        public native void setMaxzoom(int value);
+        /**
+         * Maximum zoom level at which to create vector tiles (higher means greater detail at high zoom levels).
+         * @param maxZoom Optional number.  Defaults to 18.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-maxzoom
+         */
+        @JsOverlay
+        public Builder withMaxZoom(int maxZoom) {
+            setMaxzoom(maxZoom);
+            return this;
+        }
         
         @JsProperty
-        public native void setBuffer(int value);
-    
-        @JsProperty
-        public native void setTolerance(double value);
-    
-        @JsProperty
-        public native void setCluster(boolean value);
-    
-        @JsProperty
-        public native void setClusterRadius(int value);
+        private native void setMaxzoom(int value);
+        
+        /**
+         * Size of the tile buffer on each side. A value of 0 produces no buffer. 
+         * A value of 512 produces a buffer as wide as the tile itself. Larger values produce fewer rendering artifacts near tile edges and slower performance.
+         * @param buffer Optional number.  Defaults to 128.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-buffer
+         */
+        @JsOverlay
+        public Builder withBuffer(int buffer) {
+            setBuffer(buffer);
+            return this;
+        }
         
         @JsProperty
-        public native void setClusterMaxZoom(int value);
+        private native void setBuffer(int value);
+    
+        /**
+         * Douglas-Peucker simplification tolerance (higher means simpler geometries and faster performance).
+         * @param tolerance Optional number. Defaults to 0.375. 
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-tolerance
+         */
+        @JsOverlay
+        public Builder withTolerance(double tolerance) {
+            setTolerance(tolerance);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setTolerance(double value);
+    
+        /**
+         * If the data is a collection of point features, setting this to true clusters the points by radius into groups.
+         * @param enableClustering Optional boolean. Defaults to false. 
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-cluster
+         */
+        @JsOverlay
+        public Builder withCluster(boolean enableClustering) {
+            setCluster(enableClustering);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setCluster(boolean value);
+    
+        /**
+         * Radius of each cluster if clustering is enabled. A value of 512 indicates a radius equal to the width of a tile.
+         * @param radiusPixels Optional number.  Defaults to 50.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-clusterRadius
+         */
+        @JsOverlay
+        public Builder withClusterRadius(int radiusPixels) {
+            setClusterRadius(radiusPixels);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setClusterRadius(int value);
+        
+        /**
+         * Max zoom on which to cluster points if clustering is enabled. Defaults to one zoom less than maxzoom (so that last zoom features are not clustered).
+         * @param maxZoom Optional number.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-clusterMaxZoom
+         */
+        @JsOverlay
+        public Builder withClusterMaxZoom(int maxZoom) {
+            setClusterMaxZoom(maxZoom);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setClusterMaxZoom(int value);
     }
     
     @JsOverlay

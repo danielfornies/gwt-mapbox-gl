@@ -9,9 +9,9 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.ImageElement;
 import com.google.gwt.resources.client.ImageResource;
-import com.google.gwt.typedarrays.client.ArrayBufferViewNative;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.mapbox.gl.client.controls.IControl;
+import com.tomtom.gwt.mapbox.gl.client.events.BaseEvent;
 import com.tomtom.gwt.mapbox.gl.client.events.Evented;
 import com.tomtom.gwt.mapbox.gl.client.events.MapboxEventListener;
 import com.tomtom.gwt.mapbox.gl.client.layers.MapLayer;
@@ -39,7 +39,6 @@ import com.tomtom.gwt.mapbox.gl.client.layers.filter.Filter;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.AnimationOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.CameraOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.EaseToOptions;
-import com.tomtom.gwt.mapbox.gl.client.mapoptions.ImageOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.LightOptions;
 import com.tomtom.gwt.mapbox.gl.client.mapoptions.MapboxStyle;
 import jsinterop.annotations.JsProperty;
@@ -323,16 +322,6 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
      */
     public native void addImage(String name, ImageElement image);
-
-    /**
-     * Add an image to the style. This image can be used in icon-image, background-pattern, fill-pattern, and line-pattern. 
-     * An Map#error event will be fired if there is not enough space in the sprite to add this image.
-     * @param name The name of the image.
-     * @param image  The image as an  ArrayBufferView (using the format of  ImageData#data )
-     * @param options Required options for the ArrayBufferView image.
-     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#addimage
-     */
-    public native void addImage(String name, ArrayBufferViewNative image, ImageOptions options);
     
     /**
      * Remove an image from the style (such as one used by icon-image or background-pattern).
@@ -1044,7 +1033,7 @@ public class MapboxMap extends AbstractEvented {
     }
     
     @JsOverlay
-    public final <E> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, MapboxEventListener<E> listener) {
         return on(eventType.name(), listener);
     }
     
@@ -1062,8 +1051,26 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
      */
     @JsOverlay
-    public final <E> MapboxMap on(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
         return on(eventType.name(), layer.getId(), listener);
+    }
+    
+    /**
+     * Adds a listener for events of a specified type occurring on features in a specified style layer.
+     *
+     * @param <E>
+     * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
+     * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
+     * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
+     * @param layerID The ID of a style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the
+     * matching features.
+     * @param listener The function to be called when the event is fired.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
+     */
+    @JsOverlay
+    public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, String layerID, MapboxEventListener<E> listener) {
+        return on(eventType.name(), layerID, listener);
     }
 
     /**
@@ -1080,10 +1087,10 @@ public class MapboxMap extends AbstractEvented {
      * @return This.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
      */
-    public native <T extends Evented, E> T  on(String type, String layer, MapboxEventListener<E> listener);
+    public native <T extends Evented, E extends BaseEvent> T  on(String type, String layer, MapboxEventListener<E> listener);
 
     @JsOverlay
-    public final <E> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap off(MapEventType eventType, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
     
@@ -1097,7 +1104,7 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
      */
     @JsOverlay
-    public final <E> MapboxMap off(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap off(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
         return off(eventType.name(), listener);
     }
     
@@ -1111,10 +1118,10 @@ public class MapboxMap extends AbstractEvented {
      * @return This.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
      */
-    public native <T extends Evented, E> T  off(String type, String layer, MapboxEventListener<E> listener);
+    public native <T extends Evented, E extends BaseEvent> T  off(String type, String layer, MapboxEventListener<E> listener);
     
     @JsOverlay
-    public final <E> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
+    public final <E extends BaseEvent> MapboxMap once(MapEventType eventType, MapboxEventListener<E> listener) {
         return once(eventType.name(), listener);
     }
 

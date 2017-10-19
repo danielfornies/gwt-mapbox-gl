@@ -12,7 +12,7 @@ import jsinterop.annotations.JsType;
  * Parent event class to mouse-touch events with points and coordinates.
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public interface MapEventWithLocation {
+public interface MapEventWithLocation extends BaseEvent {
       
     /**
      * @return The event type. 

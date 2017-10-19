@@ -20,19 +20,24 @@ import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_ALLOW_OVERLAP;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_ANCHOR;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.ICON_PITCH_ALIGNMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_ALLOW_OVERLAP;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_ANCHOR;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FIELD;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FONT;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_LETTER_SPACING;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OFFSET;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OPTIONAL;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_PADDING;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_PITCH_ALIGNMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_ROTATION_ALIGNMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_SIZE;
 import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
 
 /**
- * https://www.mapbox.com/mapbox-gl-style-spec/#layout_symbol
+ * 
+ * https://www.mapbox.com/mapbox-gl-js/style-spec/#layout_symbol
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class SymbolLayout extends BaseLayout {
@@ -121,7 +126,7 @@ public class SymbolLayout extends BaseLayout {
     /**
      * Part of the text placed closest to the anchor.
      */
-    public static enum TextAnchor {
+    public static enum SymbolAnchor {
         /**
          * The center of the text is placed closest to the anchor.
          */
@@ -161,7 +166,7 @@ public class SymbolLayout extends BaseLayout {
         
         private final String apiValue;
         
-        private TextAnchor(String apiValue) {
+        private SymbolAnchor(String apiValue) {
             this.apiValue = apiValue;
         }
         
@@ -236,9 +241,29 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Scales the original size of the icon by the provided factor. The new pixel size of the image will be the original pixel size multiplied by icon-size. 1 is the original size; 3 triples the size of the image.
+         * Scales less than 1 will scale the image down.
+         * @param iconSizeFactor Units in factor of the original icon size. Defaults to 1. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-size
+         */
         @JsOverlay
-        public Builder withIconSize(int iconSizeFactor) {
-            JSUtils.setInt(this, ICON_SIZE, iconSizeFactor);
+        public Builder withIconSize(double iconSizeFactor) {
+            JSUtils.setDouble(this, ICON_SIZE, iconSizeFactor);
+            return this;
+        }
+        
+        /**
+         * Scales the original size of the icon by the provided factor. The new pixel size of the image will be the original pixel size multiplied by icon-size. 1 is the original size; 3 triples the size of the image.
+         * Scales less than 1 will scale the image down.
+         * @param propertyFunction Interpolated or piecewise function to change the size depending on zoom level and-or property.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-size
+         */
+        @JsOverlay
+        public Builder withIconSize(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, ICON_SIZE, propertyFunction);
             return this;
         }
         
@@ -261,12 +286,24 @@ public class SymbolLayout extends BaseLayout {
          * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-image
          */
         @JsOverlay
-        public Builder withIconImage(String value) {
+        public Builder withIconImageName(String value) {
             JSUtils.setObject(this, ICON_IMAGE, value);
             return this;
         }
         
         /**
+         * Name of image in sprite to use for drawing an image background. A string with {tokens} replaced, referencing the data property to pull from.
+         * @param propertyName The name of the property which will be replaced with its value.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-image
+         */
+        @JsOverlay
+        public Builder withIconImageToken(String propertyName) {
+            JSUtils.setObject(this, ICON_IMAGE, "{" + propertyName + "}");
+            return this;
+        }
+        
+        /** 
          * Name of image in sprite to use for drawing an image background. A string with {tokens} replaced, referencing the data property to pull from.
          * @param propertyFunction The property function determining what image or data property to pull from depending on what situation.
          * @return This Builder.
@@ -323,6 +360,30 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Part of the icon placed closest to the anchor. Requires icon-image.
+         * @param anchor Optional enum.  One of center, left, right, top, bottom, top-left, top-right, bottom-left, bottom-right. Defaults to center. 
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-anchor
+         */
+        @JsOverlay
+        public Builder withIconAnchor(SymbolAnchor anchor) {
+            JSUtils.setObject(this, ICON_ANCHOR, anchor.getApiValue());
+            return this;
+        }
+        
+        /**
+         * Part of the icon placed closest to the anchor. Requires icon-image.
+         * @param propertyFunction Piecewise/constant function to determine the anchor depending on property/zoom values.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-anchor
+         */
+        @JsOverlay
+        public Builder withIconAnchor(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, ICON_ANCHOR, propertyFunction);
+            return this;
+        }
+        
         @JsOverlay
         public Builder withIconPitchAlignment(PitchRotationAlignment alignment) {
             JSUtils.setObject(this, ICON_PITCH_ALIGNMENT, alignment.getApiValue());
@@ -362,8 +423,22 @@ public class SymbolLayout extends BaseLayout {
          * https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-field
          */
         @JsOverlay
-        public Builder withTextField(String textValue) {
+        public Builder withTextFieldValue(String textValue) {
             JSUtils.setObject(this, TEXT_FIELD, textValue);
+            return this;
+        }
+        
+        /**
+         * Value to use for a text label. 
+         * Feature properties are specified using tokens like {field_name}. 
+         * (Token replacement is only supported for literal text-field values--not for property functions.)
+         * @param propertyName The name of the property which will be replaced by its value.
+         * @return This Builder.
+         * https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-field
+         */
+        @JsOverlay
+        public Builder withTextFieldToken(String propertyName) {
+            JSUtils.setObject(this, TEXT_FIELD, "{" + propertyName + "}");
             return this;
         }
         
@@ -418,6 +493,30 @@ public class SymbolLayout extends BaseLayout {
         }
         
         /**
+         * Text tracking amount.
+         * @param ems Optional number.  Units in ems. Defaults to 0. Requires text-field.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-letter-spacing
+         */
+        @JsOverlay
+        public Builder withTextLetterSpacing(double ems) {
+            JSUtils.setDouble(this, TEXT_LETTER_SPACING, ems);
+            return this;
+        }
+        
+        /**
+         * Text tracking amount.
+         * @param propertyFunction (Interpolated) function to set the letter spacing in function of properties/zoom levels.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-letter-spacing
+         */
+        @JsOverlay
+        public Builder withTextLetterSpacing(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, TEXT_LETTER_SPACING, propertyFunction);
+            return this;
+        }
+        
+        /**
          * Offset distance of text from its anchor. Positive values indicate right and down, while negative values indicate left and up.
          * @param right Positive indicates right, negative left. Units in ems. Defaults to 0.
          * @param down Positive indicates down, negative up. Units in ems. Defaults to 0.
@@ -461,7 +560,7 @@ public class SymbolLayout extends BaseLayout {
          * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-anchor
          */
         @JsOverlay
-        public Builder withTextAnchor(TextAnchor anchor) {
+        public Builder withTextAnchor(SymbolAnchor anchor) {
             JSUtils.setObject(this, TEXT_ANCHOR, anchor.getApiValue());
             return this;
         }
@@ -475,6 +574,54 @@ public class SymbolLayout extends BaseLayout {
         @JsOverlay
         public Builder withTextAnchor(StyleFunction propertyFunction) {
             JSUtils.setObject(this, TEXT_ANCHOR, propertyFunction);
+            return this;
+        }
+        
+        /**
+         * Size of the additional area around the text bounding box used for detecting symbol collisions.
+         * @param paddingPixels Units in pixels. Defaults to 2. Requires text-field.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-padding
+         */
+        @JsOverlay
+        public Builder withTextPadding(int paddingPixels) {
+            JSUtils.setInt(this, TEXT_PADDING, paddingPixels);
+            return this;
+        }
+        
+        /**
+         * Size of the additional area around the text bounding box used for detecting symbol collisions.
+         * @param propertyFunction (Interpolated) function determining the padding depending on property and/or zoom levels.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-padding
+         */
+        @JsOverlay
+        public Builder withTextPadding(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, TEXT_PADDING, propertyFunction);
+            return this;
+        }
+        
+        /**
+         * If true, icons will display without their corresponding text when the text collides with other symbols and the icon does not.
+         * @param optional Defaults to false. Requires text-field. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-optional
+         */
+        @JsOverlay
+        public Builder withTextOptional(boolean optional) {
+            JSUtils.setBoolean(this, TEXT_OPTIONAL, optional);
+            return this;
+        }
+        
+        /**
+         * If true, icons will display without their corresponding text when the text collides with other symbols and the icon does not.
+         * @param propertyFunction (Piecewise constant) Property function to determine the optional flag depending on property-zoom levels.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-optional
+         */
+        @JsOverlay
+        public Builder withTextOptional(StyleFunction propertyFunction) {
+            JSUtils.setObject(this, TEXT_OPTIONAL, propertyFunction);
             return this;
         }
     }

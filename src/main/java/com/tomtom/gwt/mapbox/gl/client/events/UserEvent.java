@@ -10,7 +10,7 @@ import jsinterop.annotations.JsType;
  * @param <T> The sub-type for the original event.
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public interface UserEvent<T> {
+public interface UserEvent<T> extends BaseEvent {
     
     @JsProperty
     T getOriginalEvent();
