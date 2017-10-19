@@ -15,7 +15,7 @@ import jsinterop.annotations.JsType;
  * @see https://www.mapbox.com/mapbox-gl-js/api/#MapDataEvent
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
-public interface MapDataEvent {
+public interface MapDataEvent extends BaseEvent {
     
     /**
      * @return The event type.
