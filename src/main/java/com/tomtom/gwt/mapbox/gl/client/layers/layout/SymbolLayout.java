@@ -223,12 +223,24 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * If true, other symbols can be visible even if they collide with the icon.
+         * @param ignorePlacement Layout property. Optional boolean. Defaults to false. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#layout-symbol-icon-ignore-placement
+         */
         @JsOverlay
         public Builder withIconIgnorePlacement(boolean ignorePlacement) {
             JSUtils.setBoolean(this, ICON_IGNORE_PLACEMENT, ignorePlacement);
             return this;
         }
         
+        /**
+         * If true, text will display without their corresponding icons when the icon collides with other symbols and the text does not.
+         * @param iconOptional Layout property. Optional boolean. Defaults to false. Requires icon-image. Requires text-field.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#layout-symbol-icon-optional
+         */
         @JsOverlay
         public Builder withIconOptional(boolean iconOptional) {
             JSUtils.setBoolean(this, ICON_OPTIONAL, iconOptional);
