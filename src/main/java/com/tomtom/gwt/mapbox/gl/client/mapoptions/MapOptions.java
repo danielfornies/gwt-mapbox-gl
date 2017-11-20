@@ -108,13 +108,6 @@ public final class MapOptions {
         public native void setBearingSnap(int degrees);
 
         /**
-         * @param classes Mapbox style class names with which to initialize the map. Keep in mind that these classes are used for controlling a style layer's paint properties, so are not reflected in
-         * an HTML element's class attribute. To learn more about Mapbox style classes, read about Layers in the style specification.
-         */
-        @JsProperty
-        public native void setClasses(String[] classes);
-
-        /**
          * @param attributionControl (default true) If true , an AttributionControl will be added to the map.
          */
         @JsProperty
@@ -219,6 +212,12 @@ public final class MapOptions {
          */
         @JsProperty
         public native void setRenderWorldCopies(boolean enabled);
+        
+        /**
+         * @param cacheSize The maxiumum number of tiles stored in the tile cache for a given source. If omitted, the cache will be dynamically sized based on the current viewport.
+         */
+        @JsProperty
+        public native void setMaxTileCacheSize(int cacheSize);
         
         @JsOverlay
         public MapOptions build() {
