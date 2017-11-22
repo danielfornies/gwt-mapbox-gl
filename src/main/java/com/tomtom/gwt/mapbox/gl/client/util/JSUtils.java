@@ -11,8 +11,23 @@ public final class JSUtils {
     private JSUtils() {
     }
     
+    /**
+     * Sets the map access token.
+     * To use any of Mapbox’s tools, APIs, or SDKs, you’ll need a Mapbox access token.
+     * @param value The access token
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#accesstoken
+     */
     public static native void setAccessToken(String value) /*-{
         $wnd.mapboxgl.accessToken = value;
+    }-*/;
+    
+    /**
+     * Sets the map's RTL text plugin. Necessary for supporting languages like Arabic and Hebrew that are written right-to-left.
+     * @param url URL pointing to the Mapbox RTL text plugin source.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#setrtltextplugin
+     */
+    public static native void setRTLTextPlugin(String url) /*-{
+        $wnd.mapboxgl.setRTLTextPlugin(url);
     }-*/;
     
     public static native void copyAllFields(Object sourceObject, Object targetObject) /*-{
