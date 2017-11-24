@@ -50,10 +50,26 @@ public final class JSUtils {
         return result;
     }-*/;
     
-    public static JsArray<JsArray> toDoubleJsArray(Object[][] doubleArray) {
-        JsArray<JsArray> result = JavaScriptObject.createArray(doubleArray.length).cast();
-        for (int i = 0; i < doubleArray.length; i++) {
-            result.set(i, toJsArray(doubleArray[i]));
+    public static native JsArray toJsArray(double[] fieldValues) /*-{
+        var result = [];
+        for (index = 0, len = fieldValues.length; index < len; index++) {
+            result.push(fieldValues[index]);
+        }
+        return result;
+    }-*/;
+    
+    public static JsArray<JsArray> toTwoDimensionalJsArray(double[][] twoDimensionalArray) {
+        JsArray<JsArray> result = JavaScriptObject.createArray(twoDimensionalArray.length).cast();
+        for (int i = 0; i < twoDimensionalArray.length; i++) {
+            result.set(i, toJsArray(twoDimensionalArray[i]));
+        }
+        return result;
+    }
+    
+    public static JsArray<JsArray> toTwoDimensionalJsArray(Object[][] twoDimensionalArray) {
+        JsArray<JsArray> result = JavaScriptObject.createArray(twoDimensionalArray.length).cast();
+        for (int i = 0; i < twoDimensionalArray.length; i++) {
+            result.set(i, toJsArray(twoDimensionalArray[i]));
         }
         return result;
     }
