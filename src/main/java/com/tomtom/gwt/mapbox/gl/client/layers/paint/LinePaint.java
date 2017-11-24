@@ -72,7 +72,7 @@ public class LinePaint extends AbstractPaint {
 
         @JsOverlay
         public Builder withTranslate(double[][] rightDownPixelsOffset) {
-            JSUtils.setObject(this, LINE_TRANSLATE, rightDownPixelsOffset);
+            JSUtils.setObject(this, LINE_TRANSLATE, JSUtils.toTwoDimensionalJsArray(rightDownPixelsOffset));
             return this;
         }
         
@@ -144,7 +144,7 @@ public class LinePaint extends AbstractPaint {
 
         @JsOverlay
         public Builder withDashArray(double[] lineWidthLengths) {
-            JSUtils.setObject(this, LINE_DASHARRAY, lineWidthLengths);
+            JSUtils.setObject(this, LINE_DASHARRAY, JSUtils.toJsArray(lineWidthLengths));
             return this;
         }
         

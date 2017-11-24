@@ -11,8 +11,23 @@ public final class JSUtils {
     private JSUtils() {
     }
     
+    /**
+     * Sets the map access token.
+     * To use any of Mapbox’s tools, APIs, or SDKs, you’ll need a Mapbox access token.
+     * @param value The access token
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#accesstoken
+     */
     public static native void setAccessToken(String value) /*-{
         $wnd.mapboxgl.accessToken = value;
+    }-*/;
+    
+    /**
+     * Sets the map's RTL text plugin. Necessary for supporting languages like Arabic and Hebrew that are written right-to-left.
+     * @param url URL pointing to the Mapbox RTL text plugin source.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#setrtltextplugin
+     */
+    public static native void setRTLTextPlugin(String url) /*-{
+        $wnd.mapboxgl.setRTLTextPlugin(url);
     }-*/;
     
     public static native void copyAllFields(Object sourceObject, Object targetObject) /*-{
@@ -35,10 +50,26 @@ public final class JSUtils {
         return result;
     }-*/;
     
-    public static JsArray<JsArray> toDoubleJsArray(Object[][] doubleArray) {
-        JsArray<JsArray> result = JavaScriptObject.createArray(doubleArray.length).cast();
-        for (int i = 0; i < doubleArray.length; i++) {
-            result.set(i, toJsArray(doubleArray[i]));
+    public static native JsArray toJsArray(double[] fieldValues) /*-{
+        var result = [];
+        for (index = 0, len = fieldValues.length; index < len; index++) {
+            result.push(fieldValues[index]);
+        }
+        return result;
+    }-*/;
+    
+    public static JsArray<JsArray> toTwoDimensionalJsArray(double[][] twoDimensionalArray) {
+        JsArray<JsArray> result = JavaScriptObject.createArray(twoDimensionalArray.length).cast();
+        for (int i = 0; i < twoDimensionalArray.length; i++) {
+            result.set(i, toJsArray(twoDimensionalArray[i]));
+        }
+        return result;
+    }
+    
+    public static JsArray<JsArray> toTwoDimensionalJsArray(Object[][] twoDimensionalArray) {
+        JsArray<JsArray> result = JavaScriptObject.createArray(twoDimensionalArray.length).cast();
+        for (int i = 0; i < twoDimensionalArray.length; i++) {
+            result.set(i, toJsArray(twoDimensionalArray[i]));
         }
         return result;
     }

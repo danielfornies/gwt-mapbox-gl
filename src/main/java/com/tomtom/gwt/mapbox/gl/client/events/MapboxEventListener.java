@@ -8,7 +8,7 @@ import jsinterop.annotations.JsFunction;
  */
 @FunctionalInterface
 @JsFunction
-public interface MapboxEventListener<T> {
+public interface MapboxEventListener<T extends BaseEvent> {
     
     /**
      * Handles the given map event.

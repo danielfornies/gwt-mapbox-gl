@@ -1105,7 +1105,21 @@ public class MapboxMap extends AbstractEvented {
      */
     @JsOverlay
     public final <E extends BaseEvent> MapboxMap off(MapEventType eventType, MapLayer layer, MapboxEventListener<E> listener) {
-        return off(eventType.name(), listener);
+        return off(eventType.name(), layer.getId(), listener);
+    }
+    
+    /**
+     * Removes an event listener for layer-specific events previously added with Map#on.
+     * @param <E>
+     * @param eventType The event type previously used to install the listener.
+     * @param layerID The ID of the layer previously used to install the listener.
+     * @param listener The function previously installed as a listener.
+     * @return This.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#off
+     */
+    @JsOverlay
+    public final <E extends BaseEvent> MapboxMap off(MapEventType eventType, String layerID, MapboxEventListener<E> listener) {
+        return off(eventType.name(), layerID,  listener);
     }
     
     /**

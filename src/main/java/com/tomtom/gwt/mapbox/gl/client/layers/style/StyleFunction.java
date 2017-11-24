@@ -45,7 +45,7 @@ public class StyleFunction {
          */
         @JsOverlay
         public Builder withStopsArray(Object[][] stops) {
-            setStops(JSUtils.toDoubleJsArray(stops));
+            setStops(JSUtils.toTwoDimensionalJsArray(stops));
             return this;
         }
         
