@@ -43,6 +43,7 @@ public final class LayoutProperties {
     public static final String TEXT_LETTER_SPACING = "text-letter-spacing";
     public static final String TEXT_ANCHOR = "text-anchor";
     public static final String TEXT_PADDING = "text-padding";
+    public static final String TEXT_IGNORE_PLACEMENT = "text-ignore-placement";
     public static final String TEXT_OPTIONAL = "text-optional";
     public static final String TEXT_OFFSET = "text-offset";
     public static final String TEXT_ALLOW_OVERLAP = "text-allow-overlap";

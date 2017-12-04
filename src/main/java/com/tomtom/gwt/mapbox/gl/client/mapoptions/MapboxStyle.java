@@ -20,7 +20,7 @@ public class MapboxStyle {
     }
     
     @JsOverlay
-    public static MapboxStyle build(String name, Object sources, MapLayer[] layers, String sprite, String glyphs) {
+    public static MapboxStyle build(String name, Object sources, MapLayer[] layers, String sprite, String glyphs, TransitionOptions transition) {
         MapboxStyle style = new MapboxStyle();
         style.setVersion(MAPBOX_STYLE_VERSION);
         style.setName(name);
@@ -31,6 +31,9 @@ public class MapboxStyle {
         }
         if (glyphs != null) {
             style.setGlyphs(glyphs);
+        }
+        if (transition != null) {
+            style.setTransition(transition);
         }
         return style;
     }
@@ -49,6 +52,9 @@ public class MapboxStyle {
     
     @JsProperty
     private native void setLayers(MapLayer[] layers);
+    
+    @JsProperty
+    private native void setTransition(TransitionOptions transition);
     
     @JsProperty
     private native void setSprite(String sprite);
