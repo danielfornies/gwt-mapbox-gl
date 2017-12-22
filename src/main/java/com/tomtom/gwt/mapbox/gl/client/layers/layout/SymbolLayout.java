@@ -26,6 +26,7 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEX
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_ANCHOR;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FIELD;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FONT;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_IGNORE_PLACEMENT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_LETTER_SPACING;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OFFSET;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OPTIONAL;
@@ -217,6 +218,12 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * If true, the icon will be visible even if it collides with other previously drawn symbols.
+         * @param allowOverlap Layout property. Optional boolean. Defaults to false. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-allow-overlap
+         */
         @JsOverlay
         public Builder withIconAllowOverlap(boolean allowOverlap) {
             JSUtils.setBoolean(this, ICON_ALLOW_OVERLAP, allowOverlap);
@@ -610,6 +617,18 @@ public class SymbolLayout extends BaseLayout {
         @JsOverlay
         public Builder withTextPadding(StyleFunction propertyFunction) {
             JSUtils.setObject(this, TEXT_PADDING, propertyFunction);
+            return this;
+        }
+        
+        /**
+         * If true, other symbols can be visible even if they collide with the text.
+         * @param ignorePlacement Layout property. Optional boolean. Defaults to false. Requires text-field.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#layout-symbol-text-ignore-placement
+         */
+        @JsOverlay
+        public Builder withTextIgnorePlacement(boolean ignorePlacement) {
+            JSUtils.setBoolean(this, TEXT_IGNORE_PLACEMENT, ignorePlacement);
             return this;
         }
         
