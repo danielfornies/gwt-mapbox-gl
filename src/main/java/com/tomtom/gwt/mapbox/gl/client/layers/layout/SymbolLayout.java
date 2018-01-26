@@ -206,6 +206,12 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Distance between two symbol anchors.
+         * @param spacingPixels Optional number greater than or equal to 1. Units in pixels. Defaults to 250. Requires symbol-placement to be line.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-symbol-spacing
+         */
         @JsOverlay
         public Builder withSymbolSpacing(int spacingPixels) {
             JSUtils.setInt(this, SYMBOL_SPACING, spacingPixels);
