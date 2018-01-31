@@ -1094,10 +1094,10 @@ public class MapboxMap extends AbstractEvented {
         return on(eventType.name(), layerID, listener);
     }
     
-        /**
+    /**
      * Adds a listener for events of a specified type occurring on features in a specified style layer.
      *
-     * @param <E>
+     * @param <E> The event subtype.
      * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
      * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
      * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
@@ -1119,7 +1119,7 @@ public class MapboxMap extends AbstractEvented {
      * Adds a listener for events of a specified type occurring on features in a specified style layer.
      *
      * @param <T>
-     * @param <E>
+     * @param <E> The event subtype.
      * @param type The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
      * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
      * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
