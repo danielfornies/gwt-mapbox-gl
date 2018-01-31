@@ -1070,7 +1070,7 @@ public class MapboxMap extends AbstractEvented {
      */
     @JsOverlay
     public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, Collection<MapLayer> layers, MapboxEventListener<E> listener) {
-        for (MapLayer layer: layers) {
+        for (MapLayer layer : layers) {
             on(eventType, layer, listener);
         }
         return this;
@@ -1109,12 +1109,12 @@ public class MapboxMap extends AbstractEvented {
      */
     @JsOverlay
     public final <E extends BaseEvent> MapboxMap on(MapEventType eventType, String[] layerIDs, MapboxEventListener<E> listener) {
-        for (String layerID: layerIDs) {
+        for (String layerID : layerIDs) {
             on(eventType, layerID, listener);
         }
         return this;
     }
-    
+
     /**
      * Adds a listener for events of a specified type occurring on features in a specified style layer.
      *
