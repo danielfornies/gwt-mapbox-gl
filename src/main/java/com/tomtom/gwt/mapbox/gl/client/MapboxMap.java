@@ -1062,8 +1062,7 @@ public class MapboxMap extends AbstractEvented {
      * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
      * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
      * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
-     * @param layers A collection of style layers. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the
-     * matching features.
+     * @param layers A collection of style layers. Only events whose location is within a visible feature in these layers will trigger the listener. The event will have a features property containing an array of the matching features.
      * @param listener The function to be called when the event is fired.
      * @return This.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
@@ -1083,8 +1082,7 @@ public class MapboxMap extends AbstractEvented {
      * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
      * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
      * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
-     * @param layerID The ID of a style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the
-     * matching features.
+     * @param layerID The ID of a style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the matching features.
      * @param listener The function to be called when the event is fired.
      * @return This.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#map#on
@@ -1101,7 +1099,7 @@ public class MapboxMap extends AbstractEvented {
      * @param eventType The event type to listen for; one of 'mousedown' , 'mouseup' , 'click' , 'dblclick' , 'mousemove' , 'mouseenter' , 'mouseleave' , 'mouseover' , 'mouseout' , 'contextmenu' ,
      * 'touchstart' , 'touchend' , or 'touchcancel' . mouseenter and mouseover events are triggered when the cursor enters a visible portion of the specified layer from outside that layer or outside
      * the map canvas. mouseleave and mouseout events are triggered when the cursor leaves a visible portion of the specified layer, or leaves the map canvas.
-     * @param layerIDs The IDs of style layer. Only events whose location is within a visible feature in this layer will trigger the listener. The event will have a features property containing an array of the
+     * @param layerIDs The IDs of style layer. Only events whose location is within a visible feature in these layers will trigger the listener. The event will have a features property containing an array of the
      * matching features.
      * @param listener The function to be called when the event is fired.
      * @return This.
