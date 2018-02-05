@@ -27,6 +27,7 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEX
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FIELD;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_FONT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_IGNORE_PLACEMENT;
+import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_KEEP_UPRIGHT;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_LETTER_SPACING;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OFFSET;
 import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEXT_OPTIONAL;
@@ -206,12 +207,25 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Distance between two symbol anchors.
+         * @param spacingPixels Optional number greater than or equal to 1. Units in pixels. Defaults to 250. Requires symbol-placement to be line.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-symbol-spacing
+         */
         @JsOverlay
         public Builder withSymbolSpacing(int spacingPixels) {
             JSUtils.setInt(this, SYMBOL_SPACING, spacingPixels);
             return this;
         }
         
+        /**
+         * If true, the symbols will not cross tile edges to avoid mutual collisions. 
+         * Recommended in layers that don't have enough padding in the vector tile to prevent collisions, or if it is a point symbol layer placed after a line symbol layer.
+         * @param avoidEdges Optional boolean. Defaults to false.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-symbol-avoid-edges
+         */
         @JsOverlay
         public Builder withSymbolAvoidEdges(boolean avoidEdges) {
             JSUtils.setBoolean(this, SYMBOL_AVOID_EDGES, avoidEdges);
@@ -254,6 +268,12 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * In combination with symbol-placement, determines the rotation behavior of icons.
+         * @param alignment Optional enum. One of "map", "viewport", "auto". Defaults to "auto". Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-rotation-alignment
+         */
         @JsOverlay
         public Builder withIconRotationAlignment(PitchRotationAlignment alignment) {
             JSUtils.setObject(this, ICON_ROTATION_ALIGNMENT, alignment.getApiValue());
@@ -286,12 +306,24 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Scales the icon to fit around the associated text.
+         * @param iconTextFit Optional enum. One of "none", "width", "height", "both". Defaults to "none". Requires icon-image. Requires text-field.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-text-fit
+         */
         @JsOverlay
         public Builder withIconTextFit(IconTextFit iconTextFit) {
             JSUtils.setObject(this, ICON_TEXT_FIT, iconTextFit.getApiValue());
             return this;
         }
         
+        /**
+         * Size of the additional area added to dimensions determined by icon-text-fit, in clockwise order: top, right, bottom, left.
+         * @param padding Optional array of numbers. Units in pixels. Defaults to [0,0,0,0]. Requires icon-image. Requires text-field. Requires icon-text-fit to be both, or width, or height.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-text-fit-padding
+         */
         @JsOverlay
         public Builder withIconTextFitPadding(int[] padding) {
             JSUtils.setObject(this, ICON_TEXT_FIT_PADDING, padding);
@@ -334,18 +366,36 @@ public class SymbolLayout extends BaseLayout {
             return this;
         }
         
+        /**
+         * Size of the additional area around the icon bounding box used for detecting symbol collisions.
+         * @param degrees Optional number greater than or equal to 0. Units in pixels. Defaults to 2. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-rotate
+         */
         @JsOverlay
         public Builder withIconRotate(int degrees) {
             JSUtils.setInt(this, ICON_ROTATE, degrees);
             return this;
         }
         
+        /**
+         * Size of the additional area around the icon bounding box used for detecting symbol collisions.
+         * @param pixels Optional number greater than or equal to 0. Units in pixels. Defaults to 2. Requires icon-image.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-padding
+         */
         @JsOverlay
         public Builder withIconPadding(int pixels) {
             JSUtils.setInt(this, ICON_PADDING, pixels);
             return this;
         }
         
+        /**
+         * If true, the icon may be flipped to prevent it from being rendered upside-down.
+         * @param keepUpright Optional boolean. Defaults to false. Requires icon-image. Requires icon-rotation-alignment to be map. Requires symbol-placement to be line.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-icon-keep-upright
+         */
         @JsOverlay
         public Builder withIconKeepUpright(boolean keepUpright) {
             JSUtils.setBoolean(this, ICON_KEEP_UPRIGHT, keepUpright);
@@ -617,6 +667,18 @@ public class SymbolLayout extends BaseLayout {
         @JsOverlay
         public Builder withTextPadding(StyleFunction propertyFunction) {
             JSUtils.setObject(this, TEXT_PADDING, propertyFunction);
+            return this;
+        }
+        
+        /**
+         * If true, the text may be flipped vertically to prevent it from being rendered upside-down.
+         * @param keepUpright Optional boolean. Defaults to true. Requires text-field. Requires text-rotation-alignment to be map. Requires symbol-placement to be line.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-symbol-text-keep-upright
+         */
+        @JsOverlay
+        public Builder withTextKeepUpright(boolean keepUpright) {
+            JSUtils.setBoolean(this, TEXT_KEEP_UPRIGHT, keepUpright);
             return this;
         }
         
