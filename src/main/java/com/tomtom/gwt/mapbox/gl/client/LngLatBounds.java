@@ -126,6 +126,13 @@ public class LngLatBounds {
     public native String toString();
     
     /**
+     * Check if the bounding box is an empty/null-type box.
+     * @return True if bounds have been defined, otherwise false.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#lnglatbounds#isempty
+     */
+    public native boolean isEmpty();
+    
+    /**
      * Checks if this bounding box contains the given coordinates.
      * This includes the edges.
      * @param coordinates The coordinates to check. Must not be null.
