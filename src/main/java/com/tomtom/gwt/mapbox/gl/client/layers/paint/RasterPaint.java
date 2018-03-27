@@ -14,6 +14,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
+ * Paint properties for LayerType.RASTER.
  * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint_raster
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)

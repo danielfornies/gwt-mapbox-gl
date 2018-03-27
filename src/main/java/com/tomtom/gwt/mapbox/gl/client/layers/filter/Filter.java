@@ -10,8 +10,10 @@ import jsinterop.annotations.JsType;
 
 /**
  * A filter selects specific features from a layer.
- * @see https://www.mapbox.com/mapbox-gl-style-spec/#types-filter
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#other-filter-deprecated-syntax
+ * @deprecated In previous versions of the style specification, filters were defined using the deprecated syntax documented below. Though filters defined with this syntax will continue to work, we recommend using the more flexible expression syntax instead. 
  */
+@Deprecated
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class Filter {
     

@@ -5,9 +5,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
- *
- * 
- * 
+ * Base class for all paint properties objects.
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public abstract class AbstractPaint {

@@ -11,8 +11,10 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
+ * Layout properties for LayerType.LINE.
  * https://www.mapbox.com/mapbox-gl-style-spec/#layout_line Cannot use JSInterop due to invalid JS field names:
  * https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layers-line
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class LineLayout extends BaseLayout {
