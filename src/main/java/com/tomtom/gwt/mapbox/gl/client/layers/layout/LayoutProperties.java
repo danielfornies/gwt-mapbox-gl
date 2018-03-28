@@ -3,6 +3,9 @@ package com.tomtom.gwt.mapbox.gl.client.layers.layout;
 /**
  * Constants with layout property names.
  * They need to be to be set by object[property-name] since their names contain "-" and are illegal to be set as object.property-name.
+ * Layout properties appear in the layer's "layout" object.
+ * They are applied early in the rendering process and define how data for that layer is passed to the GPU. 
+ * Changes to a layout property require an asynchronous "layout" step.
  */
 public final class LayoutProperties {
 

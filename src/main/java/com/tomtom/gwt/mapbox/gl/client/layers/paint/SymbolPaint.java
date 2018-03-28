@@ -25,6 +25,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
+ * Paint properties for LayerType.SYMBOL.
  * @see https://www.mapbox.com/mapbox-gl-style-spec/#paint_symbol
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)

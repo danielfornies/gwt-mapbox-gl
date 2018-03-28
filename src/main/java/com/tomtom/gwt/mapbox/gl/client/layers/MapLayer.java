@@ -94,7 +94,7 @@ public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
 
         @JsOverlay
         public Builder withType(LayerType type) {
-            setType(type.name());
+            setType(type.getApiValue());
             return this;
         }
         
