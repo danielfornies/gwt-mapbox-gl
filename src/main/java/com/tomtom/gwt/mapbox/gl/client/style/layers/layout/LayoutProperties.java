@@ -18,7 +18,7 @@ public final class LayoutProperties {
     public static final String LINE_CAP = "line-cap";
     public static final String LINE_JOIN = "line-join";
     public static final String LINE_MITER_LIMIT = "line-miter-limit";
-    public static final String LINE_JOIN_LIMIT = "line-join-limit";
+    public static final String LINE_ROUND_LIMIT = "line-round-limit";
 
     // Symbol Layout -------------------------
     public static final String SYMBOL_PLACEMENT = "symbol-placement";

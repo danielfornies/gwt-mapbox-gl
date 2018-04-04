@@ -2,7 +2,7 @@ package com.tomtom.gwt.mapbox.gl.client.style.layers.layout;
 
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.LINE_CAP;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.LINE_JOIN;
-import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.LINE_JOIN_LIMIT;
+import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.LINE_ROUND_LIMIT;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.LINE_MITER_LIMIT;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
@@ -52,37 +52,51 @@ public class LineLayout extends BaseLayout {
             return layout;
         }
         
+        /**
+         * The display of line endings.
+         * @param value Optional enum. One of "butt", "round", "square". Defaults to "butt".
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-line-line-cap
+         */
         @JsOverlay
         public Builder withLineCap(LineCap value) {
-            return withLineCap(value.name());
-        }
-        
-        @JsOverlay
-        private Builder withLineCap(String value) {
-            JSUtils.setObject(this, LINE_CAP, value);
+            JSUtils.setObject(this, LINE_CAP, value.name());
             return this;
         }
         
+        /**
+         * The display of lines when joining.
+         * @param value Optional enum. One of "bevel", "round", "miter". Defaults to "miter".
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-line-line-join
+         */
         @JsOverlay
         public Builder withLineJoin(LineJoin value) {
-            return withLineJoin(value.name());
-        }
-
-        @JsOverlay
-        private Builder withLineJoin(String value) {
-            JSUtils.setObject(this, LINE_JOIN, value);
+            JSUtils.setObject(this, LINE_JOIN, value.name());
             return this;
         }
         
+        /**
+         * Used to automatically convert miter joins to bevel joins for sharp angles.
+         * @param value Layout property. Optional number. Defaults to 2. Requires line-join to be miter.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-line-line-miter-limit
+         */
         @JsOverlay
-        public Builder withLineMiterLimit(Double value) {
-            JSUtils.setObject(this, LINE_MITER_LIMIT, value);
+        public Builder withLineMiterLimit(double value) {
+            JSUtils.setDouble(this, LINE_MITER_LIMIT, value);
             return this;
         }
         
+        /**
+         * Used to automatically convert round joins to miter joins for shallow angles.
+         * @param value Layout property. Optional number. Defaults to 1.05. Requires line-join to be round.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layout-line-line-round-limit
+         */
         @JsOverlay
-        public Builder withLineJoinLimit(Double value) {
-            JSUtils.setObject(this, LINE_JOIN_LIMIT, value);
+        public Builder withLineRoundLimit(double value) {
+            JSUtils.setDouble(this, LINE_ROUND_LIMIT, value);
             return this;
         }
     }
