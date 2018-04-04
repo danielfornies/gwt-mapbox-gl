@@ -11,7 +11,8 @@ import jsinterop.annotations.JsType;
 /**
  * The value for any layout or paint property may be specified as a function. 
  * Functions allow you to make the appearance of a map feature change with the current zoom level and/or the feature's properties.
- * @see https://www.mapbox.com/mapbox-gl-style-spec/#types-function
+ * While property functions currently remain available, they will ultimately be deprecated and replaced by property expressions.
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#other-function
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class StyleFunction {

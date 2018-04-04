@@ -10,7 +10,8 @@ import jsinterop.annotations.JsType;
 
 /**
  * A filter selects specific features from a layer.
- * @see https://www.mapbox.com/mapbox-gl-style-spec/#types-filter
+ * Though filters defined with this syntax will continue to work, we recommend using the more flexible expression syntax instead. 
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#other-filter-deprecated-syntax
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class Filter {
@@ -45,9 +46,10 @@ public final class Filter {
     
     @JsOverlay
     public static Filter build(Combine combine, Filter... filters) {
-        Object[] combinedExpression = new Object[]{filters.length + 1};
+        final int combinedExpressionLength = filters.length + 1;
+        Object[] combinedExpression = new Object[]{combinedExpressionLength};
         combinedExpression[0] = combine.apiValue;
-        for (int i = 1; i < combinedExpression.length; i++) {
+        for (int i = 1; i < combinedExpressionLength; i++) {
             combinedExpression[i] = filters[i-1].getExpression();
         }
         return Filter.build(combinedExpression);

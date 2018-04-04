@@ -19,6 +19,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
+ * Paint properties for LayerType.LINE.
  * @see https://www.mapbox.com/mapbox-gl-style-spec/#paint_line 
  * @see https://stackoverflow.com/questions/36867522/gwt-jsinterop-jstype-property-with-in-name#_=_
  */
@@ -71,8 +72,8 @@ public class LinePaint extends AbstractPaint {
         }
 
         @JsOverlay
-        public Builder withTranslate(double[][] rightDownPixelsOffset) {
-            JSUtils.setObject(this, LINE_TRANSLATE, JSUtils.toTwoDimensionalJsArray(rightDownPixelsOffset));
+        public Builder withTranslate(int rightPixelsOffset, int downPixelsOffset) {
+            JSUtils.setObject(this, LINE_TRANSLATE, JSUtils.toJsArray(rightPixelsOffset, downPixelsOffset));
             return this;
         }
         

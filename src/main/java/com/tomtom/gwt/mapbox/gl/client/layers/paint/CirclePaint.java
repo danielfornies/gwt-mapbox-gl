@@ -19,7 +19,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 /**
- *
+ * Paint properties for LayerType.CIRCLE.
  * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint_circle
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)

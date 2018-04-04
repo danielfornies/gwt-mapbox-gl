@@ -4,10 +4,13 @@ import com.tomtom.gwt.mapbox.gl.client.Point;
 import com.tomtom.gwt.mapbox.gl.client.overlay.Alignment;
 
 /**
- *
+ * Utility class for point offset calculations.
  */
 public class OffsetCalculator {
 
+    private OffsetCalculator() {
+    }
+    
     public static Point toOffsetPx(int widthPx, int heightPx, Alignment alignment) {
         switch (alignment) {
             case BOTTOM_CENTER:

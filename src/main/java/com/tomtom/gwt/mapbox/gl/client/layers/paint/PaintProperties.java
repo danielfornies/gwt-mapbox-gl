@@ -3,6 +3,8 @@ package com.tomtom.gwt.mapbox.gl.client.layers.paint;
 /**
  * Constants with paint property names.
  * They need to be to be set by object[property-name] since their names contain "-" and are illegal to be set as object.property-name.
+ * Paint properties are applied later in the rendering process. Paint properties appear in the layer's"paint" object. 
+ * Changes to a paint property are cheap and happen synchronously.
  */
 public final class PaintProperties {
 
@@ -54,7 +56,40 @@ public final class PaintProperties {
     public static final String CIRCLE_STROKE_WIDTH = "circle-stroke-width";
     public static final String CIRCLE_STROKE_COLOR = "circle-stroke-color";
     public static final String CIRCLE_STROKE_OPACITY = "circle-stroke-opacity";
-
+    
+    // Fill Paint -------------------------------
+    public static final String FILL_ANTIALIAS = "fill-antialias";
+    public static final String FILL_OPACITY = "fill-opacity";
+    public static final String FILL_COLOR = "fill-color";
+    public static final String FILL_OUTLINE_COLOR = "fill-outline-color";
+    public static final String FILL_TRANSLATE = "fill-translate";
+    public static final String FILL_TRANSLATE_ANCHOR = "fill-translate-anchor";
+    public static final String FILL_PATTERN = "fill-pattern";
+    
+    // Fill-extrusion Paint ----------------------
+    public static final String FILL_EXTRUSION_OPACITY = "fill-extrusion-opacity";
+    public static final String FILL_EXTRUSION_COLOR = "fill-extrusion-color";
+    public static final String FILL_EXTRUSION_TRANSLATE = "fill-extrusion-translate";
+    public static final String FILL_EXTRUSION_TRANSLATE_ANCHOR = "fill-extrusion-translate-anchor";
+    public static final String FILL_EXTRUSION_PATTERN = "fill-extrusion-pattern";
+    public static final String FILL_EXTRUSION_HEIGHT = "fill-extrusion-height";
+    public static final String FILL_EXTRUSION_BASE = "fill-extrusion-base";
+    
+    // Heatmap Paint -------------------------
+    public static final String HEATMAP_RADIUS = "heatmap-radius";
+    public static final String HEATMAP_WEIGHT = "heatmap-weight";
+    public static final String HEATMAP_INTENSITY = "heatmap-intensity";
+    public static final String HEATMAP_COLOR = "heatmap-color";
+    public static final String HEATMAP_OPACITY = "heatmap-opacity";
+    
+    // Hillshade Paint -------------------------
+    public static final String HILLSHADE_ILLUMINATION_DIRECTION = "hillshade-illumination-direction";
+    public static final String HILLSHADE_ILLUMINATION_ANCHOR = "hillshade-illumination-anchor";
+    public static final String HILLSHADE_EXAGGERATION = "hillshade-exaggeration";
+    public static final String HILLSHADE_SHADOW_COLOR = "hillshade-shadow-color";
+    public static final String HILLSHADE_HIGHLIGHT_COLOR = "hillshade-highlight-color";
+    public static final String HILLSHADE_ACCENT_COLOR = "hillshade-accent-color";
+    
     private PaintProperties() {
     }
 }

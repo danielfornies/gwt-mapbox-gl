@@ -3,6 +3,9 @@ package com.tomtom.gwt.mapbox.gl.client.layers.layout;
 /**
  * Constants with layout property names.
  * They need to be to be set by object[property-name] since their names contain "-" and are illegal to be set as object.property-name.
+ * Layout properties appear in the layer's "layout" object.
+ * They are applied early in the rendering process and define how data for that layer is passed to the GPU. 
+ * Changes to a layout property require an asynchronous "layout" step.
  */
 public final class LayoutProperties {
 
@@ -15,7 +18,7 @@ public final class LayoutProperties {
     public static final String LINE_CAP = "line-cap";
     public static final String LINE_JOIN = "line-join";
     public static final String LINE_MITER_LIMIT = "line-miter-limit";
-    public static final String LINE_JOIN_LIMIT = "line-join-limit";
+    public static final String LINE_ROUND_LIMIT = "line-round-limit";
 
     // Symbol Layout -------------------------
     public static final String SYMBOL_PLACEMENT = "symbol-placement";

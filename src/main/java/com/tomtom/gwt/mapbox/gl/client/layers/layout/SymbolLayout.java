@@ -38,8 +38,8 @@ import static com.tomtom.gwt.mapbox.gl.client.layers.layout.LayoutProperties.TEX
 import com.tomtom.gwt.mapbox.gl.client.layers.style.StyleFunction;
 
 /**
- * 
- * https://www.mapbox.com/mapbox-gl-js/style-spec/#layout_symbol
+ * Layout properties for LayerType.SYMBOL.
+ * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#layers-symbol
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public class SymbolLayout extends BaseLayout {
