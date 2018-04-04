@@ -1,6 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.api.overlay.util;
 
-import com.tomtom.gwt.mapbox.gl.client.api.Point;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.Point;
 import com.tomtom.gwt.mapbox.gl.client.api.overlay.Alignment;
 
 /**

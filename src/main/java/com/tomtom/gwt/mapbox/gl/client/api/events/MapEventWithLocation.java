@@ -1,8 +1,8 @@
 package com.tomtom.gwt.mapbox.gl.client.api.events;
 
-import com.tomtom.gwt.mapbox.gl.client.api.LngLat;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.LngLat;
 import com.tomtom.gwt.mapbox.gl.client.api.MapboxMap;
-import com.tomtom.gwt.mapbox.gl.client.api.Point;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;

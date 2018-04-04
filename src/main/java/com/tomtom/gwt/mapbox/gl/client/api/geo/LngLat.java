@@ -1,4 +1,4 @@
-package com.tomtom.gwt.mapbox.gl.client.api;
+package com.tomtom.gwt.mapbox.gl.client.api.geo;
 
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsProperty;

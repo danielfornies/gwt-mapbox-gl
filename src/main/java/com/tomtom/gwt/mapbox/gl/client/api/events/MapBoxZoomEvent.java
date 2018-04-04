@@ -1,7 +1,7 @@
 package com.tomtom.gwt.mapbox.gl.client.api.events;
 
 import com.google.gwt.event.dom.client.MouseEvent;
-import com.tomtom.gwt.mapbox.gl.client.api.LngLatBounds;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.LngLatBounds;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;

@@ -1,5 +1,8 @@
 package com.tomtom.gwt.mapbox.gl.client.api;
 
+import com.tomtom.gwt.mapbox.gl.client.api.geo.LngLatBounds;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.LngLat;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.Point;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
 import com.google.gwt.core.client.JsArrayInteger;

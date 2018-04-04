@@ -2,7 +2,7 @@ package com.tomtom.gwt.mapbox.gl.client.api.overlay;
 
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.user.client.ui.Widget;
-import com.tomtom.gwt.mapbox.gl.client.api.Point;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.MAPBOX_GL_NAMESPACE;
 import jsinterop.annotations.JsOverlay;

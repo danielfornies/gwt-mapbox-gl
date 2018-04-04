@@ -1,6 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.api.mapoptions;
 
-import com.tomtom.gwt.mapbox.gl.client.api.Point;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.Point;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;

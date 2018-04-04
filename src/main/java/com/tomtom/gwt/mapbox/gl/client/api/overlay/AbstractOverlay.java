@@ -4,7 +4,7 @@ import com.google.gwt.dom.client.Element;
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.ui.Widget;
-import com.tomtom.gwt.mapbox.gl.client.api.LngLat;
+import com.tomtom.gwt.mapbox.gl.client.api.geo.LngLat;
 import com.tomtom.gwt.mapbox.gl.client.api.MapboxMap;
 import com.tomtom.gwt.mapbox.gl.client.api.events.MapEventType;
 import com.tomtom.gwt.mapbox.gl.client.api.events.MapMouseEvent;
