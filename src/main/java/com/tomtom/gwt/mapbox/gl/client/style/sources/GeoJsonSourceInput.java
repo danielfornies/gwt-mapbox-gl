@@ -18,6 +18,30 @@ import jsinterop.annotations.JsType;
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
     
+    @JsOverlay
+    public final static GeoJsonSourceInput DEFAULT_EMPTY = Builder.newEmpty().build();
+    
+    private GeoJsonSourceInput() {
+    }
+    
+    @JsProperty
+    public native T getData();
+    
+    @JsProperty
+    public native int getMaxzoom();
+    
+    @JsProperty
+    public native int getBuffer();
+    
+    @JsProperty
+    public native double getTolerance();
+    
+    @JsProperty
+    public native boolean getCluster();
+    
+    @JsProperty
+    public native int getClusterRadius();
+    
     @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
     public static final class Builder<T> {
         
@@ -151,29 +175,20 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         
         @JsProperty
         private native void setClusterMaxZoom(int value);
+        
+        /**
+         * Whether to calculate line distance metrics. This is required for line layers that specify line-gradient values.
+         * @param lineMetrics Optional boolean. Defaults to false.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#sources-geojson-lineMetrics
+         */
+        @JsOverlay
+        public Builder withLineMetrics(boolean lineMetrics) {
+            setLineMetrics(lineMetrics);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setLineMetrics(boolean lineMetrics);
     }
-    
-    @JsOverlay
-    public final static GeoJsonSourceInput DEFAULT_EMPTY = Builder.newEmpty().build();
-    
-    private GeoJsonSourceInput() {
-    }
-    
-    @JsProperty
-    public native T getData();
-    
-    @JsProperty
-    public native int getMaxzoom();
-    
-    @JsProperty
-    public native int getBuffer();
-    
-    @JsProperty
-    public native double getTolerance();
-    
-    @JsProperty
-    public native boolean getCluster();
-    
-    @JsProperty
-    public native int getClusterRadius();
 }

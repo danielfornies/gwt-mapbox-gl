@@ -21,30 +21,30 @@ public class Marker<W extends Widget> extends AbstractOverlay<W> {
     /*
      * Native constructor.
      */
-    private Marker(Element element, MarkerOptions options) {
+    private Marker(MarkerOptions options) {
     }
     
     @JsOverlay
     public static <W extends Widget> Marker<W> buildWithSize(W widget, int widthPx, int heightPx, Alignment alignment) {
-        return build(widget, MarkerOptions.build(OffsetCalculator.toOffsetPx(widthPx, heightPx, alignment)), null);
+        return build(MarkerOptions.build(widget.getElement(), OffsetCalculator.toOffsetPx(widthPx, heightPx, alignment))).withWidget(widget, widget.getElement());
     }
     
     @JsOverlay
-    public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options) {
-        return build(widget, options, null);
+    public static <W extends Widget> Marker<W> build(MarkerOptions options) {
+        return new Marker(options);
     }
     
     @JsOverlay
-    public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options, String wrapperElementClassName) {
-        return build(widget, options, wrapperElementClassName, null);
+    public static <W extends Widget> Marker<W> build(W widget, String wrapperElementClassName) {
+        return build(widget, wrapperElementClassName, null);
     }
 
     @JsOverlay
-    public static <W extends Widget> Marker<W> build(W widget, MarkerOptions options, String wrapperElementClassName, String title) {
+    public static <W extends Widget> Marker<W> build(W widget, String wrapperElementClassName, String title) {
         // we use a wrapper element to allow for dragging if necessary:
         Element wrapperElement = createWrapper(widget, wrapperElementClassName);
         wrapperElement.setTitle(title);
-        return (Marker)new Marker(wrapperElement, options).withWidget(widget, wrapperElement);
+        return (Marker)new Marker(MarkerOptions.build(wrapperElement, null)).withWidget(widget, wrapperElement);
     }
     
     public native Element getElement();
@@ -62,11 +62,20 @@ public class Marker<W extends Widget> extends AbstractOverlay<W> {
         }
 
         @JsOverlay
-        public static MarkerOptions build(Point offset) {
+        public static MarkerOptions build(Element element, Point offset) {
             MarkerOptions markerOptions = new MarkerOptions();
-            markerOptions.setOffset(offset);
+            if (element != null) {
+                markerOptions.setElement(element);
+            }
+            if (offset != null) {
+                markerOptions.setOffset(offset);
+            
+            }
             return markerOptions;
         }
+        
+        @JsProperty
+        private native void setElement(Element element);
 
         @JsProperty
         private native void setOffset(Point offset);

@@ -16,6 +16,12 @@ This project master branch version number corresponds to the mapbox-gl-js' one, 
 See the resources packages for the embedded JS-CSS content.
 https://www.mapbox.com/mapbox-gl-js</description>
     
+    <properties>
+        <gwt-geojson.version>1.7</gwt-geojson.version>
+        <additionalparam>-Xdoclint:none</additionalparam>
+        <elemental2.version>1.0.0-RC1</elemental2.version>
+    </properties>
+    
     <scm>
         <connection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</connection>
         <developerConnection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</developerConnection>
@@ -32,12 +38,12 @@ https://www.mapbox.com/mapbox-gl-js</description>
             <artifactId>gwt-geojson</artifactId>
             <version>${gwt-geojson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-dom</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
     </dependencies>
-    
-    <properties>
-        <gwt-geojson.version>1.7</gwt-geojson.version>
-        <additionalparam>-Xdoclint:none</additionalparam>
-    </properties>
 
     <build>
         <resources>

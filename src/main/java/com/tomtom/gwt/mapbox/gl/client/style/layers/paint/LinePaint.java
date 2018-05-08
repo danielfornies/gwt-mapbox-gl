@@ -12,6 +12,7 @@ import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties.LINE_WIDTH;
 import com.tomtom.gwt.mapbox.gl.client.style.other.StyleFunction;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.Anchor;
+import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties.LINE_GRADIENT;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -164,6 +165,30 @@ public class LinePaint extends AbstractPaint {
         @JsOverlay
         public Builder withPattern(StyleFunction function) {
             JSUtils.setObject(this, LINE_PATTERN, function);
+            return this;
+        }
+        
+        /**
+         * Paint property. Optional color. Disabled by line-dasharray. Disabled by line-pattern. Requires source to be geojson.
+         * @param color The color code for this gradient.
+         * @return 
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#paint-line-line-gradient
+         */
+        @JsOverlay
+        public Builder withGradient(String color) {
+            JSUtils.setObject(this, LINE_GRADIENT, color);
+            return this;
+        }
+        
+        /**
+         * Paint property. Optional color. Disabled by line-dasharray. Disabled by line-pattern. Requires source to be geojson. Supports interpolate expressions.
+         * @param colorFunction The function/expression to determine the color based on zoom/property values.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#paint-line-line-gradient
+         */
+        @JsOverlay
+        public Builder withGradient(StyleFunction colorFunction) {
+            JSUtils.setObject(this, LINE_GRADIENT, colorFunction);
             return this;
         }
     }

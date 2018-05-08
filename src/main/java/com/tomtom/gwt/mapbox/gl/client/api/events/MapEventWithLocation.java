@@ -13,27 +13,27 @@ import jsinterop.annotations.JsType;
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public interface MapEventWithLocation extends BaseEvent {
-      
+
     /**
-     * @return The event type. 
+     * @return The event type.
      */
     @JsProperty
     String getType();
-    
+
     /**
      * @return The MapboxMap object that fired the event.
      */
     @JsProperty
     MapboxMap getTarget();
-    
+
     /**
-     * @return The pixel coordinates of the event target, relative to the map and measured from the top left corner. 
+     * @return The pixel coordinates of the event target, relative to the map and measured from the top left corner.
      */
     @JsProperty
     Point getPoint();
-    
+
     /**
-     * @return The geographic location on the map of the mouse event target. 
+     * @return The geographic location on the map of the mouse event target.
      */
     @JsProperty
     LngLat getLngLat();
