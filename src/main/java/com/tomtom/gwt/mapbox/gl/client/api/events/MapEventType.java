@@ -109,6 +109,11 @@ public enum MapEventType {
      */
     contextmenu,
     /**
+     * Fired when a wheel event occurs within the map.
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:wheel
+     */
+    wheel,
+    /**
      * Fired immediately after all necessary resources have been downloaded and the first visually complete rendering of the map has occurred.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:load
      */
