@@ -19,6 +19,7 @@ public final class PaintProperties {
     public static final String LINE_BLUR = "line-blur";
     public static final String LINE_DASHARRAY = "line-dasharray";
     public static final String LINE_PATTERN = "line-pattern";
+    public static final String LINE_GRADIENT = "line-gradient";
 
     // Symbol Paint -----------------------------
     public static final String ICON_OPACITY = "icon-opacity";
