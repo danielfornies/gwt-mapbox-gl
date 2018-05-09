@@ -994,11 +994,22 @@ public class MapboxMap extends AbstractEvented {
     public native MapboxMap flyTo(FlyToOptions options);
 
     /**
-     * Returns a Boolean indicating whether the camera is moving.
      * @return A Boolean indicating whether the camera is moving.
-     * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#isMoving
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#ismoving
      */
     public native boolean isMoving();
+    
+    /**
+     * @return true if the map is zooming due to a camera animation or user gesture.
+     * @see https://www.mapbox.com/mapbox-gl-js/api#map#iszooming
+     */
+    public native boolean isZooming();
+    
+    /**
+     * @return true if the map is rotating due to a camera animation or user gesture
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map#isrotating
+     */
+    public native boolean isRotating();
 
     /**
      * Stops any animated transition underway.
