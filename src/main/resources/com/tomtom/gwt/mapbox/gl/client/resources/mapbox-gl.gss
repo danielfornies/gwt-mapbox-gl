@@ -17,15 +17,15 @@
 .mapboxgl-canvas-container.mapboxgl-interactive,
 .mapboxgl-ctrl-nav-compass {
     cursor: -webkit-grab;
-    cursor: -moz-grab;
-    cursor: grab;
+    /* @alternate */ cursor: -moz-grab;
+    /* @alternate */ cursor: grab;
 }
 
 .mapboxgl-canvas-container.mapboxgl-interactive:active,
 .mapboxgl-ctrl-nav-compass:active {
     cursor: -webkit-grabbing;
-    cursor: -moz-grabbing;
-    cursor: grabbing;
+    /* @alternate */ cursor: -moz-grabbing;
+    /* @alternate */ cursor: grabbing;
 }
 
 .mapboxgl-canvas-container.mapboxgl-touch-zoom-rotate,
@@ -268,7 +268,7 @@ a.mapboxgl-ctrl-logo {
     top: 0;
     left: 0;
     display: -webkit-flex;
-    display: flex;
+    /* @alternate */ display: flex;
     will-change: transform;
     pointer-events: none;
 }
