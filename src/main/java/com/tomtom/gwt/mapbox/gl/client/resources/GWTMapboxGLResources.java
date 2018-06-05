@@ -101,7 +101,7 @@ public class GWTMapboxGLResources {
          * https://api.tiles.mapbox.com/mapbox-gl-js/{VERSION}/mapbox-gl.css
          * @return The main mapbox GL CSS styles.
          */
-        @Source("mapbox-gl.css")
+        @Source("mapbox-gl.gss")
         @NotStrict
         CssResource mapboxCSS();
     }
