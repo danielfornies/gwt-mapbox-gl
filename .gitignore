@@ -1,0 +1,10 @@
+target/
+.DS_Store
+.idea/
+.classpath
+.project
+.settings/
+maven-eclipse.xml
+release.properties
+atlassian-ide-plugin.xml
+*.iml

@@ -106,7 +106,7 @@ public final class MapOptions {
          * rotates the map within 7 degrees of north, the map will automatically snap to exact north.
          */
         @JsProperty
-        public native void setBearingSnap(int degrees);
+        public native void setBearingSnap(double degrees);
 
         /**
          * @param attributionControl (default true) If true , an AttributionControl will be added to the map.
@@ -192,21 +192,21 @@ public final class MapOptions {
          * style, either, it will default to 0 .
          */
         @JsProperty
-        public native void setZoom(int value);
+        public native void setZoom(double value);
 
         /**
          * @param degrees (default 0) The initial bearing (rotation) of the map, measured in degrees counter-clockwise from north. If bearing is not specified in the constructor options, Mapbox GL JS
          * will look for it in the map's style object. If it is not specified in the style, either, it will default to 0 .
          */
         @JsProperty
-        public native void setBearing(int degrees);
+        public native void setBearing(double degrees);
 
         /**
          * @param degrees (default 0) The initial pitch (tilt) of the map, measured in degrees away from the plane of the screen (0-60). If pitch is not specified in the constructor options, Mapbox GL
          * JS will look for it in the map's style object. If it is not specified in the style, either, it will default to 0 .
          */
         @JsProperty
-        public native void setPitch(int degrees);
+        public native void setPitch(double degrees);
 
         /**
          * @param enabled (default true) If true , multiple copies of the world will be rendered, when zoomed out.
