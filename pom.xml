@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.tomtom.gwt</groupId>
     <artifactId>gwt-mapbox-gl</artifactId>
-    <version>0.45.0.2-SNAPSHOT</version>
+    <version>0.46.0.0</version>
     <packaging>jar</packaging>
     <parent>
         <groupId>com.tomtom</groupId>
@@ -25,7 +25,7 @@ https://www.mapbox.com/mapbox-gl-js</description>
     <scm>
         <connection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</connection>
         <developerConnection>scm:git:ssh://git@bitbucket.tomtomgroup.com:7999/onp/gwt-mapbox-gl.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>gwt-mapbox-gl-0.46.0.0</tag>
     </scm>
 
     <dependencies>
