@@ -1,41 +1,33 @@
 package com.tomtom.gwt.mapbox.gl.client.style.other;
 
 import com.google.gwt.core.client.JsArray;
-import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
-import jsinterop.annotations.JsOverlay;
-import jsinterop.annotations.JsPackage;
-import jsinterop.annotations.JsProperty;
-import jsinterop.annotations.JsType;
 
 /**
  * A filter selects specific features from a layer.
  * Though filters defined with this syntax will continue to work, we recommend using the more flexible expression syntax instead. 
  * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#other-filter-deprecated-syntax
  */
-@JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
 public final class Filter {
     
-    private Filter() {
+    private final JsArray expressionArray;
+    
+    public Filter(JsArray expressionArray) {
+        this.expressionArray = expressionArray;
     }
     
-    @JsProperty
-    private native void setExpression(JsArray filterArray);
+    public JsArray getExpression() {
+        return expressionArray;
+    }
     
-    @JsProperty
-    public native JsArray getExpression();
-    
-    @JsOverlay
     public static Filter build(Existential has, String key) {
         return Filter.build(has.apiValue, key);
     }
     
-    @JsOverlay
     public static Filter build(Compare compare, String key, Object value) {
         return Filter.build(compare.apiValue, key, value);
     }
 
-    @JsOverlay
     public static Filter build(Membership belongs, String key, Object... values) {
         Object[] expressionArray = new Object[values.length + 2];
         expressionArray[0] = belongs.apiValue;
@@ -44,7 +36,6 @@ public final class Filter {
         return Filter.build(expressionArray);
     }
     
-    @JsOverlay
     public static Filter build(Combine combine, Filter... filters) {
         final int combinedExpressionLength = filters.length + 1;
         Object[] combinedExpression = new Object[]{combinedExpressionLength};
@@ -55,17 +46,9 @@ public final class Filter {
         return Filter.build(combinedExpression);
     }
     
-    @JsOverlay
-    public static Filter build(JsArray expression) {
-        Filter filter = new Filter();
-        filter.setExpression(expression);
-        return filter;
-    }
-    
-    @JsOverlay
     private static Filter build(Object... array) {
         // we rebuild the array as a JS array to ensure no extra Java stuff is in there, which in this case seems to cause "DataCloneError: The object could not be cloned."
-        return build(JSUtils.toJsArray(array));
+        return new Filter(JSUtils.toJsArray(array));
     }
     
     public static enum Existential {

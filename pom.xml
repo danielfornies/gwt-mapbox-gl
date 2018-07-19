@@ -17,7 +17,7 @@ See the resources packages for the embedded JS-CSS content.
 https://www.mapbox.com/mapbox-gl-js</description>
     
     <properties>
-        <gwt-geojson.version>1.7</gwt-geojson.version>
+        <gwt-geojson.version>1.DEV.0-SNAPSHOT</gwt-geojson.version>
         <additionalparam>-Xdoclint:none</additionalparam>
         <elemental2.version>1.0.0-RC1</elemental2.version>
     </properties>
