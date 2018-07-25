@@ -250,6 +250,18 @@ public class SymbolPaint extends AbstractPaint {
         }
         
         /**
+         * The opacity at which the text will be drawn.
+         * @param expression Data-driven style expression for the opacity value.
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-text-opacity
+         */
+        @JsOverlay
+        public Builder withTextOpacity(Expression expression) {
+            JSUtils.setObject(this, TEXT_OPACITY, expression.getExpressionArray());
+            return this;
+        }
+        
+        /**
          * The color with which the text will be drawn.
          * @param color Defaults to #000000. Requires text-field.
          * @return This builder.
