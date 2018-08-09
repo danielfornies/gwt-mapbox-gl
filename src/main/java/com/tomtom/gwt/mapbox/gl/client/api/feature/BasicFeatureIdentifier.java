@@ -7,7 +7,7 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- * Feature identifier
+ * Feature identifier basic implementation, containing only the FeatureIdentifier fields.
  * @see https://www.mapbox.com/mapbox-gl-js/api#map#setfeaturestate
  */
 @JsType(isNative = true, name = JS_OBJECT_TYPE, namespace = JsPackage.GLOBAL)
@@ -22,11 +22,11 @@ public final class BasicFeatureIdentifier implements FeatureIdentifier {
     }
     
     /**
-     * 
-     * @param id
-     * @param source
-     * @param sourceLayer
-     * @return 
+     * Builds a BasicFeatureIdentifier.
+     * @param id The numeric ID of the feature.
+     * @param source The ID of the source where this feature is to be found, typically a GeoJSON/Vector-tiles source.
+     * @param sourceLayer If coming via vector-tiles the ID of the source layer.
+     * @return The built BasicFeatureIdentifier.
      */
     @JsOverlay
     public static final BasicFeatureIdentifier build(int id, String source, String sourceLayer) {
