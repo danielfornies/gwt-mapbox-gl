@@ -26,7 +26,8 @@ public class Expression {
 
     /**
      * Basic constructor which accepts an array of objects to be used in the expression array.
-     * @param expressionArray 
+     * @param expressionArray The array composing the expression, as documented in https://www.mapbox.com/mapbox-gl-js/style-spec/#expressions
+     * Any object within the expression array which is to be also an array, should be created as a JsArray (@see JSUtils.toJsArray(Object... elements))
      */
     public Expression(Object... expressionArray) {
         this.expressionArray = JSUtils.toJsArray(expressionArray);
