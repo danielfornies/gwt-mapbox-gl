@@ -18,6 +18,7 @@ import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties.TEXT_TRANSLATE_ANCHOR;
 import com.tomtom.gwt.mapbox.gl.client.style.other.StyleFunction;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.Anchor;
+import com.tomtom.gwt.mapbox.gl.client.style.expressions.Expression;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -73,6 +74,18 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public Builder withIconOpacity(StyleFunction function) {
             JSUtils.setObject(this, ICON_OPACITY, function);
+            return this;
+        }
+        
+        /**
+         * The opacity at which the icon will be drawn.
+         * @param expression Data-driven expression for the opacity.
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-icon-opacity
+         */
+        @JsOverlay
+        public Builder withIconOpacity(Expression expression) {
+            JSUtils.setObject(this, ICON_OPACITY, expression.getExpressionArray());
             return this;
         }
         
@@ -145,6 +158,18 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public Builder withIconHaloWidth(StyleFunction function) {
             JSUtils.setObject(this, ICON_HALO_WIDTH, function);
+            return this;
+        }
+        
+        /**
+         * Distance of halo to the icon outline.
+         * @param expression Data-driven expression for the halo width.
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-icon-halo-width
+         */
+        @JsOverlay
+        public Builder withIconHaloWidth(Expression expression) {
+            JSUtils.setObject(this, ICON_HALO_WIDTH, expression.getExpressionArray());
             return this;
         }
         
@@ -225,6 +250,18 @@ public class SymbolPaint extends AbstractPaint {
         }
         
         /**
+         * The opacity at which the text will be drawn.
+         * @param expression Data-driven style expression for the opacity value.
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-text-opacity
+         */
+        @JsOverlay
+        public Builder withTextOpacity(Expression expression) {
+            JSUtils.setObject(this, TEXT_OPACITY, expression.getExpressionArray());
+            return this;
+        }
+        
+        /**
          * The color with which the text will be drawn.
          * @param color Defaults to #000000. Requires text-field.
          * @return This builder.
@@ -245,6 +282,18 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public Builder withTextColor(StyleFunction function) {
             JSUtils.setObject(this, TEXT_COLOR, function);
+            return this;
+        }
+        
+        /**
+         * The color with which the text will be drawn.
+         * @param expression Data-driven style expression for the color value.
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-text-color
+         */
+        @JsOverlay
+        public Builder withTextColor(Expression expression) {
+            JSUtils.setObject(this, TEXT_COLOR, expression.getExpressionArray());
             return this;
         }
         
@@ -293,6 +342,18 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public Builder withTextHaloWidth(StyleFunction function) {
             JSUtils.setObject(this, TEXT_HALO_WIDTH, function);
+            return this;
+        }
+        
+        /**
+         * Distance of halo to the font outline. Max text halo width is 1/4 of the font-size.
+         * @param expression Data-drive style expression for the halo width in pixels.
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-text-halo-width
+         */
+        @JsOverlay
+        public Builder withTextHaloWidth(Expression expression) {
+            JSUtils.setObject(this, TEXT_HALO_WIDTH, expression.getExpressionArray());
             return this;
         }
         

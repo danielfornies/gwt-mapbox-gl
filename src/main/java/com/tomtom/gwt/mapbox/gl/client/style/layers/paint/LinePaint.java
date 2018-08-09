@@ -12,6 +12,7 @@ import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties.LINE_WIDTH;
 import com.tomtom.gwt.mapbox.gl.client.style.other.StyleFunction;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.Anchor;
+import com.tomtom.gwt.mapbox.gl.client.style.expressions.Expression;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties.LINE_GRADIENT;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
@@ -59,6 +60,12 @@ public class LinePaint extends AbstractPaint {
             JSUtils.setObject(this, LINE_OPACITY, function);
             return this;
         }
+        
+        @JsOverlay
+        public Builder withOpacity(Expression expression) {
+            JSUtils.setObject(this, LINE_OPACITY, expression.getExpressionArray());
+            return this;
+        }
 
         @JsOverlay
         public Builder withColor(String value) {
@@ -69,6 +76,12 @@ public class LinePaint extends AbstractPaint {
         @JsOverlay
         public Builder withColor(StyleFunction function) {
             JSUtils.setObject(this, LINE_COLOR, function);
+            return this;
+        }
+        
+        @JsOverlay
+        public Builder withColor(Expression expression) {
+            JSUtils.setObject(this, LINE_COLOR, expression.getExpressionArray());
             return this;
         }
 

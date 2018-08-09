@@ -58,7 +58,13 @@ public class SymbolLayout extends BaseLayout {
         /**
          * The label is placed along the line of the geometry. Can only be used on LineString and Polygon geometries.
          */
-        LINE("line");
+        LINE("line"),
+        /**
+         * The label is placed at the center of the line of the geometry. 
+         * Can only be used on LineString and Polygon geometries. 
+         * Note that a single feature in a vector tile may contain multiple line geometries.
+         */
+        LINE_CENTER("line-center");
         
         private final String apiValue;
         

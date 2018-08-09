@@ -12,7 +12,7 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.ImageElement;
 import com.google.gwt.resources.client.ImageResource;
-import com.tomtom.gwt.geojson.client.AbstractGeoJson;
+import com.tomtom.gwt.geojson.client.GeoJson;
 import com.tomtom.gwt.mapbox.gl.client.api.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.api.events.BaseEvent;
 import com.tomtom.gwt.mapbox.gl.client.api.events.Evented;
@@ -157,7 +157,7 @@ public class MapboxMap extends AbstractEvented {
      * @param geometry (Point[]) The geometry of the query region: either a single point or southwest and northeast points describing a bounding box. Omitting this parameter (i.e. calling
      * Map#queryRenderedFeatures with zero arguments, or with only a parameters argument) is equivalent to passing a bounding box encompassing the entire map viewport.
      * @param parameters an instance of QueryRenderedFeaturesParams.
-     * @return Array of AbstractGeoJson: An array of GeoJSON feature objects . The properties value of each returned feature object contains the properties of its source feature. For GeoJSON sources,
+     * @return Array of GeoJson: An array of GeoJSON feature objects . The properties value of each returned feature object contains the properties of its source feature. For GeoJSON sources,
      * only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
      *
      * Each feature includes a top-level layer property whose value is an object representing the style layer to which the feature belongs. Layout and paint properties in this object contain values
@@ -176,14 +176,14 @@ public class MapboxMap extends AbstractEvented {
      * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#queryRenderedFeatures
      */
-    public native AbstractGeoJson[] queryRenderedFeatures(Point geometry, QueryRenderedFeaturesParams parameters);
+    public native GeoJson[] queryRenderedFeatures(Point geometry, QueryRenderedFeaturesParams parameters);
 
     /**
      * Returns an array of GeoJSON Feature objects representing features within the specified vector tile or GeoJSON source that satisfy the query parameters.
      *
      * @param sourceID The ID of the vector tile or GeoJSON source to query.
      * @param parameters an instance of QuerySourceFeaturesParams
-     * @return Array of AbstractGeoJson: An array of GeoJSON Feature objects . In contrast to Map#queryRenderedFeatures, this function returns all features matching the query parameters, whether or
+     * @return Array of GeoJson: An array of GeoJSON Feature objects . In contrast to Map#queryRenderedFeatures, this function returns all features matching the query parameters, whether or
      * not they are rendered by the current style (i.e. visible). The domain of the query includes all currently-loaded vector tiles and GeoJSON source tiles: this function does not check tiles
      * outside the currently visible viewport.
      *
@@ -193,7 +193,7 @@ public class MapboxMap extends AbstractEvented {
      * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#querySourceFeatures
      */
-    public native AbstractGeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
+    public native GeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
 
     /**
      * Updates the map's Mapbox style object with a new value. If the given value is style JSON object, compares it against the the map's current state and perform only the changes necessary to make the map style match the desired state.
@@ -591,7 +591,7 @@ public class MapboxMap extends AbstractEvented {
      */
     @JsOverlay
     public final Filter getFilter(MapLayer layer) {
-        return Filter.build(getFilter(layer.getId()));
+        return new Filter(getFilter(layer.getId()));
     }
     
     /**
@@ -720,6 +720,23 @@ public class MapboxMap extends AbstractEvented {
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#getLight
      */
     public native LightOptions getLight();
+    
+    /**
+     * Sets the state of a feature. The state object is merged in with the existing state of the feature.
+     * @param feature Feature object returned from Map#queryRenderedFeatures. Should have a numeric "id" field for it to have effect.
+     * @param state A set of key-value pairs. The values should be valid JSON types.
+     * @see https://www.mapbox.com/mapbox-gl-js/api#map#setfeaturestate
+     */
+    public native void setFeatureState(GeoJson feature, Object state);
+    
+    /**
+     * Gets the state of a feature.
+     * @param <T> The object type containing the feature state. Typically a small JSON object with key-values.
+     * @param feature The feature for which to get the state.
+     * @return The state of a feature.
+     * @see https://www.mapbox.com/mapbox-gl-js/api#map#getfeaturestate
+     */
+    public native <T> T getFeatureState(GeoJson feature);
     
     /**
      * Returns the map's containing HTML element.
