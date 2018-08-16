@@ -17,6 +17,8 @@ import com.tomtom.gwt.mapbox.gl.client.api.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.api.events.BaseEvent;
 import com.tomtom.gwt.mapbox.gl.client.api.events.Evented;
 import com.tomtom.gwt.mapbox.gl.client.api.events.MapboxEventListener;
+import com.tomtom.gwt.mapbox.gl.client.api.feature.FeatureIdentifier;
+import com.tomtom.gwt.mapbox.gl.client.api.feature.MapboxFeature;
 import com.tomtom.gwt.mapbox.gl.client.style.layers.MapLayer;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.ControlAlignment;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.FitBoundsOptions;
@@ -751,7 +753,7 @@ public class MapboxMap extends AbstractEvented {
      * @param state A set of key-value pairs. The values should be valid JSON types.
      * @see https://www.mapbox.com/mapbox-gl-js/api#map#setfeaturestate
      */
-    public native void setFeatureState(GeoJson feature, Object state);
+    public native void setFeatureState(FeatureIdentifier feature, Object state);
     
     /**
      * Gets the state of a feature.
@@ -760,7 +762,7 @@ public class MapboxMap extends AbstractEvented {
      * @return The state of a feature.
      * @see https://www.mapbox.com/mapbox-gl-js/api#map#getfeaturestate
      */
-    public native <T> T getFeatureState(GeoJson feature);
+    public native <T> T getFeatureState(FeatureIdentifier feature);
     
     /**
      * Returns the map's containing HTML element.

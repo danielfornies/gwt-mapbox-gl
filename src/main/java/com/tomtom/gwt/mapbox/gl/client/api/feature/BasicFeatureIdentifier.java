@@ -16,11 +16,6 @@ public final class BasicFeatureIdentifier implements FeatureIdentifier {
     private BasicFeatureIdentifier() {
     }
     
-    @JsOverlay
-    public static final BasicFeatureIdentifier build(int id, String source) {
-        return build(id, source, null);
-    }
-    
     /**
      * Builds a BasicFeatureIdentifier.
      * @param id The numeric ID of the feature.
@@ -29,13 +24,13 @@ public final class BasicFeatureIdentifier implements FeatureIdentifier {
      * @return The built BasicFeatureIdentifier.
      */
     @JsOverlay
-    public static final BasicFeatureIdentifier build(int id, String source, String sourceLayer) {
+    public static final BasicFeatureIdentifier build(Integer id, String source, String sourceLayer) {
         BasicFeatureIdentifier featureIdentifier = new BasicFeatureIdentifier();
         featureIdentifier.setSource(source);
         if (sourceLayer != null) {
             featureIdentifier.setSourceLayer(sourceLayer);
         }
-        featureIdentifier.setId(id);
+        featureIdentifier.setId(id.doubleValue());
         return featureIdentifier;
     }
     
@@ -46,11 +41,11 @@ public final class BasicFeatureIdentifier implements FeatureIdentifier {
     private native void setSourceLayer(String sourceLayer);
     
     @JsProperty
-    private native void setId(double id);
+    private native void setId(Double id);
 
     @Override
     @JsProperty
-    public native double getId();
+    public native Double getId();
 
     @Override
     @JsProperty

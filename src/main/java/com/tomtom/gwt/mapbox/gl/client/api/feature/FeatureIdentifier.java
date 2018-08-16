@@ -16,7 +16,7 @@ public interface FeatureIdentifier {
      * @return Unique id of the feature. Should be numeric without decimals.
      */
     @JsProperty
-    double getId();
+    Double getId();
     
     /**
      * @return The Id of the vector source or GeoJSON source for the feature.
