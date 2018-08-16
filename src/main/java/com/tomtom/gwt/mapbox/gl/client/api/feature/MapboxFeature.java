@@ -28,7 +28,7 @@ public class MapboxFeature<C, P> extends Feature<C, P> implements FeatureIdentif
      * @param id The numeric ID of the feature.
      * @param source The ID of the source where this feature is to be found, typically a GeoJSON/Vector-tiles source.
      * @param sourceLayer )Optional) If coming via vector-tiles the ID of the source layer.
-     * @return 
+     * @return The built MapboxFeature.
      */
     @JsOverlay
     public static <C, P> MapboxFeature<C, P> build(Geometry<C> geometry, P properties, Double id, String source, String sourceLayer) {
