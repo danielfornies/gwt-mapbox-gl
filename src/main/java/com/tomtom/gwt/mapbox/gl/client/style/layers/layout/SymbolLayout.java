@@ -22,6 +22,7 @@ import jsinterop.annotations.JsType;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.ICON_ALLOW_OVERLAP;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.ICON_ANCHOR;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.ICON_PITCH_ALIGNMENT;
+import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.SYMBOL_Z_ORDER;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.TEXT_ALLOW_OVERLAP;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.TEXT_ANCHOR;
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.layout.LayoutProperties.TEXT_FIELD;
@@ -71,10 +72,6 @@ public class SymbolLayout extends BaseLayout {
         private SymbolPlacement(String apiValue) {
             this.apiValue = apiValue;
         }
-        
-        public String getApiValue() {
-            return apiValue;
-        }
     }
 
     public static enum PitchRotationAlignment {
@@ -95,10 +92,6 @@ public class SymbolLayout extends BaseLayout {
         
         private PitchRotationAlignment(String apiValue) {
             this.apiValue = apiValue;
-        }
-        
-        public String getApiValue() {
-            return apiValue;
         }
     }
     
@@ -124,10 +117,6 @@ public class SymbolLayout extends BaseLayout {
         
         private IconTextFit(String apiValue) {
             this.apiValue = apiValue;
-        }
-        
-        public String getApiValue() {
-            return apiValue;
         }
     }
     
@@ -177,9 +166,25 @@ public class SymbolLayout extends BaseLayout {
         private SymbolAnchor(String apiValue) {
             this.apiValue = apiValue;
         }
+    }
+    
+    /**
+     * Order in which overlapping symbols in the same layer are rendered
+     */
+    public static enum SymbolZOrder {
+        /**
+         * Symbols will be sorted by their y-position relative to the viewport.
+         */
+        VIEWPORT_Y("viewport-y"),
+        /**
+         * Symbols will be rendered in the same order as the source data with no sorting applied.
+         */
+        SOURCE("source");
         
-        public String getApiValue() {
-            return apiValue;
+        private final String apiValue;
+        
+        private SymbolZOrder(String apiValue) {
+            this.apiValue = apiValue;
         }
     }
 
@@ -209,7 +214,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withSymbolPlacement(SymbolPlacement placement) {
-            JSUtils.setObject(this, SYMBOL_PLACEMENT, placement.getApiValue());
+            JSUtils.setObject(this, SYMBOL_PLACEMENT, placement.apiValue);
             return this;
         }
         
@@ -235,6 +240,18 @@ public class SymbolLayout extends BaseLayout {
         @JsOverlay
         public Builder withSymbolAvoidEdges(boolean avoidEdges) {
             JSUtils.setBoolean(this, SYMBOL_AVOID_EDGES, avoidEdges);
+            return this;
+        }
+        
+        /**
+         * Controls the order in which overlapping symbols in the same layer are rendered
+         * @param symbolZOrder One of "viewport-y", "source". Defaults to "viewport-y".
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#layout-symbol-symbol-z-order
+         */
+        @JsOverlay
+        public Builder withSymbolZOrder(SymbolZOrder symbolZOrder) {
+            JSUtils.setObject(this, SYMBOL_Z_ORDER, symbolZOrder.apiValue);
             return this;
         }
         
@@ -282,7 +299,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withIconRotationAlignment(PitchRotationAlignment alignment) {
-            JSUtils.setObject(this, ICON_ROTATION_ALIGNMENT, alignment.getApiValue());
+            JSUtils.setObject(this, ICON_ROTATION_ALIGNMENT, alignment.apiValue);
             return this;
         }
         
@@ -320,7 +337,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withIconTextFit(IconTextFit iconTextFit) {
-            JSUtils.setObject(this, ICON_TEXT_FIT, iconTextFit.getApiValue());
+            JSUtils.setObject(this, ICON_TEXT_FIT, iconTextFit.apiValue);
             return this;
         }
         
@@ -443,7 +460,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withIconAnchor(SymbolAnchor anchor) {
-            JSUtils.setObject(this, ICON_ANCHOR, anchor.getApiValue());
+            JSUtils.setObject(this, ICON_ANCHOR, anchor.apiValue);
             return this;
         }
         
@@ -461,7 +478,7 @@ public class SymbolLayout extends BaseLayout {
         
         @JsOverlay
         public Builder withIconPitchAlignment(PitchRotationAlignment alignment) {
-            JSUtils.setObject(this, ICON_PITCH_ALIGNMENT, alignment.getApiValue());
+            JSUtils.setObject(this, ICON_PITCH_ALIGNMENT, alignment.apiValue);
             return this;
         }
         
@@ -473,7 +490,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withTextPitchAlignment(PitchRotationAlignment alignment) {
-            JSUtils.setObject(this, TEXT_PITCH_ALIGNMENT, alignment.getApiValue());
+            JSUtils.setObject(this, TEXT_PITCH_ALIGNMENT, alignment.apiValue);
             return this;
         }
         
@@ -485,7 +502,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withTextRotationAlignment(PitchRotationAlignment alignment) {
-            JSUtils.setObject(this, TEXT_ROTATION_ALIGNMENT, alignment.getApiValue());
+            JSUtils.setObject(this, TEXT_ROTATION_ALIGNMENT, alignment.apiValue);
             return this;
         }
         
@@ -636,7 +653,7 @@ public class SymbolLayout extends BaseLayout {
          */
         @JsOverlay
         public Builder withTextAnchor(SymbolAnchor anchor) {
-            JSUtils.setObject(this, TEXT_ANCHOR, anchor.getApiValue());
+            JSUtils.setObject(this, TEXT_ANCHOR, anchor.apiValue);
             return this;
         }
 
