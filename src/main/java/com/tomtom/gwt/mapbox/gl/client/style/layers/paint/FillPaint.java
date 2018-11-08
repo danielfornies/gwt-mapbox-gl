@@ -39,7 +39,7 @@ public class FillPaint extends AbstractPaint {
         @JsOverlay 
         public FillPaint build() {
             FillPaint paint = new FillPaint();
-            JSUtils.copyAllFields(this, paint);
+            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
             return paint;
         }
         

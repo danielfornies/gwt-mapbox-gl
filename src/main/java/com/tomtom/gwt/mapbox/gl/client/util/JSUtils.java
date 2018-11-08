@@ -30,10 +30,29 @@ public final class JSUtils {
         $wnd.mapboxgl.setRTLTextPlugin(url);
     }-*/;
     
-    public static native void copyAllFields(Object sourceObject, Object targetObject) /*-{
+    public static native void copyAllFieldsAndCleanNulls(Object sourceObject, Object targetObject) /*-{
         if (sourceObject && targetObject) {
             for (var field in sourceObject) {
                 targetObject[field] = sourceObject[field];
+            }
+            // Ensures then all null target values are removed:
+            // see https://stackoverflow.com/questions/286141/remove-blank-attributes-from-an-object-in-javascript
+            
+            
+            //Object.keys(targetObject).forEach((key) => (targetObject[key] == null) && delete targetObject[key]);
+            
+            //var propNames = Object.getOwnPropertyNames(targetObject);
+            //for (var i = 0; i < propNames.length; i++) {
+            //    var propName = propNames[i];
+            //    if (targetObject[propName] === null || targetObject[propName] === undefined) {
+            //        delete targetObject[propName];
+            //    }
+            //}
+            
+            for (var propName in targetObject) { 
+                if (targetObject[propName] == null || targetObject[propName] == undefined) {
+                    delete targetObject[propName];
+                }
             }
         }
     }-*/;

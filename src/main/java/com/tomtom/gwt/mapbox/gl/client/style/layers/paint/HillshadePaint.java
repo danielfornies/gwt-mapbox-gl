@@ -37,7 +37,7 @@ public class HillshadePaint {
         @JsOverlay
         public HillshadePaint build() {
             HillshadePaint paint = new HillshadePaint();
-            JSUtils.copyAllFields(this, paint);
+            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
             return paint;
         }
         

@@ -34,7 +34,7 @@ public class StyleFunction {
         @JsOverlay
         public StyleFunction build() {
             StyleFunction function = new StyleFunction();
-            JSUtils.copyAllFields(this, function);
+            JSUtils.copyAllFieldsAndCleanNulls(this, function);
             return function;
         }
 

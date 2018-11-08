@@ -1,5 +1,6 @@
 package com.tomtom.gwt.mapbox.gl.client.style.layers;
 
+import com.tomtom.gwt.mapbox.gl.client.style.expressions.Expression;
 import com.tomtom.gwt.mapbox.gl.client.style.other.Filter;
 import com.tomtom.gwt.mapbox.gl.client.style.layers.layout.BaseLayout;
 import com.tomtom.gwt.mapbox.gl.client.style.layers.paint.AbstractPaint;
@@ -74,7 +75,7 @@ public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
         @JsOverlay
         public MapLayer<L, P> build() {
             MapLayer layer = new MapLayer();
-            JSUtils.copyAllFields(this, layer);
+            JSUtils.copyAllFieldsAndCleanNulls(this, layer);
             return layer;
         }
         
@@ -141,6 +142,12 @@ public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
         @JsOverlay
         public Builder withFilter(Filter filter) {
             setFilter(filter.getExpression());
+            return this;
+        }
+        
+        @JsOverlay
+        public Builder withFilter(Expression expression) {
+            setFilter(expression.getExpressionArray());
             return this;
         }
         

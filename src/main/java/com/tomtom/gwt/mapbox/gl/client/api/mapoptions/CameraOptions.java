@@ -117,7 +117,7 @@ public class CameraOptions {
         @JsOverlay
         public CameraOptions build() {
             CameraOptions options = new CameraOptions();
-            JSUtils.copyAllFields(this, options);
+            JSUtils.copyAllFieldsAndCleanNulls(this, options);
             return options;
         }
     }

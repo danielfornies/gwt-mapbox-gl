@@ -48,7 +48,7 @@ public class LineLayout extends BaseLayout {
         @JsOverlay
         public LineLayout build() {
             LineLayout layout = new LineLayout();
-            JSUtils.copyAllFields(this, layout);
+            JSUtils.copyAllFieldsAndCleanNulls(this, layout);
             return layout;
         }
         

@@ -67,7 +67,7 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         public <T extends AbstractGeoJson> GeoJsonSourceInput<T> build() {
             GeoJsonSourceInput sourceInput = new GeoJsonSourceInput();
             sourceInput.setType("geojson");
-            JSUtils.copyAllFields(this, sourceInput);
+            JSUtils.copyAllFieldsAndCleanNulls(this, sourceInput);
             return sourceInput;
         }
         
@@ -190,5 +190,21 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         
         @JsProperty
         private native void setLineMetrics(boolean lineMetrics);
+        
+        /**
+         * Whether to generate ids for the geojson features. 
+         * When enabled, the feature.id property will be auto assigned based on its index in the features array, over-writing any previous values.
+         * @param generateId Optional boolean. Defaults to false.
+         * @return This Builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec#sources-geojson-generateId
+         */
+        @JsOverlay
+        public Builder withGenerateId(boolean generateId) {
+            setGenerateId(generateId);
+            return this;
+        }
+        
+        @JsProperty
+        private native void setGenerateId(boolean generateId);
     }
 }

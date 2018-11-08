@@ -223,7 +223,7 @@ public final class MapOptions {
         @JsOverlay
         public MapOptions build() {
             MapOptions options = new MapOptions();
-            JSUtils.copyAllFields(this, options);
+            JSUtils.copyAllFieldsAndCleanNulls(this, options);
             return options;
         }
     }
