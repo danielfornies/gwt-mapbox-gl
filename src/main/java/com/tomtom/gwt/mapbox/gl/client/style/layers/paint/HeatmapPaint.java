@@ -36,7 +36,7 @@ public class HeatmapPaint {
         @JsOverlay 
         public HeatmapPaint build() {
             HeatmapPaint paint = new HeatmapPaint();
-            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
+            JSUtils.copyAllNonNullFields(this, paint);
             return paint;
         }
         

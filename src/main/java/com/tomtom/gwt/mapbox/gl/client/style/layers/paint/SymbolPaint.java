@@ -49,7 +49,7 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public SymbolPaint build() {
             SymbolPaint paint = new SymbolPaint();
-            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
+            JSUtils.copyAllNonNullFields(this, paint);
             return paint;
         }
         

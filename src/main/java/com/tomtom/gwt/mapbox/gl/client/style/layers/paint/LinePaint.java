@@ -45,7 +45,7 @@ public class LinePaint extends AbstractPaint {
         @JsOverlay
         public LinePaint build() {
             LinePaint paint = new LinePaint();
-            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
+            JSUtils.copyAllNonNullFields(this, paint);
             return paint;
         }
 

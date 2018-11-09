@@ -53,7 +53,7 @@ public class BaseLayout {
         @JsOverlay
         public final BaseLayout buildBaseLayout() {
             BaseLayout layout = new BaseLayout();
-            JSUtils.copyAllFieldsAndCleanNulls(this, layout);
+            JSUtils.copyAllNonNullFields(this, layout);
             return layout;
         }
     }

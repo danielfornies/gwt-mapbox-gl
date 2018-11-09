@@ -67,7 +67,7 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         public <T extends AbstractGeoJson> GeoJsonSourceInput<T> build() {
             GeoJsonSourceInput sourceInput = new GeoJsonSourceInput();
             sourceInput.setType("geojson");
-            JSUtils.copyAllFieldsAndCleanNulls(this, sourceInput);
+            JSUtils.copyAllNonNullFields(this, sourceInput);
             return sourceInput;
         }
         

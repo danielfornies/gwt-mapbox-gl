@@ -39,7 +39,7 @@ public class FlyToOptions {
          */
         @JsOverlay
         public Builder withAnimation(AnimationOptions options) {
-            JSUtils.copyAllFieldsAndCleanNulls(options, this);
+            JSUtils.copyAllNonNullFields(options, this);
             return this;
         }
         
@@ -49,7 +49,7 @@ public class FlyToOptions {
          */
         @JsOverlay
         public Builder withCamera(CameraOptions options) {
-            JSUtils.copyAllFieldsAndCleanNulls(options, this);
+            JSUtils.copyAllNonNullFields(options, this);
             return this;
         }
         
@@ -115,7 +115,7 @@ public class FlyToOptions {
         @JsOverlay
         public FlyToOptions build() {
             FlyToOptions options = new FlyToOptions();
-            JSUtils.copyAllFieldsAndCleanNulls(this, options);
+            JSUtils.copyAllNonNullFields(this, options);
             return options;
         }
     }

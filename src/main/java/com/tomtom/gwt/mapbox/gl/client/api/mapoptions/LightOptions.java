@@ -109,7 +109,7 @@ public class LightOptions {
         @JsOverlay
         public LightOptions build() {
             LightOptions options = new LightOptions();
-            JSUtils.copyAllFieldsAndCleanNulls(this, options);
+            JSUtils.copyAllNonNullFields(this, options);
             return options;
         }
     }

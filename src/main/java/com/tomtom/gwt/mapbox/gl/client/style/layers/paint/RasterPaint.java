@@ -122,7 +122,7 @@ public class RasterPaint extends AbstractPaint {
         @JsOverlay
         public final RasterPaint build() {
             RasterPaint paint = new RasterPaint();
-            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
+            JSUtils.copyAllNonNullFields(this, paint);
             return paint;
         }
     }

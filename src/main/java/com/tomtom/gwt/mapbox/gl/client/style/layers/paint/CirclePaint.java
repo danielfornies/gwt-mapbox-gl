@@ -42,7 +42,7 @@ public class CirclePaint extends AbstractPaint {
         @JsOverlay 
         public CirclePaint build() {
             CirclePaint paint = new CirclePaint();
-            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
+            JSUtils.copyAllNonNullFields(this, paint);
             return paint;
         }
         

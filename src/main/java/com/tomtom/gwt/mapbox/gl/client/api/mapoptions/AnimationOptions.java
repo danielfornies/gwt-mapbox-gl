@@ -90,7 +90,7 @@ public class AnimationOptions {
         @JsOverlay
         public AnimationOptions build() {
             AnimationOptions options = new AnimationOptions();
-            JSUtils.copyAllFieldsAndCleanNulls(this, options);
+            JSUtils.copyAllNonNullFields(this, options);
             return options;
         }
     }

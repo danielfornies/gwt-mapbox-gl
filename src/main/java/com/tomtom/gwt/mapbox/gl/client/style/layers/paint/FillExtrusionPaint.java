@@ -38,7 +38,7 @@ public class FillExtrusionPaint {
         @JsOverlay
         public FillExtrusionPaint build() {
             FillExtrusionPaint paint = new FillExtrusionPaint();
-            JSUtils.copyAllFieldsAndCleanNulls(this, paint);
+            JSUtils.copyAllNonNullFields(this, paint);
             return paint;
         }
         

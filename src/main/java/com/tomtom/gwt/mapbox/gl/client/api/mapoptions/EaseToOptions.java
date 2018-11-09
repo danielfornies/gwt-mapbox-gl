@@ -46,20 +46,20 @@ public class EaseToOptions {
         
         @JsOverlay
         public Builder withAnimation(AnimationOptions options) {
-            JSUtils.copyAllFieldsAndCleanNulls(options, this);
+            JSUtils.copyAllNonNullFields(options, this);
             return this;
         }
         
         @JsOverlay
         public Builder withCamera(CameraOptions options) {
-            JSUtils.copyAllFieldsAndCleanNulls(options, this);
+            JSUtils.copyAllNonNullFields(options, this);
             return this;
         }
         
         @JsOverlay
         public EaseToOptions build() {
             EaseToOptions options = new EaseToOptions();
-            JSUtils.copyAllFieldsAndCleanNulls(this, options);
+            JSUtils.copyAllNonNullFields(this, options);
             return options;
         }
     }

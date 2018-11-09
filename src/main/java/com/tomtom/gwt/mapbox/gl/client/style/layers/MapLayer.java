@@ -75,7 +75,7 @@ public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
         @JsOverlay
         public MapLayer<L, P> build() {
             MapLayer layer = new MapLayer();
-            JSUtils.copyAllFieldsAndCleanNulls(this, layer);
+            JSUtils.copyAllNonNullFields(this, layer);
             return layer;
         }
         
@@ -141,13 +141,13 @@ public class MapLayer<L extends BaseLayout, P extends AbstractPaint> {
         
         @JsOverlay
         public Builder withFilter(Filter filter) {
-            setFilter(filter.getExpression());
+            setFilter(filter != null ? filter.getExpression() : null);
             return this;
         }
         
         @JsOverlay
         public Builder withFilter(Expression expression) {
-            setFilter(expression.getExpressionArray());
+            setFilter(expression != null ? expression.getExpressionArray() : null);
             return this;
         }
         
