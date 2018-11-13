@@ -32,6 +32,39 @@ public class Expression {
     public Expression(Object... expressionArray) {
         this.expressionArray = JSUtils.toJsArray(expressionArray);
     }
+    
+    /**
+     * Returns the expression which returns true if all the inputs are true, false otherwise. 
+     * The inputs are evaluated in order, and evaluation is short-circuiting: once an input expression evaluates to false, 
+     * the result is false and no further input expressions are evaluated.
+     * @param expressions The expressions to combine. Should evaluate to a boolean type, and not null.
+     * @return The expression which returns true if all the inputs are true, false otherwise. 
+     * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#expressions-all
+     */
+    public static Expression all(Expression... expressions) {
+        return buildExpression("all", expressions);
+    }
+    
+    /**
+     * Returns the expression which returns true if any of the inputs are true, false otherwise. 
+     * The inputs are evaluated in order, and evaluation is short-circuiting: once an input expression evaluates to true, 
+     * the result is true and no further input expressions are evaluated.
+     * @param expressions The expressions to combine. Should evaluate to a boolean type, and not null.
+     * @return The expression which returns true if all the inputs are true, false otherwise. 
+     * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#expressions-any
+     */
+    public static Expression any(Expression... expressions) {
+        return buildExpression("any", expressions);
+    }
+    
+    private static Expression buildExpression(String condition, Expression... expressions) {
+        Object[] expressionArray = new Object[expressions.length + 1];
+        expressionArray[0] = condition;
+        for (int i = 0; i < expressions.length; i++) {
+            expressionArray[i+1] = expressions[i].getExpressionArray();
+        }
+        return new Expression(expressionArray);
+    }
 
     /**
      * @return The JSON array which represents this expression.
