@@ -199,7 +199,7 @@ public class SymbolLayout extends BaseLayout {
         @JsOverlay
         public SymbolLayout build() {
             SymbolLayout layout = new SymbolLayout();
-            JSUtils.copyAllFields(this, layout);
+            JSUtils.copyAllNonNullFields(this, layout);
             return layout;
         }
 

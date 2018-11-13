@@ -36,7 +36,7 @@ public class FitBoundsOptions {
          */
         @JsOverlay
         public Builder withAnimation(AnimationOptions options) {
-            JSUtils.copyAllFields(options, this);
+            JSUtils.copyAllNonNullFields(options, this);
             return this;
         }
         
@@ -46,7 +46,7 @@ public class FitBoundsOptions {
          */
         @JsOverlay
         public Builder withCamera(CameraOptions options) {
-            JSUtils.copyAllFields(options, this);
+            JSUtils.copyAllNonNullFields(options, this);
             return this;
         }
         
@@ -103,7 +103,7 @@ public class FitBoundsOptions {
         @JsOverlay
         public FitBoundsOptions build() {
             FitBoundsOptions options = new FitBoundsOptions();
-            JSUtils.copyAllFields(this, options);
+            JSUtils.copyAllNonNullFields(this, options);
             return options;
         }
     }

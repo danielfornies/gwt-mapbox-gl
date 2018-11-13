@@ -30,10 +30,17 @@ public final class JSUtils {
         $wnd.mapboxgl.setRTLTextPlugin(url);
     }-*/;
     
-    public static native void copyAllFields(Object sourceObject, Object targetObject) /*-{
+    /**
+     * Copies all the fields from JSON sourceObject into targetObject, if they are not null.
+     * @param sourceObject The source object where to read the fields. Expected to be in JSON format.
+     * @param targetObject The target object where to copy the non null fields into. Expected to be in JSON format.
+     */
+    public static native void copyAllNonNullFields(Object sourceObject, Object targetObject) /*-{
         if (sourceObject && targetObject) {
             for (var field in sourceObject) {
-                targetObject[field] = sourceObject[field];
+                if (sourceObject[field] !== null && sourceObject[field] !== undefined) {
+                    targetObject[field] = sourceObject[field];
+                }
             }
         }
     }-*/;
