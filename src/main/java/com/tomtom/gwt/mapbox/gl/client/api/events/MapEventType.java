@@ -37,6 +37,14 @@ public enum MapEventType {
      */
     render,
     /**
+     * Fired after the last frame rendered before the map enters an "idle" state:
+     * - No camera transitions are in progress
+     * -  All currently requested tiles have loaded
+     * -  All fade/transition animations have completed
+     * @see https://www.mapbox.com/mapbox-gl-js/api/#map.event:idle
+     */
+    idle,
+    /**
      * Fired when a point device (usually a mouse) leaves the map's canvas.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map.event:mouseout
      */
