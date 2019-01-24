@@ -42,7 +42,7 @@ public class Expression {
      * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#expressions-all
      */
     public static Expression all(Expression... expressions) {
-        return buildExpression("all", expressions);
+        return build("all", expressions);
     }
     
     /**
@@ -54,10 +54,20 @@ public class Expression {
      * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#expressions-any
      */
     public static Expression any(Expression... expressions) {
-        return buildExpression("any", expressions);
+        return build("any", expressions);
     }
     
-    private static Expression buildExpression(String condition, Expression... expressions) {
+    /**
+     * Returns true if the input is false, and false if the input is true.
+     * @param expression The expression to check.
+     * @return Returns true if the input is false, and false if the input is true.
+     * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#expressions-any
+     */
+    public static Expression not(Expression expression) {
+        return build("!", expression);
+    }
+    
+    public static Expression build(String condition, Expression... expressions) {
         Object[] expressionArray = new Object[expressions.length + 1];
         expressionArray[0] = condition;
         for (int i = 0; i < expressions.length; i++) {
