@@ -207,12 +207,12 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public Builder withIconTranslate(int rightPixels, int downPixels) {
             JsArrayInteger array = JavaScriptObject.createArray(2).cast();
-            array.push(rightPixels);
-            array.push(downPixels);
+            array.set(0, rightPixels);
+            array.set(1, downPixels);
             JSUtils.setObject(this, ICON_TRANSLATE, array);
             return this;
         }
-        
+
         /**
          * Controls the translation reference point.
          * @param value One of map, viewport. Defaults to map. Requires icon-image. Requires icon-translate.
@@ -379,8 +379,8 @@ public class SymbolPaint extends AbstractPaint {
         @JsOverlay
         public Builder withTextTranslate(int xPixels, int yPixels) {
             JsArrayInteger array = JavaScriptObject.createArray(2).cast();
-            array.push(xPixels);
-            array.push(yPixels);
+            array.set(0, xPixels);
+            array.set(1, yPixels);
             JSUtils.setObject(this, TEXT_TRANSLATE, array);
             return this;
         }
