@@ -12,6 +12,7 @@ import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties
 import static com.tomtom.gwt.mapbox.gl.client.style.layers.paint.PaintProperties.CIRCLE_TRANSLATE_ANCHOR;
 import com.tomtom.gwt.mapbox.gl.client.style.other.StyleFunction;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.Anchor;
+import com.tomtom.gwt.mapbox.gl.client.style.expressions.Expression;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -101,10 +102,16 @@ public class CirclePaint extends AbstractPaint {
         }
         
         @JsOverlay
+        public Builder withTranslate(Expression expression) {
+            JSUtils.setObject(this, CIRCLE_TRANSLATE, expression.getExpressionArray());
+            return this;
+        }
+        
+        @JsOverlay
         public Builder withTranslate(StyleFunction function) {
             JSUtils.setObject(this, CIRCLE_TRANSLATE, function);
             return this;
-        }
+        }   
         
         @JsOverlay
         public Builder withTranslateAnchor(Anchor anchor) {
