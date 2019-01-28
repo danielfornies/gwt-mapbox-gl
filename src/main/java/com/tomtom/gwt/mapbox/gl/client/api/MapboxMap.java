@@ -12,13 +12,12 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.ImageElement;
 import com.google.gwt.resources.client.ImageResource;
-import com.tomtom.gwt.geojson.client.GeoJson;
+import com.tomtom.gwt.geojson.client.Feature;
 import com.tomtom.gwt.mapbox.gl.client.api.controls.IControl;
 import com.tomtom.gwt.mapbox.gl.client.api.events.BaseEvent;
 import com.tomtom.gwt.mapbox.gl.client.api.events.Evented;
 import com.tomtom.gwt.mapbox.gl.client.api.events.MapboxEventListener;
 import com.tomtom.gwt.mapbox.gl.client.api.feature.FeatureIdentifier;
-import com.tomtom.gwt.mapbox.gl.client.api.feature.MapboxFeature;
 import com.tomtom.gwt.mapbox.gl.client.style.layers.MapLayer;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.ControlAlignment;
 import com.tomtom.gwt.mapbox.gl.client.api.mapoptions.FitBoundsOptions;
@@ -177,7 +176,7 @@ public class MapboxMap extends AbstractEvented {
      * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#queryRenderedFeatures
      */
-    public native GeoJson[] queryRenderedFeatures(Point geometry, QueryRenderedFeaturesParams parameters);
+    public native Feature[] queryRenderedFeatures(Point geometry, QueryRenderedFeaturesParams parameters);
 
     /**
      * Returns an array of GeoJSON Feature objects representing visible features that satisfy the query parameters.
@@ -202,7 +201,7 @@ public class MapboxMap extends AbstractEvented {
      * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#queryRenderedFeatures
      */
-    public native GeoJson[] queryRenderedFeatures(QueryRenderedFeaturesParams parameters);
+    public native Feature[] queryRenderedFeatures(QueryRenderedFeaturesParams parameters);
     
     /**
      * Returns an array of GeoJSON Feature objects representing features within the specified vector tile or GeoJSON source that satisfy the query parameters.
@@ -219,7 +218,7 @@ public class MapboxMap extends AbstractEvented {
      * a separate feature. Similarly, a point feature near a tile boundary may appear in multiple tiles due to tile buffering.
      * @see https://www.mapbox.com/mapbox-gl-js/api/#Map#querySourceFeatures
      */
-    public native GeoJson[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
+    public native Feature[] querySourceFeatures(String sourceID, QuerySourceFeaturesParams parameters);
 
     /**
      * Updates the map's Mapbox style object with a new value. If the given value is style JSON object, compares it against the the map's current state and perform only the changes necessary to make the map style match the desired state.
