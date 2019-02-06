@@ -212,6 +212,18 @@ public class SymbolPaint extends AbstractPaint {
             JSUtils.setObject(this, ICON_TRANSLATE, array);
             return this;
         }
+        
+        /**
+         * Distance that the icon's anchor is moved from its original placement. Positive values indicate right and down, while negative values indicate left and up.
+         * @param function function to set for the property
+         * @return This builder.
+         * @see https://www.mapbox.com/mapbox-gl-js/style-spec/#paint-icon-translate
+         */
+        @JsOverlay
+        public Builder withIconTranslate(StyleFunction function) {
+            JSUtils.setObject(this, ICON_TRANSLATE, function);
+            return this;
+        }
 
         /**
          * Controls the translation reference point.
@@ -408,7 +420,7 @@ public class SymbolPaint extends AbstractPaint {
             JSUtils.setObject(this, TEXT_TRANSLATE, function);
             return this;
         }
-        //.withTranslate(new Expression(2d, JSUtils.toJsArray(15d, -30d), 18d, JSUtils.toJsArray(30d, -60d)))
+        
         /**
          * Controls the translation reference point.
          * @param anchor One of map, viewport. Defaults to map. Requires text-field. Requires text-translate.

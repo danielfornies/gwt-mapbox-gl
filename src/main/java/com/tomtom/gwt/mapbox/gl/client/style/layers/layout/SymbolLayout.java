@@ -428,6 +428,7 @@ public class SymbolLayout extends BaseLayout {
         /**
          * Offset distance of icon from its anchor. 
          * Positive values indicate right and down, while negative values indicate left and up. When combined with icon-rotate the offset will be as if the rotated direction was up.
+         * Each component is multiplied by the value of icon-size to obtain the final offset in pixels. When combined with icon-rotate the offset will be as if the rotated direction was up.
          * @param right X offset distance from the anchor.
          * @param down Y offset distance from the anchor.
          * @return This Builder.
