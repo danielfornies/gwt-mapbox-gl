@@ -3,6 +3,7 @@ package com.tomtom.gwt.mapbox.gl.client.style.sources;
 import com.tomtom.gwt.geojson.client.AbstractGeoJson;
 import com.tomtom.gwt.geojson.client.Feature;
 import com.tomtom.gwt.geojson.client.FeatureCollection;
+import com.tomtom.gwt.mapbox.gl.client.style.expressions.Expression;
 import static com.tomtom.gwt.mapbox.gl.client.util.Constants.JS_OBJECT_TYPE;
 import com.tomtom.gwt.mapbox.gl.client.util.JSUtils;
 import jsinterop.annotations.JsOverlay;
@@ -206,5 +207,46 @@ public final class GeoJsonSourceInput<T> extends AbstractSourceInput {
         
         @JsProperty
         private native void setGenerateId(boolean generateId);
+        
+        /**
+         * An object defining custom properties on the generated clusters if clustering is enabled, aggregating values from clustered points. 
+         * Has the form {"property_name": [operator, map_expression]}. operator is any expression function 
+         * that accepts at least 2 operands (e.g. "+" or "max") — it accumulates the property value from clusters/points 
+         * the cluster contains; map_expression produces the value of a single point.
+         * Example: {"sum": ["+", ["get", "scalerank"]]}.
+         * For more advanced use cases, in place of operator, you can use a custom reduce expression 
+         * that references a special ["accumulated"] value, e.g.: {"sum": [["+", ["accumulated"], ["get", "sum"]], ["get", "scalerank"]]}
+         * @param properties A JSON object defining custom properties on the generated clusters if clustering is enabled
+         * @return This Builder.
+         * @see https://docs.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-clusterProperties
+         */
+        @JsOverlay
+        public Builder withClusterProperties(Object properties) {
+            setClusterProperties(properties);
+            return this;
+        }
+
+        /**
+         * The custom property on the generated clusters if clustering is enabled, aggregating values from clustered points. 
+         * Has the form {"property_name": [operator, map_expression]}. operator is any expression function 
+         * that accepts at least 2 operands (e.g. "+" or "max") — it accumulates the property value from clusters/points 
+         * the cluster contains; map_expression produces the value of a single point.
+         * Example: {"sum": ["+", ["get", "scalerank"]]}.
+         * For more advanced use cases, in place of operator, you can use a custom reduce expression 
+         * that references a special ["accumulated"] value, e.g.: {"sum": [["+", ["accumulated"], ["get", "sum"]], ["get", "scalerank"]]}
+         * @param propertyName The name of the property
+         * @param operator The operator as described above.
+         * @param mapExpression The map expression as described above.
+         * @return This Builder.
+         * @see https://docs.mapbox.com/mapbox-gl-js/style-spec/#sources-geojson-clusterProperties
+         */
+        @JsOverlay
+        public Builder withClusterProperty(String propertyName, String operator, Expression mapExpression) {
+            JSUtils.setObject(this, propertyName, Expression.build(operator, mapExpression).getExpressionArray());
+            return this;
+        }
+
+        @JsProperty
+        private native void setClusterProperties(Object properties);
     }
 }
